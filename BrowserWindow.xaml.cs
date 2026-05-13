@@ -29,6 +29,12 @@ namespace imgsaver
         // Shared environment to ensure all tabs use the same profile/settings
         private static CoreWebView2Environment? _sharedEnvironment;
         private static readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
+        
+        // Track previous proxy settings to detect changes
+        private string _previousProxyAddress = "";
+        private string _previousProxyPort = "";
+        private bool _previousProxyEnabled = false;
+        private string _previousProxyType = "http";
 
         public BrowserWindow()
         {
@@ -39,6 +45,7 @@ namespace imgsaver
 
             InitializeStatusTimer();
             RefreshSettings();
+            SaveCurrentProxySettings(); // Initialize proxy tracking
             RefreshBookmarksUI();
 
             this.StateChanged += BrowserWindow_StateChanged;
@@ -83,6 +90,67 @@ namespace imgsaver
                 StatusOverlay.Opacity = 1;
                 _statusFadeTimer?.Stop();
             }
+        }
+        
+        private bool ProxySettingsChanged()
+        {
+            return _currentSettings.ProxyEnabled != _previousProxyEnabled ||
+                   _currentSettings.ProxyAddress != _previousProxyAddress ||
+                   _currentSettings.ProxyPort != _previousProxyPort ||
+                   _currentSettings.ProxyType != _previousProxyType;
+        }
+        
+        private void SaveCurrentProxySettings()
+        {
+            _previousProxyEnabled = _currentSettings.ProxyEnabled;
+            _previousProxyAddress = _currentSettings.ProxyAddress;
+            _previousProxyPort = _currentSettings.ProxyPort;
+            _previousProxyType = _currentSettings.ProxyType ?? "http";
+        }
+        
+        private async Task ResetEnvironmentAndReloadTabs()
+        {
+            // Clear the shared environment so it will be recreated with new proxy settings
+            await _envLock.WaitAsync();
+            try
+            {
+                _sharedEnvironment = null;
+            }
+            finally { _envLock.Release(); }
+            
+            // Collect URLs to reload before removing tabs
+            var urlsToReload = new List<string>();
+            var tabsToRemove = new List<TabItem>();
+            
+            foreach (TabItem tab in BrowserTabs.Items)
+            {
+                if (tab.Content is WebView2 webView && webView.Source != null)
+                {
+                    urlsToReload.Add(webView.Source.ToString());
+                    tabsToRemove.Add(tab);
+                }
+            }
+            
+            // Remove old tabs and dispose WebView2 controls
+            foreach (var tab in tabsToRemove)
+            {
+                if (tab.Content is WebView2 oldWebView)
+                {
+                    oldWebView.Dispose();
+                }
+                BrowserTabs.Items.Remove(tab);
+            }
+            
+            // Wait a bit to ensure environment cleanup
+            await Task.Delay(200);
+            
+            // Recreate tabs with the new environment
+            foreach (var url in urlsToReload)
+            {
+                await AddNewTab(url);
+            }
+            
+            SaveCurrentProxySettings();
         }
 
         private string GetIconForUrl(string? url)
@@ -173,7 +241,10 @@ namespace imgsaver
                 }
                 finally { _envLock.Release(); }
 
+                // Ensure CoreWebView2 is initialized before using it
                 await webView.EnsureCoreWebView2Async(_sharedEnvironment);
+                
+                if (webView.CoreWebView2 == null) throw new Exception("CoreWebView2 initialization failed");
 
                 webView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
                 webView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
@@ -210,7 +281,7 @@ namespace imgsaver
                     }
                 };
             }
-            catch (Exception ex) { CustomMessageBox.Show($"Failed to create tab: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex) { CustomMessageBox.Show($"Failed to create tab: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); System.Diagnostics.Debug.WriteLine(ex); }
         }
 
         private void SaveSession()
@@ -517,7 +588,7 @@ namespace imgsaver
         private void BrowserTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             var browser = GetCurrentBrowser();
-            if (browser != null && TxtUrl != null) TxtUrl.Text = browser.Source?.ToString() ?? "";
+            if (browser != null && TxtUrl != null && browser.CoreWebView2 != null) TxtUrl.Text = browser.Source?.ToString() ?? "";
         }
 
         private async void BtnNewTab_Click(object? sender, RoutedEventArgs e) => await AddNewTab();
@@ -549,12 +620,32 @@ namespace imgsaver
                         browser.Reload();
                     }
                 }
+                
+                // Check if proxy settings changed BEFORE refreshing
+                bool proxyChanged = false;
+                var oldSettings = _currentSettings;
+                var newSettings = BrowserSettings.Load();
+                proxyChanged = oldSettings.ProxyEnabled != newSettings.ProxyEnabled ||
+                              oldSettings.ProxyAddress != newSettings.ProxyAddress ||
+                              oldSettings.ProxyPort != newSettings.ProxyPort ||
+                              oldSettings.ProxyType != newSettings.ProxyType;
+                
                 RefreshSettings();
-                foreach (TabItem tab in BrowserTabs.Items)
+                
+                if (proxyChanged)
                 {
-                    if (tab.Content is WebView2 webView) ApplyBrowserSettingsTo(webView);
+                    await ResetEnvironmentAndReloadTabs();
+                    CustomMessageBox.Show("Proxy settings updated. Tabs have been reloaded with new proxy configuration.", "Proxy Updated");
                 }
-                CustomMessageBox.Show("Some settings (like Proxy) require restarting the browser window to take effect.", "Settings Updated");
+                else
+                {
+                    // For other settings, just apply them to existing tabs
+                    foreach (TabItem tab in BrowserTabs.Items)
+                    {
+                        if (tab.Content is WebView2 webView) ApplyBrowserSettingsTo(webView);
+                    }
+                    CustomMessageBox.Show("Settings updated.", "Success");
+                }
             }
         }
 
@@ -641,6 +732,10 @@ namespace imgsaver
         public string ProxyType { get; set; } = "http";
         public string ProxyAddress { get; set; } = "";
         public string ProxyPort { get; set; } = "";
+        
+        // Minimum image dimensions for import to Mini Clipboard
+        public int MinImageWidth { get; set; } = 50;
+        public int MinImageHeight { get; set; } = 50;
 
         private static string FilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_settings.json");
 

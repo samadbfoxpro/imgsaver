@@ -258,6 +258,13 @@ namespace imgsaver
                         bitmap.EndInit();
                         bitmap.Freeze();
 
+                        // Check minimum image dimensions
+                        var settings = imgsaver.BrowserSettings.Load();
+                        if (bitmap.PixelWidth < settings.MinImageWidth || bitmap.PixelHeight < settings.MinImageHeight)
+                        {
+                            return; // Silent rejection
+                        }
+
                         await Dispatcher.InvokeAsync(() => {
                             _capturedImages.Add(new CapturedImageInfo { Bitmap = bitmap, OriginalPath = filePath });
                             _hasImage = true;

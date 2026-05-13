@@ -33,6 +33,11 @@ namespace imgsaver
                     if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
                 }
 
+                // Load minimum image dimensions from BrowserSettings
+                var settings = BrowserSettings.Load();
+                TxtMinImageWidth.Text = settings.MinImageWidth.ToString();
+                TxtMinImageHeight.Text = settings.MinImageHeight.ToString();
+
                 RecordingManager.LoadState();
                 ChkSequentialMode.IsChecked = RecordingManager.SequentialMode;
                 CmbDefaultSlot.SelectedIndex = RecordingManager.SelectedSlot - 1;
@@ -65,6 +70,14 @@ namespace imgsaver
                     autoSaveEnabled,
                     autoSaveCount
                 });
+
+                // Save minimum image dimensions to BrowserSettings
+                var settings = BrowserSettings.Load();
+                if (int.TryParse(TxtMinImageWidth.Text, out int minWidth) && minWidth > 0)
+                    settings.MinImageWidth = minWidth;
+                if (int.TryParse(TxtMinImageHeight.Text, out int minHeight) && minHeight > 0)
+                    settings.MinImageHeight = minHeight;
+                settings.Save();
 
                 RecordingManager.SequentialMode = ChkSequentialMode.IsChecked == true;
                 RecordingManager.SelectedSlot = CmbDefaultSlot.SelectedIndex + 1;
