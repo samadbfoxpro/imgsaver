@@ -1,0 +1,122 @@
+<Window x:Class="imgsaver.FileShareWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cloud Link - File Share" 
+        Height="450" Width="400"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" ResizeBorderThickness="5" GlassFrameThickness="0" CornerRadius="12"/>
+    </WindowChrome.WindowChrome>
+
+    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Background="{StaticResource BackgroundBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32"/> <!-- Title Bar -->
+                <RowDefinition Height="*"/>  <!-- Content -->
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="12,12,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="☁️ Cloud Link - File Share" Foreground="{StaticResource ForegroundBrush}" 
+                               FontSize="13" VerticalAlignment="Center" Margin="12,0"/>
+                    <Button x:Name="BtnClose" Content="✕" Click="BtnClose_Click" HorizontalAlignment="Right"
+                            Style="{StaticResource TitleBarCloseButtonStyle}"/>
+                </Grid>
+            </Border>
+
+            <!-- Content -->
+            <StackPanel Grid.Row="1" Margin="24">
+                <TextBlock Text="Local File Sharing" FontSize="24" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,4"/>
+                <TextBlock Text="Transfer files between devices on your local network" FontSize="12" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,24"/>
+
+                <!-- Server Control -->
+                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="16" Padding="20" Margin="0,0,0,20">
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock x:Name="TxtStatusLabel" Text="Server Stated: Stopped" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource ForegroundMutedBrush}"/>
+                            <TextBlock x:Name="TxtIpDisplay" Text="http://0.0.0.0:9896" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,4,0,0" Visibility="Collapsed"/>
+                        </StackPanel>
+                        <ToggleButton x:Name="ToggleServer" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                      Width="60" Height="30" Click="ToggleServer_Click">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border x:Name="Border" CornerRadius="15" Background="#334155">
+                                                    <Ellipse x:Name="Dot" Fill="White" HorizontalAlignment="Left" Width="24" Height="24" Margin="3" 
+                                                            VerticalAlignment="Center">
+                                                        <Ellipse.RenderTransform>
+                                                            <TranslateTransform X="0"/>
+                                                        </Ellipse.RenderTransform>
+                                                    </Ellipse>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="Border" Property="Background" Value="{StaticResource SuccessBrush}"/>
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="30" Duration="0:0:0.2"/>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.2"/>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+                    </Grid>
+                </Border>
+
+                <!-- Actions -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Click="BtnOpenFolder_Click" Margin="0,0,8,0" Padding="16,12" Background="{StaticResource SurfaceBrush}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📂" Margin="0,0,8,0"/>
+                            <TextBlock Text="Open Share Folder" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="1" Click="BtnCopyUrl_Click" Padding="16,12" Background="{StaticResource SurfaceBrush}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔗" Margin="0,0,8,0"/>
+                            <TextBlock Text="Copy URL" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- Info -->
+                <Border Margin="0,24,0,0" Padding="16" Background="#0D3B82F6" CornerRadius="12" BorderBrush="#333B82F6" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="How to use:" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="1. Turn on the switch above." FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}"/>
+                        <TextBlock Text="2. Scan the IP from your phone browser." FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}"/>
+                        <TextBlock Text="3. Upload or download files instantly!" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

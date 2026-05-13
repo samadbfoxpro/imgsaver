@@ -1,0 +1,170 @@
+<Window x:Class="imgsaver.WelcomeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Welcome!" 
+        Height="600" Width="700"
+        WindowStartupLocation="CenterScreen"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" 
+                      ResizeBorderThickness="0" 
+                      GlassFrameThickness="0"
+                      CornerRadius="10"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="10" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Margin="28,24,28,16">
+                <TextBlock Text="🎉 Welcome!" 
+                          FontSize="28" 
+                          FontWeight="Bold" 
+                          Foreground="{StaticResource AccentBrush}"
+                          HorizontalAlignment="Center"/>
+                <TextBlock Text="Text Shortcut Manager &amp; Tool" 
+                          FontSize="16" 
+                          HorizontalAlignment="Center"
+                          Foreground="{StaticResource ForegroundMutedBrush}"
+                          Margin="0,6,0,0"/>
+            </StackPanel>
+
+            <!-- Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="28,0">
+                <StackPanel>
+                    <!-- App Purpose -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="16" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="📝 What is this app?" 
+                                      FontSize="16" 
+                                      FontWeight="SemiBold" 
+                                      Foreground="{StaticResource AccentBrush}"
+                                      Margin="0,0,0,10"/>
+                            <TextBlock Text="This tool helps you type long texts quickly using short shortcuts. For example, you can type '/email' to insert your full email address instantly!"
+                                      Foreground="{StaticResource ForegroundBrush}"
+                                      FontSize="13"
+                                      TextWrapping="Wrap"
+                                      LineHeight="20"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Usage Instructions -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="16" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="🚀 How to use?" 
+                                      FontSize="16" 
+                                      FontWeight="SemiBold" 
+                                      Foreground="{StaticResource AccentBrush}"
+                                      Margin="0,0,0,10"/>
+                            
+                            <StackPanel>
+                                <TextBlock FontSize="13" Foreground="{StaticResource ForegroundBrush}" Margin="0,4" TextWrapping="Wrap">
+                                    <Run Text="1️⃣" FontWeight="Bold"/>
+                                    <Run Text=" The app runs in the background and has an icon in the System Tray."/>
+                                </TextBlock>
+                                
+                                <TextBlock FontSize="13" Foreground="{StaticResource ForegroundBrush}" Margin="0,4" TextWrapping="Wrap">
+                                    <Run Text="2️⃣" FontWeight="Bold"/>
+                                    <Run Text=" To manage shortcuts, use the keyboard shortcut "/>
+                                    <Run Text="Alt + S" Foreground="{StaticResource SuccessBrush}" FontWeight="Bold"/>
+                                    <Run Text="."/>
+                                </TextBlock>
+                                
+                                <TextBlock FontSize="13" Foreground="{StaticResource ForegroundBrush}" Margin="0,4" TextWrapping="Wrap">
+                                    <Run Text="3️⃣" FontWeight="Bold"/>
+                                    <Run Text=" Start your shortcuts with a special character (e.g., "/>
+                                    <Run Text="/" Foreground="{StaticResource AccentBrush}" FontWeight="Bold"/>
+                                    <Run Text=")."/>
+                                </TextBlock>
+                                
+                                <TextBlock FontSize="13" Foreground="{StaticResource ForegroundBrush}" Margin="0,4" TextWrapping="Wrap">
+                                    <Run Text="4️⃣" FontWeight="Bold"/>
+                                    <Run Text=" When typing in any app, write the shortcut and press "/>
+                                    <Run Text="Space" Foreground="{StaticResource SuccessBrush}" FontWeight="Bold"/>
+                                    <Run Text=", and the full text will be inserted!"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Quick Examples -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="16" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="💡 Practical Examples:" 
+                                      FontSize="16" 
+                                      FontWeight="SemiBold" 
+                                      Foreground="{StaticResource AccentBrush}"
+                                      Margin="0,0,0,10"/>
+                            
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="/email" Foreground="{StaticResource SuccessBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="13"/>
+                                <TextBlock Grid.Column="1" Text="→ your.email@example.com" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="13"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="/addr" Foreground="{StaticResource SuccessBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="13"/>
+                                <TextBlock Grid.Column="1" Text="→ Complete home or work address" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="13"/>
+                            </Grid>
+                            
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="/sig" Foreground="{StaticResource SuccessBrush}" FontFamily="Consolas" FontWeight="Bold" FontSize="13"/>
+                                <TextBlock Grid.Column="1" Text="→ Your professional signature" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="13"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- GitHub Link -->
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="🐛 Feedback &amp; Bug Reports" 
+                                      FontSize="16" 
+                                      FontWeight="SemiBold" 
+                                      Foreground="{StaticResource AccentBrush}"
+                                      Margin="0,0,0,10"/>
+                            <TextBlock FontSize="13" Foreground="{StaticResource ForegroundBrush}" TextWrapping="Wrap">
+                                <Run Text="To report bugs or suggest new features, visit our GitHub repository:"/>
+                            </TextBlock>
+                            <TextBlock Margin="0,8,0,0">
+                                <Hyperlink NavigateUri="https://github.com/yourusername/imgsaver" 
+                                          RequestNavigate="Hyperlink_RequestNavigate"
+                                          Foreground="{StaticResource LinkBrush}">
+                                    <Run Text="🔗 github.com/yourusername/imgsaver"/>
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer Button -->
+            <Button Grid.Row="2" 
+                   Content="✨ GET STARTED" 
+                   FontSize="16" 
+                   FontWeight="SemiBold"
+                   Height="46"
+                   Margin="28,16,28,24"
+                   Click="BtnGetStarted_Click"/>
+        </Grid>
+    </Border>
+</Window>
