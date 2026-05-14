@@ -50,6 +50,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -66,25 +67,28 @@
                     <Button Grid.Column="2" Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnReload_Click" ToolTip="Reload">
                         <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
-                    <Button Grid.Column="3" Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,8,0" Click="BtnNewTab_Click" ToolTip="New Tab">
+                    <Button x:Name="BtnStop" Grid.Column="3" Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnStop_Click" ToolTip="Stop">
+                        <TextBlock Text="⏹" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Button>
+                    <Button Grid.Column="4" Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,8,0" Click="BtnNewTab_Click" ToolTip="New Tab">
                         <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
 
-                    <TextBox x:Name="TxtUrl" Grid.Column="4" Height="36" Padding="10,0" VerticalContentAlignment="Center" 
+                    <TextBox x:Name="TxtUrl" Grid.Column="5" Height="36" Padding="10,0" VerticalContentAlignment="Center" 
                              FontSize="14" KeyDown="TxtUrl_KeyDown" 
                              Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}"/>
 
-                    <Button Grid.Column="5" Width="36" Height="36" Margin="8,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnAddBookmark_Click" ToolTip="Bookmark this page" Padding="0">
+                    <Button Grid.Column="6" Width="36" Height="36" Margin="8,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnAddBookmark_Click" ToolTip="Bookmark this page" Padding="0">
                         <TextBlock Text="&#xE8A9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
-                    <Button x:Name="BtnClearSiteData" Grid.Column="6" Width="36" Height="36" Margin="8,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnClearSiteData_Click" ToolTip="Clear data for this site" Padding="0">
+                    <Button x:Name="BtnClearSiteData" Grid.Column="7" Width="36" Height="36" Margin="8,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnClearSiteData_Click" ToolTip="Clear data for this site" Padding="0">
                         <TextBlock Text="&#xE894;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
-                    <Button Grid.Column="7" Width="44" Height="36" Margin="8,0,0,0" Click="BtnGo_Click" ToolTip="Go" Padding="0">
+                    <Button Grid.Column="8" Width="44" Height="36" Margin="8,0,0,0" Click="BtnGo_Click" ToolTip="Go" Padding="0">
                         <TextBlock Text="&#xE751;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
 
-                    <Button x:Name="BtnBrowserSettings" Grid.Column="8" Width="36" Height="36" Margin="8,0,0,0" 
+                    <Button x:Name="BtnBrowserSettings" Grid.Column="9" Width="36" Height="36" Margin="8,0,0,0" 
                                   Style="{StaticResource SecondaryButtonStyle}" ToolTip="Browser Settings" Click="BtnBrowserSettings_Click" Padding="0">
                         <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
@@ -108,7 +112,7 @@
                                     <ControlTemplate TargetType="TabItem">
                                         <Border x:Name="Border" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0" CornerRadius="4,4,0,0" Margin="2,0">
                                             <StackPanel Orientation="Horizontal" Margin="8,4">
-                                                <TextBlock x:Name="TabText" Text="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" MaxWidth="140" TextTrimming="CharacterEllipsis" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                                                 <Button Content="✕" Margin="8,0,0,0" Width="16" Height="16" FontSize="10" 
                                                         Style="{StaticResource TitleBarCloseButtonStyle}" 
                                                         Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
@@ -130,14 +134,18 @@
             </Grid>
 
             <!-- Network Status Bar -->
-            <Border x:Name="StatusOverlay" Grid.Row="4" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="24" Opacity="0" Visibility="Collapsed">
+            <Border x:Name="StatusOverlay" Grid.Row="4" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="36" Opacity="0" Visibility="Collapsed">
                 <Grid Margin="10,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="TxtStatusUrl" Foreground="{StaticResource ForegroundBrush}" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Opacity="0.7"/>
-                    <TextBlock x:Name="TxtStatusSize" Grid.Column="1" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <TextBlock x:Name="TxtStatusUrl" Foreground="{StaticResource ForegroundBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Opacity="0.75"/>
+                    <TextBlock x:Name="TxtCacheUsage" Grid.Column="1" Foreground="#FF4CAF50" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBlock x:Name="TxtDownloadUsage" Grid.Column="2" Foreground="#FFF44336" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBlock x:Name="TxtTotalUsage" Grid.Column="3" Foreground="#FF64B5F6" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
                 </Grid>
             </Border>
         </Grid>

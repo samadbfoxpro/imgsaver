@@ -25,6 +25,9 @@ namespace imgsaver
         private BrowserSettings _currentSettings = null!;
         private string _typeBuffer = "";
         private DispatcherTimer _statusFadeTimer = null!;
+        private readonly Dictionary<TabItem, (TextBlock HeaderText, Border LoadingBadge)> _tabHeaderMap = new();
+        private readonly Dictionary<TabItem, TabNetworkInfo> _tabNetworkStats = new();
+        private readonly Dictionary<CoreWebView2, TabItem> _coreWebViewTabMap = new();
 
         // Shared environment to ensure all tabs use the same profile/settings
         private static CoreWebView2Environment? _sharedEnvironment;
@@ -136,8 +139,11 @@ namespace imgsaver
             {
                 if (tab.Content is WebView2 oldWebView)
                 {
+                    if (oldWebView.CoreWebView2 != null) _coreWebViewTabMap.Remove(oldWebView.CoreWebView2);
                     oldWebView.Dispose();
                 }
+                _tabHeaderMap.Remove(tab);
+                _tabNetworkStats.Remove(tab);
                 BrowserTabs.Items.Remove(tab);
             }
             
@@ -215,9 +221,41 @@ namespace imgsaver
                 if (!Directory.Exists(_permanentCacheFolder)) Directory.CreateDirectory(_permanentCacheFolder);
 
                 var webView = new WebView2();
-                var tabItem = new TabItem { Header = "🌐 New Tab", Content = webView };
+                var tabItem = new TabItem();
+
+                var headerText = new TextBlock
+                {
+                    Text = "🌐 در حال بارگیری...",
+                    MaxWidth = 140,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var loadingBadge = new Border
+                {
+                    Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0xFF, 0xC4, 0x00)),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(6, 1, 6, 1),
+                    Margin = new Thickness(6, 0, 0, 0),
+                    Visibility = Visibility.Collapsed,
+                    Child = new TextBlock
+                    {
+                        Text = "در حال بارگیری",
+                        FontSize = 10,
+                        Foreground = System.Windows.Media.Brushes.Black,
+                        VerticalAlignment = VerticalAlignment.Center
+                    }
+                };
+                var headerPanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                headerPanel.Children.Add(headerText);
+                headerPanel.Children.Add(loadingBadge);
+
+                tabItem.Header = headerPanel;
+                tabItem.Content = webView;
                 BrowserTabs.Items.Add(tabItem);
                 BrowserTabs.SelectedItem = tabItem;
+                _tabHeaderMap[tabItem] = (headerText, loadingBadge);
+                _tabNetworkStats[tabItem] = new TabNetworkInfo();
 
                 await _envLock.WaitAsync();
                 try
@@ -245,6 +283,7 @@ namespace imgsaver
                 await webView.EnsureCoreWebView2Async(_sharedEnvironment);
                 
                 if (webView.CoreWebView2 == null) throw new Exception("CoreWebView2 initialization failed");
+                _coreWebViewTabMap[webView.CoreWebView2] = tabItem;
 
                 webView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
                 webView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
@@ -254,12 +293,22 @@ namespace imgsaver
                 webView.CoreWebView2.WebResourceResponseReceived += CoreWebView2_WebResourceResponseReceived;
                 webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
+                webView.NavigationStarting += (s, e) =>
+                {
+                    UpdateTabHeader(tabItem, GetIconForUrl(e.Uri), "در حال بارگیری...");
+                    SetTabLoadingState(tabItem, true);
+                    ResetTabNetworkStats(tabItem);
+                };
+
                 webView.NavigationCompleted += (s, e) =>
                 {
                     InjectSnippetHelperScript(webView);
                     string icon = GetIconForUrl(webView.Source?.ToString());
                     string title = webView.CoreWebView2.DocumentTitle ?? "New Tab";
-                    tabItem.Header = $"{icon} {title}";
+                    UpdateTabHeader(tabItem, icon, title);
+                    SetTabLoadingState(tabItem, false);
+                    UpdateStopButtonState();
+                    UpdateTabStatusOverlay(tabItem);
                 };
 
                 ApplyBrowserSettingsTo(webView);
@@ -277,7 +326,7 @@ namespace imgsaver
                         SaveSession();
                         string icon = GetIconForUrl(currentUrl);
                         string title = webView.CoreWebView2?.DocumentTitle ?? "Loading...";
-                        tabItem.Header = $"{icon} {title}";
+                        UpdateTabHeader(tabItem, icon, title);
                     }
                 };
             }
@@ -298,6 +347,13 @@ namespace imgsaver
             }
             _currentSettings.OpenTabs = urls;
             _currentSettings.Save();
+        }
+
+        private class TabNetworkInfo
+        {
+            public long CachedBytes { get; set; }
+            public long DownloadedBytes { get; set; }
+            public long TotalBytes => CachedBytes + DownloadedBytes;
         }
 
         private WebView2? GetCurrentBrowser()
@@ -450,10 +506,127 @@ namespace imgsaver
             try { webView.CoreWebView2.IsMuted = settings.MuteAudio; } catch { }
         }
 
+        private void UpdateTabHeader(TabItem tabItem, string icon, string title)
+        {
+            if (_tabHeaderMap.TryGetValue(tabItem, out var header))
+            {
+                header.HeaderText.Text = $"{icon} {title}";
+            }
+            else
+            {
+                tabItem.Header = $"{icon} {title}";
+            }
+        }
+
+        private TabItem? GetTabItemForCoreWebView2(CoreWebView2? core)
+        {
+            if (core == null) return null;
+            return _coreWebViewTabMap.TryGetValue(core, out var tab) ? tab : null;
+        }
+
+        private void InitializeTabNetworkStats(TabItem tabItem)
+        {
+            _tabNetworkStats[tabItem] = new TabNetworkInfo();
+        }
+
+        private void ResetTabNetworkStats(TabItem tabItem)
+        {
+            if (_tabNetworkStats.TryGetValue(tabItem, out var stats))
+            {
+                stats.CachedBytes = 0;
+                stats.DownloadedBytes = 0;
+            }
+            else
+            {
+                _tabNetworkStats[tabItem] = new TabNetworkInfo();
+            }
+            if (BrowserTabs.SelectedItem == tabItem) UpdateTabStatusOverlay(tabItem);
+        }
+
+        private void AddTabCachedBytes(TabItem tabItem, long bytes)
+        {
+            if (!_tabNetworkStats.TryGetValue(tabItem, out var stats))
+            {
+                stats = new TabNetworkInfo();
+                _tabNetworkStats[tabItem] = stats;
+            }
+            stats.CachedBytes += bytes;
+            if (BrowserTabs.SelectedItem == tabItem) UpdateTabStatusOverlay(tabItem);
+        }
+
+        private void AddTabDownloadedBytes(TabItem tabItem, long bytes)
+        {
+            if (bytes <= 0) return;
+            if (!_tabNetworkStats.TryGetValue(tabItem, out var stats))
+            {
+                stats = new TabNetworkInfo();
+                _tabNetworkStats[tabItem] = stats;
+            }
+            stats.DownloadedBytes += bytes;
+            if (BrowserTabs.SelectedItem == tabItem) UpdateTabStatusOverlay(tabItem);
+        }
+
+        private void UpdateTabStatusOverlay(TabItem? tabItem = null, string? currentUrl = null)
+        {
+            tabItem ??= BrowserTabs.SelectedItem as TabItem;
+            if (tabItem == null)
+            {
+                StatusOverlay.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (!_tabNetworkStats.TryGetValue(tabItem, out var stats))
+            {
+                stats = new TabNetworkInfo();
+                _tabNetworkStats[tabItem] = stats;
+            }
+
+            TxtStatusUrl.Text = currentUrl ?? "تب جاری";
+            TxtCacheUsage.Text = $"کش: {FormatBytes(stats.CachedBytes)}";
+            TxtDownloadUsage.Text = $"دانلود: {FormatBytes(stats.DownloadedBytes)}";
+            TxtTotalUsage.Text = $"مجموع: {FormatBytes(stats.TotalBytes)}";
+
+            if (StatusOverlay.Visibility != Visibility.Visible)
+            {
+                StatusOverlay.Visibility = Visibility.Visible;
+                DoubleAnimation fadeIn = new DoubleAnimation(1, TimeSpan.FromSeconds(0.2));
+                StatusOverlay.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            }
+            if (_currentSettings.AutoHideStatus)
+            {
+                _statusFadeTimer?.Stop();
+                _statusFadeTimer?.Start();
+            }
+            else
+            {
+                _statusFadeTimer?.Stop();
+                StatusOverlay.Opacity = 1;
+            }
+        }
+
+        private void SetTabLoadingState(TabItem tabItem, bool isLoading)
+        {
+            if (_tabHeaderMap.TryGetValue(tabItem, out var header))
+            {
+                header.LoadingBadge.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private void UpdateStopButtonState()
+        {
+            if (BtnStop != null)
+            {
+                BtnStop.IsEnabled = GetCurrentBrowser() != null;
+            }
+        }
+
         private void CoreWebView2_WebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
         {
+            var tabItem = GetTabItemForCoreWebView2(sender as CoreWebView2) ?? BrowserTabs.SelectedItem as TabItem;
+            if (tabItem == null) return;
+
             string uri = e.Request.Uri.ToLower();
-            UpdateStatus(uri, "Requesting...");
+            UpdateStatus($"در حال درخواست: {uri}", "در صف");
             if (_currentSettings == null) return;
             var ctx = e.ResourceContext;
             if (IsTrackerOrAd(uri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
@@ -470,6 +643,7 @@ namespace imgsaver
                         string mime = GetMimeType(ctx, uri);
                         string headers = $"Content-Type: {mime}\nCache-Control: public, max-age=31536000, immutable\nAccess-Control-Allow-Origin: *";
                         if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(stream, 200, "OK", headers);
+                        AddTabCachedBytes(tabItem, stream.Length);
                         UpdateStatus(uri, "Cached");
                         return;
                     }
@@ -480,9 +654,13 @@ namespace imgsaver
 
         private async void CoreWebView2_WebResourceResponseReceived(object? sender, CoreWebView2WebResourceResponseReceivedEventArgs e)
         {
+            var tabItem = GetTabItemForCoreWebView2(sender as CoreWebView2) ?? BrowserTabs.SelectedItem as TabItem;
+            if (tabItem == null) return;
+
             string uri = e.Request.Uri.ToLower();
             long size = 0;
             if (e.Response.Headers.Contains("Content-Length")) { long.TryParse(e.Response.Headers.GetHeader("Content-Length"), out size); }
+            if (size > 0) AddTabDownloadedBytes(tabItem, size);
             UpdateStatus(uri, FormatBytes(size));
             if (e.Response.StatusCode != 200 || e.Request.Method != "GET") return;
             bool isSeaArtImage = uri.Contains("seaart.me") && (uri.Contains(".webp") || uri.Contains(".png") || uri.Contains(".jpg"));
@@ -515,16 +693,8 @@ namespace imgsaver
         private void UpdateStatus(string url, string sizeInfo)
         {
             Dispatcher.Invoke(() => {
-                TxtStatusUrl.Text = url;
-                TxtStatusSize.Text = sizeInfo;
-                if (StatusOverlay.Visibility != Visibility.Visible)
-                {
-                    StatusOverlay.Visibility = Visibility.Visible;
-                    DoubleAnimation fadeIn = new DoubleAnimation(1, TimeSpan.FromSeconds(0.2));
-                    StatusOverlay.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-                }
-                if (_currentSettings.AutoHideStatus) { _statusFadeTimer?.Stop(); _statusFadeTimer?.Start(); }
-                else { _statusFadeTimer?.Stop(); StatusOverlay.Opacity = 1; }
+                TxtStatusUrl.Text = $"{url} — {sizeInfo}";
+                UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem, TxtStatusUrl.Text);
             });
         }
 
@@ -589,15 +759,25 @@ namespace imgsaver
         {
             var browser = GetCurrentBrowser();
             if (browser != null && TxtUrl != null && browser.CoreWebView2 != null) TxtUrl.Text = browser.Source?.ToString() ?? "";
+            UpdateStopButtonState();
+            UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem);
         }
 
         private async void BtnNewTab_Click(object? sender, RoutedEventArgs e) => await AddNewTab();
+
+        private void BtnStop_Click(object? sender, RoutedEventArgs e) => GetCurrentBrowser()?.Stop();
 
         private void BtnCloseTab_Click(object? sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button btn && btn.Tag is TabItem tab)
             {
-                if (tab.Content is WebView2 webView) webView.Dispose();
+                if (tab.Content is WebView2 webView)
+                {
+                    if (webView.CoreWebView2 != null) _coreWebViewTabMap.Remove(webView.CoreWebView2);
+                    webView.Dispose();
+                }
+                _tabHeaderMap.Remove(tab);
+                _tabNetworkStats.Remove(tab);
                 BrowserTabs.Items.Remove(tab);
                 if (BrowserTabs.Items.Count == 0) _ = AddNewTab();
                 SaveSession();
