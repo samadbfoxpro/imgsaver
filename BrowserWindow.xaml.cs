@@ -29,6 +29,7 @@ namespace imgsaver
         private readonly Dictionary<TabItem, (TextBlock HeaderText, Border LoadingBadge)> _tabHeaderMap = new();
         private readonly Dictionary<TabItem, TabNetworkInfo> _tabNetworkStats = new();
         private readonly Dictionary<CoreWebView2, TabItem> _coreWebViewTabMap = new();
+        private readonly HashSet<TabItem> _internalNewTabs = new();
         private readonly HashSet<string> _handledDownloadUris = new(StringComparer.OrdinalIgnoreCase);
 
         // Download Manager
@@ -74,13 +75,19 @@ namespace imgsaver
             {
                 foreach (var url in _currentSettings.OpenTabs)
                 {
-                    await AddNewTab(url);
+                    await AddNewTab(IsLegacyNewTabUrl(url) ? null : url);
                 }
             }
             else
             {
-                await AddNewTab(string.IsNullOrEmpty(_currentSettings.LastUrl) ? "https://www.google.com" : _currentSettings.LastUrl);
+                await AddNewTab(string.IsNullOrEmpty(_currentSettings.LastUrl) || IsLegacyNewTabUrl(_currentSettings.LastUrl) ? null : _currentSettings.LastUrl);
             }
+        }
+
+        private bool IsLegacyNewTabUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+            return url.Contains("NewTabPage.html", StringComparison.OrdinalIgnoreCase);
         }
 
         private void BrowserWindow_StateChanged(object? sender, EventArgs e)
@@ -192,19 +199,52 @@ namespace imgsaver
             return "🌐";
         }
 
-        private string GetNewTabPageUrl()
-        {
-            try
-            {
-                string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NewTabPage.html");
-                if (File.Exists(htmlPath))
-                {
-                    return new Uri(htmlPath).AbsoluteUri;
-                }
-            }
-            catch { }
-            return "https://www.google.com";
-        }
+        private string GetNewTabPageHtml() => """
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>New Tab</title>
+<style>
+:root{color-scheme:dark;--bg:#0e1116;--panel:#161b22;--panel2:#10151d;--border:#283241;--text:#edf2f7;--muted:#8b98a8;--accent:#3ea6ff;--green:#31c46b;--orange:#f7b955}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{font-family:Segoe UI,Inter,Arial,sans-serif;background:radial-gradient(circle at 28% 18%,#1a3148 0,#111820 34%,var(--bg) 76%);color:var(--text);display:flex;align-items:center;justify-content:center;padding:32px}
+.shell{width:min(980px,100%);display:grid;gap:22px}.top{display:flex;align-items:end;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:14px}.mark{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--green));display:grid;place-items:center;font-weight:800;color:#061018;box-shadow:0 14px 40px #0008}.title{font-size:30px;font-weight:700;letter-spacing:0}.sub{color:var(--muted);font-size:13px;margin-top:3px}.clock{text-align:right}.time{font-size:28px;font-weight:650}.date{font-size:12px;color:var(--muted)}
+.search{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;padding:13px 14px;box-shadow:0 18px 48px #0007}.search span{color:var(--muted);font-size:18px}.search input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:16px}.search button{border:1px solid #28577b;background:#123450;color:#dff1ff;border-radius:7px;padding:9px 14px;font-weight:600;cursor:pointer}.search button:hover{background:#174361}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}.panel{background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 92%,transparent),color-mix(in srgb,var(--panel2) 94%,transparent));border:1px solid var(--border);border-radius:10px;padding:18px}.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 14px}.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.tile{min-height:74px;border:1px solid #263140;background:#111923;border-radius:8px;padding:12px;text-decoration:none;color:var(--text);display:flex;flex-direction:column;justify-content:space-between}.tile:hover{border-color:#3c7fae;background:#132130}.tile b{font-size:14px}.tile small{color:var(--muted);font-size:11px}.stats{display:grid;gap:10px}.stat{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222b38;padding:0 0 10px}.stat:last-child{border-bottom:0;padding-bottom:0}.stat label{color:var(--muted);font-size:12px}.stat strong{font-size:15px}.hint{font-size:12px;color:var(--muted);line-height:1.65;margin-top:14px}.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid #2b3a4c;background:#111923;border-radius:999px;padding:6px 10px;color:#b9c5d3;font-size:12px}
+@media(max-width:760px){body{padding:18px}.top{align-items:flex-start;flex-direction:column}.clock{text-align:left}.grid{grid-template-columns:1fr}.quick{grid-template-columns:1fr 1fr}.title{font-size:25px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <section class="top">
+    <div class="brand"><div class="mark">IS</div><div><div class="title">imgsaver Browser</div><div class="sub">Clean start page for search, downloads, and focused browsing</div></div></div>
+    <div class="clock"><div class="time" id="time">--:--</div><div class="date" id="date"></div></div>
+  </section>
+  <form class="search" id="search"><span>⌕</span><input id="q" autocomplete="off" autofocus placeholder="Search Google or enter a website"><button>Go</button></form>
+  <section class="grid">
+    <div class="panel"><h2>Quick Links</h2><div class="quick">
+      <a class="tile" href="https://www.google.com"><b>Google</b><small>Search the web</small></a>
+      <a class="tile" href="https://chat.openai.com"><b>ChatGPT</b><small>Open assistant</small></a>
+      <a class="tile" href="https://www.youtube.com"><b>YouTube</b><small>Watch videos</small></a>
+      <a class="tile" href="https://github.com"><b>GitHub</b><small>Code workspace</small></a>
+      <a class="tile" href="https://mail.google.com"><b>Gmail</b><small>Mail inbox</small></a>
+      <a class="tile" href="https://drive.google.com"><b>Drive</b><small>Cloud files</small></a>
+    </div></div>
+    <aside class="panel"><h2>Session</h2><div class="stats">
+      <div class="stat"><label>Status</label><strong>Ready</strong></div>
+      <div class="stat"><label>New tab</label><strong>Internal</strong></div>
+      <div class="stat"><label>Privacy</label><strong>No file URL</strong></div>
+    </div><p class="hint">Type a phrase to search, or enter a domain like <span class="pill">example.com</span>. This page is generated by the app and does not require an external HTML file.</p></aside>
+  </section>
+</main>
+<script>
+function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});date.textContent=now.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'});}tick();setInterval(tick,1000);
+search.addEventListener('submit',e=>{e.preventDefault();let v=q.value.trim();if(!v)return;if(!v.includes('.')&&!/^https?:\/\//i.test(v))v='https://www.google.com/search?q='+encodeURIComponent(v);else if(!/^https?:\/\//i.test(v))v='https://'+v;location.href=v;});
+</script>
+</body>
+</html>
+""";
 
         private void RefreshBookmarksUI()
         {
@@ -326,6 +366,8 @@ namespace imgsaver
 
                 webView.NavigationStarting += (s, e) =>
                 {
+                    if (_internalNewTabs.Contains(tabItem) && !string.IsNullOrWhiteSpace(e.Uri) && e.Uri != "about:blank")
+                        _internalNewTabs.Remove(tabItem);
                     UpdateTabHeader(tabItem, GetIconForUrl(e.Uri), "در حال بارگیری...");
                     SetTabLoadingState(tabItem, true);
                     ResetTabNetworkStats(tabItem);
@@ -352,15 +394,29 @@ namespace imgsaver
 
                 ApplyBrowserSettingsTo(webView);
 
-                string startUrl = url ?? GetNewTabPageUrl();
-                webView.CoreWebView2.Navigate(startUrl);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    _internalNewTabs.Add(tabItem);
+                    webView.CoreWebView2.NavigateToString(GetNewTabPageHtml());
+                    UpdateTabHeader(tabItem, "＋", "New Tab");
+                    if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = "";
+                }
+                else
+                {
+                    webView.CoreWebView2.Navigate(url);
+                }
 
                 webView.SourceChanged += (s, e) =>
                 {
                     string? currentUrl = webView.Source?.ToString();
-                    if (BrowserTabs.SelectedItem == tabItem) { if (TxtUrl != null) TxtUrl.Text = currentUrl ?? ""; }
+                    bool isInternalNewTab = _internalNewTabs.Contains(tabItem) && (string.IsNullOrEmpty(currentUrl) || currentUrl == "about:blank");
+                    if (BrowserTabs.SelectedItem == tabItem)
+                    {
+                        if (TxtUrl != null) TxtUrl.Text = isInternalNewTab ? "" : currentUrl ?? "";
+                    }
                     if (!string.IsNullOrEmpty(currentUrl) && currentUrl != "about:blank")
                     {
+                        _internalNewTabs.Remove(tabItem);
                         _currentSettings.LastUrl = currentUrl;
                         SaveSession();
                         string icon = GetIconForUrl(currentUrl);
@@ -378,6 +434,7 @@ namespace imgsaver
             var urls = new List<string>();
             foreach (TabItem item in BrowserTabs.Items)
             {
+                if (_internalNewTabs.Contains(item)) continue;
                 if (item.Content is WebView2 wv && wv.Source != null)
                 {
                     string u = wv.Source.ToString();
@@ -941,7 +998,11 @@ namespace imgsaver
         private void BrowserTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             var browser = GetCurrentBrowser();
-            if (browser != null && TxtUrl != null && browser.CoreWebView2 != null) TxtUrl.Text = browser.Source?.ToString() ?? "";
+            if (browser != null && TxtUrl != null && browser.CoreWebView2 != null)
+            {
+                bool isInternalNewTab = BrowserTabs.SelectedItem is TabItem tab && _internalNewTabs.Contains(tab);
+                TxtUrl.Text = isInternalNewTab ? "" : browser.Source?.ToString() ?? "";
+            }
             UpdateStopButtonState();
             UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem);
         }
@@ -959,6 +1020,7 @@ namespace imgsaver
                     if (webView.CoreWebView2 != null) _coreWebViewTabMap.Remove(webView.CoreWebView2);
                     webView.Dispose();
                 }
+                _internalNewTabs.Remove(tab);
                 _tabHeaderMap.Remove(tab);
                 _tabNetworkStats.Remove(tab);
                 BrowserTabs.Items.Remove(tab);
@@ -1089,7 +1151,12 @@ namespace imgsaver
             if (string.IsNullOrEmpty(url)) return;
             if (!url.Contains(".") && !url.StartsWith("http")) url = "https://www.google.com/search?q=" + Uri.EscapeDataString(url);
             else if (!url.StartsWith("http")) url = "https://" + url;
-            try { GetCurrentBrowser()?.CoreWebView2.Navigate(url); } catch { }
+            try
+            {
+                if (BrowserTabs.SelectedItem is TabItem tab) _internalNewTabs.Remove(tab);
+                GetCurrentBrowser()?.CoreWebView2.Navigate(url);
+            }
+            catch { }
         }
     }
 
