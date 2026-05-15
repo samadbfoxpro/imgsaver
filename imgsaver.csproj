@@ -9,6 +9,7 @@
 		<UseWPF>true</UseWPF>
 		<ApplicationIcon>4.ico</ApplicationIcon>
 		<PackageIcon>4.ico</PackageIcon>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
 	</PropertyGroup>
 
 	<ItemGroup>

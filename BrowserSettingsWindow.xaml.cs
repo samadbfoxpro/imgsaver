@@ -65,7 +65,7 @@ namespace imgsaver
                     int fileCount = dirInfo.GetFiles("*", SearchOption.AllDirectories).Length;
                     sites.Add(new CachedSiteItem
                     {
-                        Name = dirInfo.Name.Replace("_", "."),
+                        Name = dirInfo.Name,
                         Path = dir,
                         Info = $"{fileCount} files"
                     });
@@ -148,7 +148,7 @@ namespace imgsaver
             // Clear existing cache for this site
             try
             {
-                string siteCacheDir = Path.Combine(_permanentCacheFolder, site.Replace(".", "_"));
+                string siteCacheDir = Path.Combine(_permanentCacheFolder, SanitizeHostForCache(site));
                 if (Directory.Exists(siteCacheDir))
                 {
                     Directory.Delete(siteCacheDir, true);
@@ -187,6 +187,13 @@ namespace imgsaver
         {
             this.DialogResult = false;
             this.Close();
+        }
+
+        private string SanitizeHostForCache(string host)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars())
+                host = host.Replace(c, '_');
+            return host;
         }
 
         private void TitleBar_MouseLeftButtonDown(object? sender, MouseButtonEventArgs e)

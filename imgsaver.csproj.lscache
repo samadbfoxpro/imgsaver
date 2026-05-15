@@ -49,6 +49,7 @@ TemporaryDependencyNodeTargetIdentifier=net8.0-windows
 /warnaserror-
 /utf8output
 /win32icon:4.ico
+/win32manifest:app.manifest
 /deterministic+
 /langversion:12.0
 /warnaserror+:NU1605,SYSLIB0011
@@ -331,3 +332,6 @@ WelcomeDialog.xaml.cs
 [analyzerConfigFiles]
 <DOTNET>/sdk/9.0.306/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_8_default.globalconfig
 obj/Debug/net8.0-windows/imgsaver.GeneratedMSBuildEditorConfig.editorconfig
+
+[additionalFiles]
+app.manifest

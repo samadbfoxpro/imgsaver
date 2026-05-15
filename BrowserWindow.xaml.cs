@@ -23,6 +23,7 @@ namespace imgsaver
     {
         private readonly string _userDataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_profile");
         private readonly string _permanentCacheFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_cache");
+        private const long MaxDiskCacheItemBytes = 100L * 1024L * 1024L;
         private BrowserSettings _currentSettings = null!;
         private string _typeBuffer = "";
         private DispatcherTimer _statusFadeTimer = null!;
@@ -769,21 +770,23 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             var tabItem = GetTabItemForCoreWebView2(sender as CoreWebView2) ?? BrowserTabs.SelectedItem as TabItem;
             if (tabItem == null) return;
 
-            string uri = e.Request.Uri.ToLower();
+            string uri = e.Request.Uri;
+            string lowerUri = uri.ToLowerInvariant();
             UpdateStatus($"در حال درخواست: {uri}", "در صف");
 
             // Allow Google APIs and essential scripts for Colab
-            if (uri.Contains("gstatic.com") || uri.Contains("googleapis.com") || uri.Contains("google.com/accounts"))
+            if (lowerUri.Contains("gstatic.com") || lowerUri.Contains("googleapis.com") || lowerUri.Contains("google.com/accounts"))
             {
                 return; // Allow the request by not setting e.Response
             }
 
             if (_currentSettings == null) return;
             var ctx = e.ResourceContext;
-            if (IsTrackerOrAd(uri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
-            if (!_currentSettings.LoadImages && IsImageContext(ctx, uri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
-            if (!_currentSettings.LoadMedia && IsMediaContext(ctx, uri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
-            if (IsCacheableContext(ctx, uri))
+            if (IsTrackerOrAd(lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
+            if (!_currentSettings.LoadImages && IsImageContext(ctx, lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
+            if (!_currentSettings.LoadMedia && IsMediaContext(ctx, lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
+            if (IsHostNoCached(uri) || e.Request.Method != "GET") return;
+            if (IsCacheableContext(ctx, lowerUri))
             {
                 string? cachePath = GetCacheFilePath(uri);
                 if (!string.IsNullOrEmpty(cachePath) && File.Exists(cachePath))
@@ -791,11 +794,11 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     try
                     {
                         var stream = File.OpenRead(cachePath);
-                        string mime = GetMimeType(ctx, uri);
-                        string headers = $"Content-Type: {mime}\nCache-Control: public, max-age=31536000, immutable\nAccess-Control-Allow-Origin: *";
+                        string mime = GetMimeType(ctx, lowerUri);
+                        string headers = $"Content-Type: {mime}\nCache-Control: public, max-age=31536000, immutable\nAccess-Control-Allow-Origin: *\nX-ImgSaver-Cache: HIT";
                         if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(stream, 200, "OK", headers);
                         AddTabCachedBytes(tabItem, stream.Length);
-                        UpdateStatus(uri, "Cached");
+                        UpdateStatus(uri, "Disk cache");
                         return;
                     }
                     catch { }
@@ -808,7 +811,8 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             var tabItem = GetTabItemForCoreWebView2(sender as CoreWebView2) ?? BrowserTabs.SelectedItem as TabItem;
             if (tabItem == null) return;
 
-            string uri = e.Request.Uri.ToLower();
+            string uri = e.Request.Uri;
+            string lowerUri = uri.ToLowerInvariant();
             long size = 0;
             if (e.Response.Headers.Contains("Content-Length")) { long.TryParse(e.Response.Headers.GetHeader("Content-Length"), out size); }
             if (size > 0) AddTabDownloadedBytes(tabItem, size);
@@ -822,6 +826,9 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
 
             // Skip caching if host is in no-cache list
             if (IsHostNoCached(uri)) return;
+
+            if (IsCacheableExtension(lowerUri))
+                await SaveCacheResponseAsync(uri, e.Response, size);
         }
 
         private bool HasAttachmentDisposition(CoreWebView2WebResourceResponseView response)
@@ -833,6 +840,60 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                         .Contains("attachment", StringComparison.OrdinalIgnoreCase);
             }
             catch { return false; }
+        }
+
+        private async Task SaveCacheResponseAsync(string uri, CoreWebView2WebResourceResponseView response, long contentLength)
+        {
+            try
+            {
+                if (ShouldSkipDiskCache(response, contentLength)) return;
+
+                string? cachePath = GetCacheFilePath(uri);
+                if (string.IsNullOrWhiteSpace(cachePath) || File.Exists(cachePath)) return;
+
+                string? dir = Path.GetDirectoryName(cachePath);
+                if (string.IsNullOrWhiteSpace(dir)) return;
+                Directory.CreateDirectory(dir);
+
+                string tempPath = cachePath + ".tmp";
+                using (var content = await response.GetContentAsync())
+                {
+                    if (content == null) return;
+                    using var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+                    await content.CopyToAsync(output);
+                    if (output.Length == 0 || output.Length > MaxDiskCacheItemBytes)
+                    {
+                        output.Close();
+                        try { File.Delete(tempPath); } catch { }
+                        return;
+                    }
+                }
+
+                if (!File.Exists(cachePath))
+                    File.Move(tempPath, cachePath);
+                else
+                    File.Delete(tempPath);
+            }
+            catch { }
+        }
+
+        private bool ShouldSkipDiskCache(CoreWebView2WebResourceResponseView response, long contentLength)
+        {
+            try
+            {
+                if (contentLength > MaxDiskCacheItemBytes) return true;
+                if (response.Headers.Contains("Cache-Control"))
+                {
+                    string cacheControl = response.Headers.GetHeader("Cache-Control").ToLowerInvariant();
+                    if (cacheControl.Contains("no-store") || cacheControl.Contains("private"))
+                        return true;
+                }
+                if (response.Headers.Contains("Pragma") &&
+                    response.Headers.GetHeader("Pragma").Contains("no-cache", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            catch { }
+            return false;
         }
 
         private async Task AddToDownloadManagerAsync(string uri, string? fileName = null, Dictionary<string, string>? requestHeaders = null)
@@ -957,8 +1018,27 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         }
 
         private bool IsTrackerOrAd(string uri) => uri.Contains("google-analytics.com") || uri.Contains("doubleclick.net") || uri.Contains("googletagmanager.com") || uri.Contains("facebook.net") || uri.Contains("adservice.google") || uri.Contains("analytics.") || uri.Contains("/ads/") || uri.Contains("pixel.");
-        private bool IsCacheableContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Script || ctx == CoreWebView2WebResourceContext.Stylesheet || ctx == CoreWebView2WebResourceContext.Font || ctx == CoreWebView2WebResourceContext.Fetch || ctx == CoreWebView2WebResourceContext.XmlHttpRequest || IsCacheableExtension(uri);
-        private bool IsCacheableExtension(string uri) => uri.Contains(".js") || uri.Contains(".css") || uri.Contains(".woff") || uri.Contains(".woff2") || uri.Contains(".ttf") || uri.Contains(".otf") || uri.Contains(".wasm") || uri.Contains(".json") || uri.Contains(".svg");
+        private bool IsCacheableContext(CoreWebView2WebResourceContext ctx, string uri) =>
+            ctx == CoreWebView2WebResourceContext.Script ||
+            ctx == CoreWebView2WebResourceContext.Stylesheet ||
+            ctx == CoreWebView2WebResourceContext.Font ||
+            ctx == CoreWebView2WebResourceContext.Image ||
+            ctx == CoreWebView2WebResourceContext.Media ||
+            ctx == CoreWebView2WebResourceContext.Fetch ||
+            ctx == CoreWebView2WebResourceContext.XmlHttpRequest ||
+            IsCacheableExtension(uri);
+
+        private bool IsCacheableExtension(string uri) =>
+            uri.Contains(".js") || uri.Contains(".css") ||
+            uri.Contains(".woff") || uri.Contains(".woff2") ||
+            uri.Contains(".ttf") || uri.Contains(".otf") ||
+            uri.Contains(".wasm") || uri.Contains(".json") ||
+            uri.Contains(".svg") || uri.Contains(".webp") ||
+            uri.Contains(".png") || uri.Contains(".jpg") ||
+            uri.Contains(".jpeg") || uri.Contains(".gif") ||
+            uri.Contains(".avif") || uri.Contains(".ico") ||
+            uri.Contains(".mp4") || uri.Contains(".webm") ||
+            uri.Contains(".mp3") || uri.Contains(".m4a");
         private bool IsImageContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Image || uri.EndsWith(".jpg") || uri.EndsWith(".png") || uri.EndsWith(".webp") || uri.EndsWith(".gif");
         private bool IsMediaContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Media || uri.EndsWith(".mp4") || uri.EndsWith(".webm") || uri.EndsWith(".mp3");
 
@@ -967,8 +1047,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             try
             {
                 Uri parsedUri = new Uri(uri);
-                string host = parsedUri.Host;
-                foreach (char c in Path.GetInvalidFileNameChars()) host = host.Replace(c, '_');
+                string host = SanitizeHostForCache(parsedUri.Host);
                 string siteFolder = Path.Combine(_permanentCacheFolder, host);
                 using (MD5 md5 = MD5.Create())
                 {
@@ -977,8 +1056,20 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     if (uri.Contains(".webp")) filename += ".webp";
                     else if (uri.Contains(".png")) filename += ".png";
                     else if (uri.Contains(".jpg")) filename += ".jpg";
+                    else if (uri.Contains(".jpeg")) filename += ".jpg";
+                    else if (uri.Contains(".gif")) filename += ".gif";
+                    else if (uri.Contains(".avif")) filename += ".avif";
+                    else if (uri.Contains(".ico")) filename += ".ico";
                     else if (uri.Contains(".wasm")) filename += ".wasm";
                     else if (uri.Contains(".js")) filename += ".js";
+                    else if (uri.Contains(".css")) filename += ".css";
+                    else if (uri.Contains(".svg")) filename += ".svg";
+                    else if (uri.Contains(".json")) filename += ".json";
+                    else if (uri.Contains(".woff2")) filename += ".woff2";
+                    else if (uri.Contains(".woff")) filename += ".woff";
+                    else if (uri.Contains(".mp4")) filename += ".mp4";
+                    else if (uri.Contains(".webm")) filename += ".webm";
+                    else if (uri.Contains(".mp3")) filename += ".mp3";
                     return Path.Combine(siteFolder, filename);
                 }
             }
@@ -994,6 +1085,15 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             if (uri.Contains(".woff2")) return "font/woff2";
             if (uri.Contains(".woff")) return "font/woff";
             if (uri.Contains(".svg")) return "image/svg+xml";
+            if (uri.Contains(".webp")) return "image/webp";
+            if (uri.Contains(".png")) return "image/png";
+            if (uri.Contains(".jpg") || uri.Contains(".jpeg")) return "image/jpeg";
+            if (uri.Contains(".gif")) return "image/gif";
+            if (uri.Contains(".avif")) return "image/avif";
+            if (uri.Contains(".ico")) return "image/x-icon";
+            if (uri.Contains(".mp4")) return "video/mp4";
+            if (uri.Contains(".webm")) return "video/webm";
+            if (uri.Contains(".mp3")) return "audio/mpeg";
             return "application/octet-stream";
         }
 
@@ -1058,6 +1158,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     if (browser?.CoreWebView2 != null)
                     {
                         await browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
+                        DeleteDirectoryContents(_permanentCacheFolder);
                         CustomMessageBox.Show("All browsing data has been cleared.", "Success");
                         browser.Reload();
                     }
@@ -1101,10 +1202,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             {
                 try
                 {
-                    string sanitizedHost = host;
-                    foreach (char c in Path.GetInvalidFileNameChars()) sanitizedHost = sanitizedHost.Replace(c, '_');
-                    string targetDir = Path.Combine(_permanentCacheFolder, sanitizedHost);
-                    if (Directory.Exists(targetDir)) { Directory.Delete(targetDir, true); }
+                    DeleteDiskCacheForHost(host);
                 }
                 catch { }
                 try
@@ -1114,9 +1212,69 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     foreach (var cookie in cookies) { cookieManager.DeleteCookie(cookie); }
                 }
                 catch { }
+                try
+                {
+                    await ClearCurrentSiteClientStorageAsync(browser);
+                }
+                catch { }
                 CustomMessageBox.Show($"Data for {host} has been cleared.", "Success");
                 browser.Reload();
             }
+        }
+
+        private void DeleteDiskCacheForHost(string host)
+        {
+            string sanitizedHost = SanitizeHostForCache(host);
+            string targetDir = Path.Combine(_permanentCacheFolder, sanitizedHost);
+            if (Directory.Exists(targetDir))
+                Directory.Delete(targetDir, true);
+        }
+
+        private string SanitizeHostForCache(string host)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars())
+                host = host.Replace(c, '_');
+            return host;
+        }
+
+        private void DeleteDirectoryContents(string folder)
+        {
+            try
+            {
+                if (!Directory.Exists(folder)) return;
+                foreach (var file in Directory.GetFiles(folder))
+                    File.Delete(file);
+                foreach (var dir in Directory.GetDirectories(folder))
+                    Directory.Delete(dir, true);
+            }
+            catch { }
+        }
+
+        private async Task ClearCurrentSiteClientStorageAsync(WebView2 browser)
+        {
+            if (browser.CoreWebView2 == null) return;
+            string script = """
+(async () => {
+  try { localStorage.clear(); } catch {}
+  try { sessionStorage.clear(); } catch {}
+  try {
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch {}
+  try {
+    if (indexedDB && indexedDB.databases) {
+      const dbs = await indexedDB.databases();
+      await Promise.all(dbs.filter(db => db && db.name).map(db => new Promise(resolve => {
+        const req = indexedDB.deleteDatabase(db.name);
+        req.onsuccess = req.onerror = req.onblocked = () => resolve();
+      })));
+    }
+  } catch {}
+})();
+""";
+            await browser.CoreWebView2.ExecuteScriptAsync(script);
         }
 
         private void BtnAddBookmark_Click(object? sender, RoutedEventArgs e)
