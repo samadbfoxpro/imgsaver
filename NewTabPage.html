@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تب جدید</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-top: 60px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        .logo {
+            font-size: 64px;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 300;
+            color: #ffffff;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        /* Search Section */
+        .search-container {
+            width: 100%;
+            max-width: 600px;
+            animation: slideUp 0.6s ease-out 0.2s both;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 24px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus-within {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.2);
+        }
+
+        .search-icon {
+            font-size: 20px;
+            color: #888;
+        }
+
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: #666;
+        }
+
+        .search-button {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        /* Features Section */
+        .features {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            animation: slideUp 0.6s ease-out 0.4s both;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(74, 144, 226, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.15);
+        }
+
+        .feature-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .feature-description {
+            font-size: 13px;
+            color: #aaa;
+            line-height: 1.5;
+        }
+
+        /* Stats Section */
+        .stats {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            animation: slideUp 0.6s ease-out 0.6s both;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(74, 144, 226, 0.1);
+            border: 1px solid rgba(74, 144, 226, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            background: rgba(74, 144, 226, 0.15);
+            border-color: rgba(74, 144, 226, 0.4);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a90e2;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Browser Performance */
+        .performance {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.6s ease-out 0.8s both;
+        }
+
+        .performance-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .performance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .performance-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .performance-label {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .performance-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a90e2;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a90e2, #00d4ff);
+            border-radius: 3px;
+        }
+
+        /* Animations */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Footer */
+        .footer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 12px;
+            color: #666;
+            animation: slideUp 0.6s ease-out 1s both;
+        }
+
+        .footer a {
+            color: #4a90e2;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #00d4ff;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 24px;
+            }
+
+            .logo {
+                font-size: 48px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                gap: 30px;
+            }
+
+            .header {
+                margin-top: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🌐</div>
+            <div class="title">Dataset Browser</div>
+            <div class="subtitle">یک مرورگر سریع و قدرتمند برای تصفح اینترنت</div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-container">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput"
+                    placeholder="جستجو یا URL را وارد کنید..."
+                    autocomplete="off"
+                >
+                <button class="search-button" id="searchBtn">جستجو</button>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="tabCount">1</div>
+                <div class="stat-label">تب باز</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="memoryUsage">0 MB</div>
+                <div class="stat-label">حافظه استفاده شده</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uptime">0 دقیقه</div>
+                <div class="stat-label">زمان اتصال</div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="features">
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <div class="feature-title">سرعت بالا</div>
+                <div class="feature-description">مرورگر بهینه‌شده برای بارگیری سریع صفحات و کاهش مصرف دیتا</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔒</span>
+                <div class="feature-title">امنیت</div>
+                <div class="feature-description">حفاظت از اطلاعات شخصی و جلوگیری از ردیابی وب‌سایت‌ها</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <div class="feature-title">مدیریت تب‌ها</div>
+                <div class="feature-description">مدیریت آسان تب‌های متعدد و ذخیره تاریخچه جلسه</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🎨</span>
+                <div class="feature-title">تم تاریک</div>
+                <div class="feature-description">رابط کاربری تاریک و زیبا برای راحتی بیشتر چشم</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📱</span>
+                <div class="feature-title">واکنش‌پذیر</div>
+                <div class="feature-description">کار بر روی تمام دستگاه‌ها و اندازه‌های صفحه</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔌</span>
+                <div class="feature-title">پروکسی</div>
+                <div class="feature-description">پشتیبانی از تنظیمات پروکسی و VPN</div>
+            </div>
+        </div>
+
+        <!-- Browser Performance -->
+        <div class="performance">
+            <div class="performance-title">📈 کارایی مرورگر</div>
+            
+            <div class="performance-item">
+                <span class="performance-label">سرعت بارگیری صفحه</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 92%"></div>
+                    </div>
+                    <span class="performance-value">92%</span>
+                </div>
+            </div>
+
+            <div class="performance-item">
+                <span class="performance-label">مصرف حافظه</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 65%"></div>
+                    </div>
+                    <span class="performance-value">65%</span>
+                </div>
+            </div>
+
+            <div class="performance-item">
+                <span class="performance-label">سرعت اسکریپت‌ها</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 88%"></div>
+                    </div>
+                    <span class="performance-value">88%</span>
+                </div>
+            </div>
+
+            <div class="performance-item">
+                <span class="performance-label">قابلیت سازگاری</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 95%"></div>
+                    </div>
+                    <span class="performance-value">95%</span>
+                </div>
+            </div>
+
+            <div class="performance-item">
+                <span class="performance-label">حالت آفلاین</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                    <span class="performance-value">✓</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <span>Dataset Browser v1.0 © 2026</span>
+    </div>
+
+    <script>
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Check if it's a URL or a search query
+            if (isValidURL(query)) {
+                window.location.href = query;
+            } else {
+                window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+            }
+        }
+
+        function isValidURL(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return string.includes('.') && !string.includes(' ');
+            }
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        // Focus search input on page load
+        searchInput.focus();
+
+        // Update stats
+        function updateStats() {
+            // Update tab count
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({ type: 'getStats' });
+            }
+
+            // Update uptime
+            const uptime = Math.floor((Date.now() - performance.timing.navigationStart) / 60000);
+            document.getElementById('uptime').textContent = uptime > 0 ? `${uptime} دقیقه` : 'زیر یک دقیقه';
+
+            // Estimate memory usage (rough)
+            if (performance.memory) {
+                const mb = Math.round(performance.memory.usedJSHeapSize / 1048576);
+                document.getElementById('memoryUsage').textContent = `${mb} MB`;
+            }
+        }
+
+        updateStats();
+        setInterval(updateStats, 2000);
+
+        // Add click handlers for feature cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.style.cursor = 'pointer';
+        });
+    </script>
+</body>
+</html>

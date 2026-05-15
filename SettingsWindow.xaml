@@ -1,0 +1,97 @@
+<Window x:Class="imgsaver.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" Width="450" Height="600"
+        Background="Transparent" WindowStyle="None" AllowsTransparency="True"
+        WindowStartupLocation="CenterScreen">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" GlassFrameThickness="0" CornerRadius="8"/>
+    </WindowChrome.WindowChrome>
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Border Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Text="Settings" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
+                    <Button Content="✕" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click"/>
+                </Grid>
+            </Border>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20">
+                    <TextBlock Text="Storage Location" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TxtSavePath" IsReadOnly="True" VerticalContentAlignment="Center" Height="32" Padding="8,0" 
+                                 Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        <Button Grid.Column="1" Content="Browse..." Click="BtnBrowse_Click" Width="80" Margin="8,0,0,0" Height="32" Style="{StaticResource SecondaryButtonStyle}"/>
+                    </Grid>
+
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Mini-Clip Auto-Save" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <CheckBox x:Name="ChkAutoSaveEnabled" Content="Auto-Save when Prompts &amp; Title are ready" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Images to collect before saving:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
+                        <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="50" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                                 Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Minimum Image Dimensions" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <TextBlock Text="Reject images smaller than these dimensions when importing to Mini-Clipboard" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,10"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Min Width (px):" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
+                        <TextBox x:Name="TxtMinImageWidth" Text="50" Width="60" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                                 Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        <TextBlock Text="Min Height (px):" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="20,0,10,0"/>
+                        <TextBox x:Name="TxtMinImageHeight" Text="50" Width="60" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                                 Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
+                    <CheckBox x:Name="ChkAutoImportEnabled" Content="Enable Auto-Import from Folder" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TxtAutoImportPath" IsReadOnly="True" VerticalContentAlignment="Center" Height="32" Padding="8,0" 
+                                 Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        <Button Grid.Column="1" Content="Browse..." Click="BtnBrowseAutoImport_Click" Width="80" Margin="8,0,0,0" Height="32" Style="{StaticResource SecondaryButtonStyle}"/>
+                    </Grid>
+
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Recorder Settings" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <CheckBox x:Name="ChkSequentialMode" Content="Sequential Playback (Slot 1 &amp; 2)" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Default Slot:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="CmbDefaultSlot" Width="100" Height="28">
+                            <ComboBoxItem Content="Slot 1"/>
+                            <ComboBoxItem Content="Slot 2"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Injector Settings" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <CheckBox x:Name="ChkRandomOnlyFavorites" Content="Only randomize from favorites (Starred items)" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,20" VerticalContentAlignment="Center"/>
+
+                    <Button Content="Save &amp; Close" Click="BtnSave_Click" HorizontalAlignment="Right" Width="120" Height="36" Margin="0,0,0,20"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>

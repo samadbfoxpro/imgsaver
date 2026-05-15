@@ -1,0 +1,329 @@
+<Window x:Class="imgsaver.ImageViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Image Viewer" Height="900" Width="1400"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="CanResize"
+        Icon="{x:Null}"
+        KeyDown="Window_KeyDown">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="5" GlassFrameThickness="0" CornerRadius="8"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Background="{StaticResource BackgroundBrush}" BorderBrush="#333333" BorderThickness="1" CornerRadius="8">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>   <!-- Image Area -->
+                <ColumnDefinition Width="380"/> <!-- Sidebar -->
+            </Grid.ColumnDefinitions>
+
+            <!-- COL 0: Image Area -->
+            <Grid Grid.Column="0" Background="#050505" MouseLeftButtonDown="DragWindow">
+                <Grid.Resources>
+                    <!-- Checkered Pattern Background for Transparency -->
+                    <DrawingBrush x:Key="Checkerboard" TileMode="Tile" Viewport="0,0,20,20" ViewportUnits="Absolute">
+                        <DrawingBrush.Drawing>
+                            <DrawingGroup>
+                                <GeometryDrawing Brush="#111">
+                                    <GeometryDrawing.Geometry>
+                                        <RectangleGeometry Rect="0,0,20,20" />
+                                    </GeometryDrawing.Geometry>
+                                </GeometryDrawing>
+                                <GeometryDrawing Brush="#191919">
+                                    <GeometryDrawing.Geometry>
+                                        <GeometryGroup>
+                                            <RectangleGeometry Rect="0,0,10,10" />
+                                            <RectangleGeometry Rect="10,10,10,10" />
+                                        </GeometryGroup>
+                                    </GeometryDrawing.Geometry>
+                                </GeometryDrawing>
+                            </DrawingGroup>
+                        </DrawingBrush.Drawing>
+                    </DrawingBrush>
+                </Grid.Resources>
+
+                <Grid Background="{StaticResource BackgroundBrush}"> <!-- Fallback if needed, but we want dark -->
+                   <Border Background="#050505"/> <!-- Deep Dark Background -->
+                </Grid>
+
+                <Image x:Name="ImgDisplay" Stretch="Uniform" Margin="20" RenderOptions.BitmapScalingMode="Fant"/>
+
+                <!-- Privacy Overlay -->
+                <Border x:Name="PrivacyOverlay" Background="#0A0A0A" Visibility="Collapsed">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="👁️‍🗨️" FontSize="120" HorizontalAlignment="Center" Opacity="0.3"/>
+                        <TextBlock Text="PRIVACY MODE ACTIVE" FontSize="14" FontWeight="Bold" Foreground="#444" Margin="0,20,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Reveal Button (Floating over image area) -->
+                <Button x:Name="BtnRevealPrivacy" Click="BtnRevealPrivacy_Click"
+                        Width="40" Height="40" VerticalAlignment="Top" HorizontalAlignment="Right"
+                        Margin="0,20,20,0" Cursor="Hand" Visibility="Collapsed"
+                        ToolTip="Temporarily Reveal Content">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="#AA000000" CornerRadius="20">
+                                <TextBlock x:Name="txt" Text="👁️" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#CC000000"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Previous Image Button -->
+                <Button x:Name="BtnPrevious" Click="BtnPrevious_Click"
+                        Width="50" Height="50" VerticalAlignment="Center" HorizontalAlignment="Left"
+                        Margin="20,0,0,0" Cursor="Hand" 
+                        ToolTip="Previous Image (Left Arrow)">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="#AA000000" CornerRadius="25" Padding="0">
+                                <TextBlock Text="◀" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#DD000000"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#FF000000"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Next Image Button -->
+                <Button x:Name="BtnNext" Click="BtnNext_Click"
+                        Width="50" Height="50" VerticalAlignment="Center" HorizontalAlignment="Right"
+                        Margin="0,0,20,0" Cursor="Hand" 
+                        ToolTip="Next Image (Right Arrow)">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="#AA000000" CornerRadius="25" Padding="0">
+                                <TextBlock Text="▶" FontSize="24" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#DD000000"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#FF000000"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Loading Indicator -->
+                <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center" Foreground="#555"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- COL 1: Sidebar -->
+            <Grid Grid.Column="1" Background="{StaticResource SurfaceBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Header -->
+                    <RowDefinition Height="*"/>    <!-- Content -->
+                    <RowDefinition Height="Auto"/> <!-- Footer actions -->
+                </Grid.RowDefinitions>
+
+                <!-- 1. Header & Window Controls -->
+                <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="0,8,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="20,0">
+                            <TextBlock Text="DETAILS" Foreground="{StaticResource ForegroundMutedBrush}" 
+                                       FontSize="11" FontWeight="Bold"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                             <!-- Minimal Window Controls -->
+                            <Button Content="─" Click="BtnMinimize_Click" Style="{StaticResource TitleBarButtonStyle}" 
+                                    Width="46" Height="32"/>
+                            <Button Content="✕" Click="BtnClose_Click" Style="{StaticResource TitleBarCloseButtonStyle}" 
+                                    Width="46" Height="32" FontSize="14"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 2. Content -->
+                <ScrollViewer Grid.Row="1" Margin="0" Padding="20,0,20,20" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Filename &amp; Info -->
+                        <TextBlock x:Name="TxtFileName" Text="Filename.png" 
+                                   FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                             <Border Background="#333" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
+                                 <TextBlock x:Name="TxtFileInfo" Text="2.4 MB • PNG" FontSize="11" Foreground="#CCC"/>
+                             </Border>
+                             <Border Background="#333" CornerRadius="4" Padding="6,3">
+                                 <TextBlock x:Name="TxtDate" Text="2024-12-10" FontSize="11" Foreground="#CCC"/>
+                             </Border>
+                        </StackPanel>
+
+                        <Separator Background="#333" Margin="0,0,0,20"/>
+
+                        <!-- Prompts Container -->
+                        <StackPanel x:Name="PromptsPanel" Visibility="Visible">
+                             <!-- Positive Prompt -->
+                            <Grid Margin="0,0,0,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Viewbox HorizontalAlignment="Left" Width="16" Height="16">
+                                        <Path Data="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z" Fill="{StaticResource SuccessBrush}"/>
+                                    </Viewbox>
+                                    <TextBlock Text="POSITIVE PROMPT" Foreground="{StaticResource SuccessBrush}" 
+                                               FontSize="11" FontWeight="Bold" Margin="24,0,0,0" VerticalAlignment="Center"/>
+                                    
+                
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="BtnSavePositive" Content="✅" Click="BtnSavePositive_Click"
+                                                Visibility="Collapsed" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#27AE60" Foreground="#FFF" Margin="0,0,4,0" ToolTip="Save Changes"/>
+                                        <Button x:Name="BtnEditPositive" Content="✏️" Click="BtnEditPositive_Click"
+                                                HorizontalAlignment="Right" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#333" Foreground="#FFF" ToolTip="Edit Prompt"/>
+                                        <Button x:Name="BtnCopyPositive" Content="Copy" Click="BtnCopyPositive_Click"
+                                                HorizontalAlignment="Right" Padding="8,2" FontSize="10" Height="22"
+                                                Background="#333" Foreground="#FFF" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Grid.Row="1" Background="{StaticResource InputBrush}" CornerRadius="6" Padding="12" BorderBrush="#333" BorderThickness="1">
+                                    <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto">
+                                        <Grid>
+                                            <TextBlock x:Name="TxtPositive" Text="Prompt text..." 
+                                                       TextWrapping="Wrap" FontSize="13" LineHeight="20" Foreground="#DDD"/>
+                                            <TextBox x:Name="TxtPositiveEditor" Visibility="Collapsed"
+                                                     TextWrapping="Wrap" AcceptsReturn="True" FontSize="13" 
+                                                     Background="Transparent" Foreground="#DDD" BorderThickness="0"
+                                                     TextChanged="PromptEditor_TextChanged"/>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+
+                            <!-- Negative Prompt -->
+                            <Grid Margin="0,0,0,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Viewbox HorizontalAlignment="Left" Width="16" Height="16">
+                                        <Path Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Fill="{StaticResource ErrorBrush}"/>
+                                    </Viewbox>
+                                    <TextBlock Text="NEGATIVE PROMPT" Foreground="{StaticResource ErrorBrush}" 
+                                               FontSize="11" FontWeight="Bold" Margin="24,0,0,0" VerticalAlignment="Center"/>
+
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="BtnSaveNegative" Content="✅" Click="BtnSaveNegative_Click"
+                                                Visibility="Collapsed" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#27AE60" Foreground="#FFF" Margin="0,0,4,0" ToolTip="Save Changes"/>
+                                        <Button x:Name="BtnEditNegative" Content="✏️" Click="BtnEditNegative_Click"
+                                                HorizontalAlignment="Right" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#333" Foreground="#FFF" ToolTip="Edit Prompt"/>
+                                        <Button x:Name="BtnCopyNegative" Content="Copy" Click="BtnCopyNegative_Click"
+                                                HorizontalAlignment="Right" Padding="8,2" FontSize="10" Height="22"
+                                                Background="#333" Foreground="#FFF" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Grid.Row="1" Background="{StaticResource InputBrush}" CornerRadius="6" Padding="12" BorderBrush="#333" BorderThickness="1">
+                                    <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
+                                        <Grid>
+                                            <TextBlock x:Name="TxtNegative" Text="Negative prompt text..." 
+                                                       TextWrapping="Wrap" FontSize="13" LineHeight="20" Foreground="#DDD"/>
+                                            <TextBox x:Name="TxtNegativeEditor" Visibility="Collapsed"
+                                                     TextWrapping="Wrap" AcceptsReturn="True" FontSize="13" 
+                                                     Background="Transparent" Foreground="#DDD" BorderThickness="0"
+                                                     TextChanged="PromptEditor_TextChanged"/>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+
+                            <!-- Description -->
+                            <Grid x:Name="DescriptionGrid" Visibility="Collapsed">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <TextBlock Text="📝" FontSize="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="DESCRIPTION" Foreground="{StaticResource ForegroundMutedBrush}" 
+                                               FontSize="11" FontWeight="Bold" Margin="24,0,0,0" VerticalAlignment="Center"/>
+                                    
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="BtnSaveDescription" Content="✅" Click="BtnSaveDescription_Click"
+                                                Visibility="Collapsed" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#27AE60" Foreground="#FFF" Margin="0,0,4,0" ToolTip="Save Changes"/>
+                                        <Button x:Name="BtnEditDescription" Content="✏️" Click="BtnEditDescription_Click"
+                                                HorizontalAlignment="Right" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#333" Foreground="#FFF" ToolTip="Edit Description"/>
+                                        <Button x:Name="BtnCopyDescription" Content="Copy" Click="BtnCopyDescription_Click"
+                                                HorizontalAlignment="Right" Padding="8,2" FontSize="10" Height="22"
+                                                Background="#333" Foreground="#FFF" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Grid.Row="1" Background="{StaticResource InputBrush}" CornerRadius="6" Padding="12" BorderBrush="#333" BorderThickness="1">
+                                    <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto">
+                                        <Grid>
+                                            <TextBlock x:Name="TxtDescription" Text="Description text..." 
+                                                       TextWrapping="Wrap" FontSize="13" LineHeight="20" Foreground="#DDD"/>
+                                            <TextBox x:Name="TxtDescriptionEditor" Visibility="Collapsed"
+                                                     TextWrapping="Wrap" AcceptsReturn="True" FontSize="13" 
+                                                     Background="Transparent" Foreground="#DDD" BorderThickness="0"
+                                                     TextChanged="PromptEditor_TextChanged"/>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+                
+                <!-- 3. Footer -->
+                <Border Grid.Row="2" Padding="20" BorderBrush="#333" BorderThickness="0,1,0,0" Background="#222">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Content="Open in Explorer" Click="BtnOpenFolder_Click"
+                            Grid.Column="0" HorizontalAlignment="Stretch" Style="{StaticResource SecondaryButtonStyle}"/>
+                    
+                    <Button x:Name="BtnDeleteImage" Content="🗑️ Delete" Click="BtnDeleteImage_Click"
+                            Grid.Column="1" Width="120" ToolTip="Delete this image and its .txt file"
+                            Background="#8B8000" Foreground="White" BorderThickness="0" Padding="8,4"/>
+                  </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
