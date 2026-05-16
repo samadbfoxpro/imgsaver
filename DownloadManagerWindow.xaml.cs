@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -125,8 +124,7 @@ namespace imgsaver
             {
                 EmptyState.Visibility = Visibility.Visible;
                 LstDownloads.Visibility = Visibility.Collapsed;
-                EmptyState.Children.OfType<TextBlock>().FirstOrDefault(t => t.FontSize > 20)!.Text =
-                    _showingActive ? "📥" : "✓";
+                TxtEmptyIcon.Text = _showingActive ? "DM" : "OK";
             }
             else
             {
