@@ -917,13 +917,15 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 var tabItem = GetTabItemForCoreWebView2(coreWebView2);
                 if (tabItem?.Content is WebView2 webView && webView.Source != null)
                 {
-                    headers["Referer"] = webView.Source.ToString();
+                    headers["Referer"] = GetAsciiUriHeader(webView.Source);
                 }
 
                 var cookies = await coreWebView2.CookieManager.GetCookiesAsync(uri);
                 if (cookies != null && cookies.Count > 0)
                 {
-                    string cookieHeader = string.Join("; ", cookies.Select(c => $"{c.Name}={c.Value}"));
+                    string cookieHeader = string.Join("; ", cookies
+                        .Where(c => IsAsciiHeaderName(c.Name))
+                        .Select(c => $"{c.Name}={EscapeCookieValue(c.Value)}"));
                     if (!string.IsNullOrEmpty(cookieHeader))
                         headers["Cookie"] = cookieHeader;
                 }
@@ -931,6 +933,42 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 return headers.Count > 0 ? headers : null;
             }
             catch { return null; }
+        }
+
+        private static string GetAsciiUriHeader(Uri uri)
+        {
+            try
+            {
+                return uri.GetComponents(UriComponents.AbsoluteUri, UriFormat.UriEscaped);
+            }
+            catch
+            {
+                return RemoveNonAscii(uri.AbsoluteUri);
+            }
+        }
+
+        private static string EscapeCookieValue(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return IsAsciiHeaderValue(value)
+                ? value
+                : Uri.EscapeDataString(value);
+        }
+
+        private static bool IsAsciiHeaderName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+            return value.All(c => c > 32 && c < 127 && "()<>@,;:\\\"/[]?={} \t".IndexOf(c) < 0);
+        }
+
+        private static bool IsAsciiHeaderValue(string value)
+        {
+            return value.All(c => c == '\t' || c == '\r' || c == '\n' || (c >= 32 && c < 127));
+        }
+
+        private static string RemoveNonAscii(string value)
+        {
+            return new string(value.Where(c => c == '\t' || (c >= 32 && c < 127)).ToArray());
         }
 
         private string GetDownloadFileName(string uri, CoreWebView2WebResourceResponseView? response = null)
