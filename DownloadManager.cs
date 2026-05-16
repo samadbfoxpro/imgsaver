@@ -54,6 +54,7 @@ namespace imgsaver
         private DownloadStatus _status;
         private string _statusText = "";
         private string _remainingTime = "";
+        private int _activePartCount;
         private DateTime _startTime;
         private DateTime _pauseTime;
         private TimeSpan _totalPausedTime;
@@ -80,7 +81,24 @@ namespace imgsaver
 
         public string DownloadedSizeText => FormatSize(DownloadedSize);
         public string TotalSizeText => TotalSize > 0 ? FormatSize(TotalSize) : "Unknown";
-        public string SpeedText => Speed > 0 ? $"{FormatSize((long)Speed)}/s" : "";
+        public string SpeedText => Speed > 0 ? $"{FormatSize((long)Speed)}/s" : "0 B/s";
+        public string ProgressText => TotalSize > 0 ? $"{Progress:0.0}%" : "Preparing";
+        public string PartSummaryText => Parts.Count > 1 ? $"{CompletedPartCount}/{Parts.Count} done - {ActivePartCount} active" : "Single part";
+        public int CompletedPartCount => Parts.Count(p => p.TotalBytes > 0 && p.DownloadedBytes >= p.TotalBytes);
+
+        public int ActivePartCount
+        {
+            get => _activePartCount;
+            private set
+            {
+                if (_activePartCount != value)
+                {
+                    _activePartCount = value;
+                    OnPropertyChanged(nameof(ActivePartCount));
+                    OnPropertyChanged(nameof(PartSummaryText));
+                }
+            }
+        }
 
         public long TotalSize
         {
@@ -92,6 +110,8 @@ namespace imgsaver
                     _totalSize = value;
                     OnPropertyChanged(nameof(TotalSize));
                     OnPropertyChanged(nameof(TotalSizeText));
+                    OnPropertyChanged(nameof(ProgressText));
+                    OnPropertyChanged(nameof(PartSummaryText));
                 }
             }
         }
@@ -106,6 +126,7 @@ namespace imgsaver
                     _downloadedSize = value;
                     OnPropertyChanged(nameof(DownloadedSize));
                     OnPropertyChanged(nameof(DownloadedSizeText));
+                    OnPropertyChanged(nameof(PartSummaryText));
                 }
             }
         }
@@ -113,7 +134,15 @@ namespace imgsaver
         public double Progress
         {
             get => _progress;
-            set { if (Math.Abs(_progress - value) > 0.01) { _progress = value; OnPropertyChanged(nameof(Progress)); } }
+            set
+            {
+                if (Math.Abs(_progress - value) > 0.01)
+                {
+                    _progress = value;
+                    OnPropertyChanged(nameof(Progress));
+                    OnPropertyChanged(nameof(ProgressText));
+                }
+            }
         }
 
         public double Speed
@@ -169,19 +198,19 @@ namespace imgsaver
         public Dictionary<string, string>? RequestHeaders { get; set; }
         public ObservableCollection<DownloadPartProgress> Parts { get; } = new();
         public bool IsCompleted => Status == DownloadStatus.Completed;
-        public string PauseResumeIcon => Status == DownloadStatus.Downloading ? "â¸" : "â–¶";
+        public string PauseResumeIcon => Status == DownloadStatus.Downloading ? "||" : ">";
         public bool CanPauseResume => Status == DownloadStatus.Downloading || Status == DownloadStatus.Paused || Status == DownloadStatus.Failed;
         public bool CanCancel => Status == DownloadStatus.Downloading || Status == DownloadStatus.Paused || Status == DownloadStatus.Pending || Status == DownloadStatus.Failed;
 
         public string CategoryIcon => Category switch
         {
-            "Image" => "ðŸ–¼",
-            "Video" => "ðŸŽ¬",
-            "Audio" => "ðŸŽµ",
-            "Document" => "ðŸ“„",
-            "Archive" => "ðŸ“¦",
-            "Executable" => "âš™",
-            _ => "ðŸ“¥"
+            "Image" => "IMG",
+            "Video" => "VID",
+            "Audio" => "AUD",
+            "Document" => "DOC",
+            "Archive" => "ZIP",
+            "Executable" => "EXE",
+            _ => "GET"
         };
 
         public void Cancel()
@@ -222,7 +251,12 @@ namespace imgsaver
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath) ?? AppDomain.CurrentDomain.BaseDirectory);
             Directory.CreateDirectory(TempFolder);
 
-            _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            var handler = new SocketsHttpHandler
+            {
+                MaxConnectionsPerServer = Math.Max(32, partCount + 4),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+            };
+            _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(5) };
             AddDefaultHeaders(_httpClient);
 
             try
@@ -242,6 +276,8 @@ namespace imgsaver
 
                 Status = DownloadStatus.Completed;
                 StatusText = "Completed";
+                if (TotalSize > 0)
+                    DownloadedSize = TotalSize;
                 Progress = 100;
                 Speed = 0;
                 onCompleted?.Invoke(this);
@@ -272,22 +308,84 @@ namespace imgsaver
 
             foreach (var header in RequestHeaders)
             {
-                client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+                if (!IsAsciiHeaderName(header.Key) || string.IsNullOrEmpty(header.Value))
+                    continue;
+
+                var value = SanitizeHeaderValue(header.Value);
+                if (!string.IsNullOrEmpty(value))
+                    client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, value);
             }
+        }
+
+        private static bool IsAsciiHeaderName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+            return value.All(c => c > 32 && c < 127 && "()<>@,;:\\\"/[]?={} \t".IndexOf(c) < 0);
+        }
+
+        private static string SanitizeHeaderValue(string value)
+        {
+            if (value.All(IsAsciiHeaderValueChar))
+                return value;
+
+            return new string(value
+                .Where(c => c == '\t' || (c >= 32 && c < 127))
+                .ToArray());
+        }
+
+        private static bool IsAsciiHeaderValueChar(char c)
+        {
+            return c == '\t' || c == '\r' || c == '\n' || (c >= 32 && c < 127);
         }
 
         private async Task<(long TotalSize, bool SupportsRanges)> GetServerMetadata(HttpClient client, CancellationToken token)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Head, Url);
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+            long totalSize = 0;
+            var supportsRanges = false;
 
-            if (!response.IsSuccessStatusCode)
-                return (0, false);
+            try
+            {
+                using var headRequest = new HttpRequestMessage(HttpMethod.Head, Url);
+                using var headResponse = await client.SendAsync(headRequest, HttpCompletionOption.ResponseHeadersRead, token);
 
-            var totalSize = response.Content.Headers.ContentLength ?? 0;
-            var supportsRanges =
-                response.Headers.AcceptRanges.Any(r => r.Equals("bytes", StringComparison.OrdinalIgnoreCase)) ||
-                response.Headers.Contains("Accept-Ranges");
+                if (headResponse.IsSuccessStatusCode)
+                {
+                    totalSize = headResponse.Content.Headers.ContentLength ?? 0;
+                    supportsRanges =
+                        headResponse.Headers.AcceptRanges.Any(r => r.Equals("bytes", StringComparison.OrdinalIgnoreCase)) ||
+                        headResponse.Headers.Contains("Accept-Ranges");
+                }
+            }
+            catch (HttpRequestException)
+            {
+                supportsRanges = false;
+            }
+
+            if (!supportsRanges)
+            {
+                try
+                {
+                    using var rangeRequest = new HttpRequestMessage(HttpMethod.Get, Url);
+                    rangeRequest.Headers.Range = new RangeHeaderValue(0, 0);
+                    using var rangeResponse = await client.SendAsync(rangeRequest, HttpCompletionOption.ResponseHeadersRead, token);
+
+                    supportsRanges = rangeResponse.StatusCode == HttpStatusCode.PartialContent;
+                    if (supportsRanges)
+                    {
+                        totalSize = rangeResponse.Content.Headers.ContentRange?.Length ??
+                            rangeResponse.Content.Headers.ContentLength ??
+                            totalSize;
+                    }
+                    else if (totalSize <= 0 && rangeResponse.IsSuccessStatusCode)
+                    {
+                        totalSize = rangeResponse.Content.Headers.ContentLength ?? 0;
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    supportsRanges = false;
+                }
+            }
 
             return (totalSize, supportsRanges);
         }
@@ -309,9 +407,12 @@ namespace imgsaver
                 TotalSize = (response.Content.Headers.ContentLength ?? 0) + existingBytes;
 
             SetPartTotal(0, TotalSize);
+            SetPartState(0, "Downloading");
             using var contentStream = await response.Content.ReadAsStreamAsync(token);
             using var fileStream = new FileStream(tempFile, FileMode.Append, FileAccess.Write, FileShare.Read, 81920, true);
             await CopyStreamWithProgress(contentStream, fileStream, existingBytes, TotalSize, onProgress, token);
+            SetPartState(0, "Done");
+            SetPartSpeed(0, 0);
 
             File.Copy(tempFile, FilePath, true);
             TryDeleteDirectory(TempFolder);
@@ -322,26 +423,33 @@ namespace imgsaver
             var ranges = BuildRanges(TotalSize, partCount).ToList();
             EnsurePartSlots(ranges.Count);
             for (int i = 0; i < ranges.Count; i++)
+            {
                 SetPartTotal(i, ranges[i].End - ranges[i].Start + 1);
+                SetPartState(i, "Ready");
+            }
 
             var sw = Stopwatch.StartNew();
-            var lastDownloaded = GetDownloadedPartBytes(ranges.Count);
+            var lastDownloaded = GetDownloadedPartBytes(ranges.Count, syncPartProgress: true);
             DownloadedSize = lastDownloaded;
 
             var tasks = ranges.Select((range, index) => DownloadPart(index, range.Start, range.End, token)).ToArray();
+            var allParts = Task.WhenAll(tasks);
 
-            while (!Task.WhenAll(tasks).IsCompleted)
+            while (!allParts.IsCompleted)
             {
                 while (Status == DownloadStatus.Paused)
                     await Task.Delay(250, token);
 
                 await Task.Delay(500, token);
-                var current = GetDownloadedPartBytes(ranges.Count);
+                var current = Parts.Take(ranges.Count).Sum(p => p.DownloadedBytes);
                 UpdateProgress(current, TotalSize, sw, lastDownloaded, onProgress);
                 lastDownloaded = current;
             }
 
-            await Task.WhenAll(tasks);
+            await allParts;
+            ActivePartCount = 0;
+            for (int i = 0; i < ranges.Count; i++)
+                SetPartState(i, "Done");
             UpdateProgress(TotalSize, TotalSize, sw, lastDownloaded, onProgress);
             await MergeParts(ranges.Count, token);
             TryDeleteDirectory(TempFolder);
@@ -352,20 +460,29 @@ namespace imgsaver
             var partFile = Path.Combine(TempFolder, $"{index}.part");
             var existingBytes = File.Exists(partFile) ? new FileInfo(partFile).Length : 0;
             SetPartDownloaded(index, existingBytes);
+            SetPartState(index, existingBytes > 0 ? "Resuming" : "Connecting");
             var nextStart = start + existingBytes;
-            if (nextStart > end) return;
+            if (nextStart > end)
+            {
+                SetPartState(index, "Done");
+                return;
+            }
 
             using var request = new HttpRequestMessage(HttpMethod.Get, Url);
             request.Headers.Range = new RangeHeaderValue(nextStart, end);
 
             using var response = await _httpClient!.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
-            if (response.StatusCode != HttpStatusCode.PartialContent && !response.IsSuccessStatusCode)
-                throw new HttpRequestException($"HTTP {(int)response.StatusCode}");
+            if (response.StatusCode != HttpStatusCode.PartialContent)
+                throw new HttpRequestException($"Server ignored byte range for part {index + 1} (HTTP {(int)response.StatusCode})");
 
             using var contentStream = await response.Content.ReadAsStreamAsync(token);
             using var fileStream = new FileStream(partFile, FileMode.Append, FileAccess.Write, FileShare.Read, 81920, true);
             var buffer = new byte[81920];
+            var partSw = Stopwatch.StartNew();
+            var lastPartBytes = existingBytes;
+            var lastPartUpdate = partSw.Elapsed;
             int bytesRead;
+            SetPartState(index, "Downloading");
 
             while ((bytesRead = await contentStream.ReadAsync(buffer, token)) > 0)
             {
@@ -374,7 +491,18 @@ namespace imgsaver
 
                 await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), token);
                 SetPartDownloaded(index, fileStream.Length);
+                if (partSw.Elapsed - lastPartUpdate >= TimeSpan.FromMilliseconds(500))
+                {
+                    var delta = fileStream.Length - lastPartBytes;
+                    SetPartSpeed(index, Math.Max(0, delta / Math.Max(0.001, (partSw.Elapsed - lastPartUpdate).TotalSeconds)));
+                    lastPartBytes = fileStream.Length;
+                    lastPartUpdate = partSw.Elapsed;
+                }
             }
+
+            SetPartDownloaded(index, fileStream.Length);
+            SetPartSpeed(index, 0);
+            SetPartState(index, "Done");
         }
 
         private async Task MergeParts(int partCount, CancellationToken token)
@@ -408,11 +536,14 @@ namespace imgsaver
                 if (sw.Elapsed - lastUpdate >= TimeSpan.FromMilliseconds(500))
                 {
                     SetPartDownloaded(0, totalRead);
+                    SetPartSpeed(0, Math.Max(0, (totalRead - lastRead) / Math.Max(0.001, (sw.Elapsed - lastUpdate).TotalSeconds)));
                     UpdateProgress(totalRead, totalBytes, sw, lastRead, onProgress);
                     lastRead = totalRead;
                     lastUpdate = sw.Elapsed;
                 }
             }
+
+            SetPartDownloaded(0, totalRead);
         }
 
         private void UpdateProgress(long downloaded, long total, Stopwatch sw, long previousDownloaded, Action<DownloadTask>? onProgress)
@@ -443,22 +574,43 @@ namespace imgsaver
         {
             if (index < 0 || index >= Parts.Count) return;
             Parts[index].TotalBytes = totalBytes;
+            OnPropertyChanged(nameof(PartSummaryText));
         }
 
         private void SetPartDownloaded(int index, long downloadedBytes)
         {
             if (index < 0 || index >= Parts.Count) return;
             Parts[index].DownloadedBytes = downloadedBytes;
+            OnPropertyChanged(nameof(CompletedPartCount));
+            OnPropertyChanged(nameof(PartSummaryText));
         }
 
-        private long GetDownloadedPartBytes(int partCount)
+        private void SetPartState(int index, string state)
+        {
+            if (index < 0 || index >= Parts.Count) return;
+            Parts[index].State = state;
+            ActivePartCount = Parts.Count(p => p.State is "Connecting" or "Resuming" or "Downloading");
+        }
+
+        private void SetPartSpeed(int index, double bytesPerSecond)
+        {
+            if (index < 0 || index >= Parts.Count) return;
+            Parts[index].Speed = bytesPerSecond;
+        }
+
+        private long GetDownloadedPartBytes(int partCount, bool syncPartProgress = false)
         {
             long total = 0;
             for (int i = 0; i < partCount; i++)
             {
                 var partFile = Path.Combine(TempFolder, $"{i}.part");
                 if (File.Exists(partFile))
-                    total += new FileInfo(partFile).Length;
+                {
+                    var length = new FileInfo(partFile).Length;
+                    total += length;
+                    if (syncPartProgress)
+                        SetPartDownloaded(i, length);
+                }
             }
             return total;
         }
@@ -515,8 +667,15 @@ namespace imgsaver
     {
         private long _downloadedBytes;
         private long _totalBytes;
+        private double _speed;
+        private string _state = "Waiting";
 
         public int PartNumber { get; set; }
+        public string PartLabel => $"Part {PartNumber}";
+        public string DownloadedText => FormatSize(DownloadedBytes);
+        public string TotalText => TotalBytes > 0 ? FormatSize(TotalBytes) : "Unknown";
+        public string ProgressText => TotalBytes > 0 ? $"{Progress:0}%" : "--";
+        public string SpeedText => Speed > 0 ? $"{FormatSize((long)Speed)}/s" : "";
 
         public long DownloadedBytes
         {
@@ -528,6 +687,8 @@ namespace imgsaver
                     _downloadedBytes = value;
                     OnPropertyChanged(nameof(DownloadedBytes));
                     OnPropertyChanged(nameof(Progress));
+                    OnPropertyChanged(nameof(DownloadedText));
+                    OnPropertyChanged(nameof(ProgressText));
                 }
             }
         }
@@ -542,6 +703,35 @@ namespace imgsaver
                     _totalBytes = value;
                     OnPropertyChanged(nameof(TotalBytes));
                     OnPropertyChanged(nameof(Progress));
+                    OnPropertyChanged(nameof(TotalText));
+                    OnPropertyChanged(nameof(ProgressText));
+                }
+            }
+        }
+
+        public double Speed
+        {
+            get => _speed;
+            set
+            {
+                if (Math.Abs(_speed - value) > 0.1)
+                {
+                    _speed = value;
+                    OnPropertyChanged(nameof(Speed));
+                    OnPropertyChanged(nameof(SpeedText));
+                }
+            }
+        }
+
+        public string State
+        {
+            get => _state;
+            set
+            {
+                if (_state != value)
+                {
+                    _state = value;
+                    OnPropertyChanged(nameof(State));
                 }
             }
         }
@@ -553,6 +743,19 @@ namespace imgsaver
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private static string FormatSize(long bytes)
+        {
+            string[] suffix = { "B", "KB", "MB", "GB" };
+            int i = 0;
+            double value = bytes;
+            while (value >= 1024 && i < suffix.Length - 1)
+            {
+                value /= 1024;
+                i++;
+            }
+            return $"{value:0.##} {suffix[i]}";
         }
     }
 
