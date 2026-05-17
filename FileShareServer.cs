@@ -1,30 +1,50 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace imgsaver
 {
     public class FileShareServer
     {
-        private HttpListener _listener;
+        private readonly ConcurrentDictionary<string, CloudDownloadJob> _remoteDownloads = new();
+        private readonly HttpClient _httpClient;
+        private HttpListener? _listener;
         private bool _isRunning;
         private const int Port = 9896;
+        private const int BufferSize = 1024 * 128;
         private static readonly string SharePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "share");
 
-        public event Action<string> StatusChanged;
-        public event Action<string> FileReceived;
+        public event Action<string>? StatusChanged;
+        public event Action<string>? FileReceived;
 
         public bool IsRunning => _isRunning;
 
         static FileShareServer()
         {
-            if (!Directory.Exists(SharePath))
-                Directory.CreateDirectory(SharePath);
+            Directory.CreateDirectory(SharePath);
+        }
+
+        public FileShareServer()
+        {
+            _httpClient = new HttpClient(new HttpClientHandler
+            {
+                AllowAutoRedirect = true,
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+            })
+            {
+                Timeout = Timeout.InfiniteTimeSpan
+            };
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("imgsaver-cloud-link/1.0");
         }
 
         public void Start()
@@ -35,15 +55,15 @@ namespace imgsaver
             {
                 _listener = new HttpListener();
                 string ip = GetLocalIPAddress();
-                
+
                 _listener.Prefixes.Add($"http://+:{Port}/");
                 _listener.Prefixes.Add($"http://*:{Port}/");
                 _listener.Prefixes.Add($"http://localhost:{Port}/");
                 _listener.Prefixes.Add($"http://{ip}:{Port}/");
-                
+
                 _listener.Start();
                 _isRunning = true;
-                
+
                 Task.Run(() => Listen());
                 StatusChanged?.Invoke($"File Server active at {ip}:{Port}");
             }
@@ -58,6 +78,8 @@ namespace imgsaver
         {
             if (!_isRunning) return;
             _isRunning = false;
+            foreach (var job in _remoteDownloads.Values)
+                job.Cancel();
             try { _listener?.Stop(); } catch { }
             try { _listener?.Close(); } catch { }
             StatusChanged?.Invoke("File Server stopped");
@@ -65,13 +87,14 @@ namespace imgsaver
 
         private async Task Listen()
         {
-            while (_isRunning)
+            while (_isRunning && _listener != null)
             {
                 try
                 {
                     var context = await _listener.GetContextAsync();
-                    _ = Task.Run(() => ProcessRequest(context)); // Handle concurrently
+                    _ = Task.Run(() => ProcessRequest(context));
                 }
+                catch when (!_isRunning) { }
                 catch { }
             }
         }
@@ -83,41 +106,45 @@ namespace imgsaver
 
             try
             {
-                string path = WebUtility.UrlDecode(request.Url.AbsolutePath).TrimStart('/');
-                
+                string path = WebUtility.UrlDecode(request.Url?.AbsolutePath ?? "").TrimStart('/');
+
                 if (request.HttpMethod == "GET")
                 {
                     if (string.IsNullOrEmpty(path))
-                    {
-                        ServeInterface(response);
-                    }
+                        await ServeInterface(response);
                     else if (path == "api/files")
-                    {
-                        ServeFileList(response);
-                    }
-                    else if (path.StartsWith("download/"))
-                    {
-                        string fileName = path.Substring("download/".Length);
-                        ServeFile(fileName, response);
-                    }
+                        await ServeFileList(response);
+                    else if (path == "api/remote-downloads")
+                        await ServeRemoteDownloads(response);
+                    else if (path.StartsWith("download/", StringComparison.OrdinalIgnoreCase))
+                        await ServeFile(path["download/".Length..], request, response);
                     else
-                    {
-                        response.StatusCode = 404;
-                    }
+                        await WriteJson(response, new { status = "error", message = "Not found" }, 404);
                 }
                 else if (request.HttpMethod == "POST" && path == "api/upload")
                 {
                     await HandleUpload(request, response);
                 }
+                else if (request.HttpMethod == "POST" && path == "api/remote-download")
+                {
+                    await StartRemoteDownload(request, response);
+                }
+                else if (request.HttpMethod == "DELETE" && path.StartsWith("api/files/", StringComparison.OrdinalIgnoreCase))
+                {
+                    await DeleteSharedFile(path["api/files/".Length..], response);
+                }
+                else if (request.HttpMethod == "DELETE" && path.StartsWith("api/remote-downloads/", StringComparison.OrdinalIgnoreCase))
+                {
+                    await CancelRemoteDownload(path["api/remote-downloads/".Length..], response);
+                }
+                else
+                {
+                    await WriteJson(response, new { status = "error", message = "Not found" }, 404);
+                }
             }
             catch (Exception ex)
             {
-                try
-                {
-                    response.StatusCode = 500;
-                    byte[] buffer = Encoding.UTF8.GetBytes(ex.Message);
-                    response.OutputStream.Write(buffer, 0, buffer.Length);
-                } catch { }
+                try { await WriteJson(response, new { status = "error", message = ex.Message }, 500); } catch { }
             }
             finally
             {
@@ -125,145 +152,402 @@ namespace imgsaver
             }
         }
 
-        private void ServeInterface(HttpListenerResponse response)
+        private async Task ServeInterface(HttpListenerResponse response)
         {
-            string html = GetHtmlInterface();
-            byte[] buffer = Encoding.UTF8.GetBytes(html);
-            response.ContentType = "text/html";
+            byte[] buffer = Encoding.UTF8.GetBytes(GetHtmlInterface());
+            response.ContentType = "text/html; charset=utf-8";
             response.ContentLength64 = buffer.Length;
-            response.OutputStream.Write(buffer, 0, buffer.Length);
+            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
         }
 
-        private void ServeFileList(HttpListenerResponse response)
+        private async Task ServeFileList(HttpListenerResponse response)
         {
             var files = Directory.GetFiles(SharePath)
-                        .Select(f => new { 
-                            name = Path.GetFileName(f), 
-                            size = new FileInfo(f).Length,
-                            date = File.GetLastWriteTime(f).ToString("yyyy-MM-dd HH:mm")
-                        });
+                .Where(f => !f.EndsWith(".part", StringComparison.OrdinalIgnoreCase))
+                .Select(TryCreateFileListItem)
+                .Where(f => f != null)
+                .OrderByDescending(f => f!.Date)
+                .Select(f => f!);
 
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(files);
-            byte[] buffer = Encoding.UTF8.GetBytes(json);
-            response.ContentType = "application/json";
-            response.ContentLength64 = buffer.Length;
-            response.OutputStream.Write(buffer, 0, buffer.Length);
+            await WriteJson(response, files);
         }
 
-        private void ServeFile(string fileName, HttpListenerResponse response)
+        private sealed class FileListItem
         {
-            string fullPath = Path.Combine(SharePath, fileName);
-            if (File.Exists(fullPath))
+            public string Name { get; init; } = "";
+            public long Size { get; init; }
+            public DateTime Date { get; init; }
+        }
+
+        private static FileListItem? TryCreateFileListItem(string path)
+        {
+            try
             {
-                byte[] buffer = File.ReadAllBytes(fullPath);
-                response.ContentType = "application/octet-stream";
-                response.AddHeader("Content-Disposition", $"attachment; filename=\"{WebUtility.UrlEncode(fileName)}\"");
-                response.ContentLength64 = buffer.Length;
-                response.OutputStream.Write(buffer, 0, buffer.Length);
+                var info = new FileInfo(path);
+                if (!info.Exists)
+                    return null;
+
+                return new FileListItem
+                {
+                    Name = info.Name,
+                    Size = info.Length,
+                    Date = info.LastWriteTime
+                };
             }
-            else
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return null;
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return null;
+            }
+        }
+
+        private async Task ServeRemoteDownloads(HttpListenerResponse response)
+        {
+            var jobs = _remoteDownloads.Values
+                .OrderByDescending(j => j.StartedAt)
+                .Select(j => new
+                {
+                    id = j.Id,
+                    fileName = j.FileName,
+                    url = j.Url,
+                    status = j.Status,
+                    downloaded = j.DownloadedBytes,
+                    total = j.TotalBytes,
+                    speed = j.SpeedBytesPerSecond,
+                    progress = j.TotalBytes > 0 ? Math.Round(j.DownloadedBytes * 100.0 / j.TotalBytes, 1) : 0,
+                    message = j.Message
+                });
+
+            await WriteJson(response, jobs);
+        }
+
+        private async Task ServeFile(string fileName, HttpListenerRequest request, HttpListenerResponse response)
+        {
+            string? fullPath = GetSafeSharePath(fileName);
+            if (fullPath == null || !File.Exists(fullPath) || fullPath.EndsWith(".part", StringComparison.OrdinalIgnoreCase))
             {
                 response.StatusCode = 404;
+                return;
+            }
+
+            var fileInfo = new FileInfo(fullPath);
+            long start = 0;
+            long end = fileInfo.Length - 1;
+            bool partial = TryParseRange(request.Headers["Range"], fileInfo.Length, out start, out end);
+            long contentLength = end - start + 1;
+
+            response.ContentType = "application/octet-stream";
+            response.AddHeader("Accept-Ranges", "bytes");
+            response.AddHeader("Content-Disposition", $"attachment; filename=\"{WebUtility.UrlEncode(fileInfo.Name)}\"");
+            response.ContentLength64 = contentLength;
+
+            if (partial)
+            {
+                response.StatusCode = 206;
+                response.AddHeader("Content-Range", $"bytes {start}-{end}/{fileInfo.Length}");
+            }
+
+            byte[] buffer = new byte[BufferSize];
+            using var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, true);
+            fileStream.Seek(start, SeekOrigin.Begin);
+
+            long remaining = contentLength;
+            while (remaining > 0)
+            {
+                int read = await fileStream.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)));
+                if (read <= 0) break;
+                await response.OutputStream.WriteAsync(buffer.AsMemory(0, read));
+                remaining -= read;
             }
         }
 
         private async Task HandleUpload(HttpListenerRequest request, HttpListenerResponse response)
         {
-            try 
+            try
             {
-                string contentType = request.ContentType;
-                int boundaryIndex = contentType.IndexOf("boundary=");
-                if (boundaryIndex == -1) throw new Exception("Invalid content type");
-                
-                string boundaryStr = contentType.Substring(boundaryIndex + 9);
-                byte[] boundary = Encoding.UTF8.GetBytes("--" + boundaryStr);
-                
-                // Read entire request body
-                using (var ms = new MemoryStream())
-                {
-                    byte[] buffer = new byte[81920];
-                    int bytesRead;
-                    
-                    while ((bytesRead = await request.InputStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        await ms.WriteAsync(buffer, 0, bytesRead);
-                    }
-                    
-                    await ms.FlushAsync();
-                    byte[] data = ms.ToArray();
-                    
-                    if (data.Length == 0) throw new Exception("No data received");
-                    
-                    // Find filename in headers (search as string only in header part)
-                    string headerPart = Encoding.UTF8.GetString(data, 0, Math.Min(data.Length, 1024));
-                    int fileNameIndex = headerPart.IndexOf("filename=\"");
-                    if (fileNameIndex == -1) throw new Exception("No file found");
-                    
-                    int endNameIndex = headerPart.IndexOf("\"", fileNameIndex + 10);
-                    string fileName = headerPart.Substring(fileNameIndex + 10, endNameIndex - (fileNameIndex + 10));
-                    fileName = Path.GetFileName(fileName);
-                    
-                    // Find header end (CRLF CRLF) in binary
-                    byte[] headerEnd = Encoding.UTF8.GetBytes("\r\n\r\n");
-                    int headerEndIndex = FindBytes(data, headerEnd, 0);
-                    if (headerEndIndex == -1) throw new Exception("Invalid multipart format");
-                    
-                    headerEndIndex += 4; // Skip past the \r\n\r\n
-                    
-                    // Find footer boundary in binary
-                    byte[] footer = Encoding.UTF8.GetBytes("\r\n--" + boundaryStr);
-                    int footerIndex = FindBytesReverse(data, footer, data.Length - 1);
-                    
-                    if (footerIndex > headerEndIndex)
-                    {
-                        int fileDataLength = footerIndex - headerEndIndex;
-                        byte[] fileData = new byte[fileDataLength];
-                        Array.Copy(data, headerEndIndex, fileData, 0, fileDataLength);
-                        
-                        string fullPath = Path.Combine(SharePath, fileName);
-                        
-                        // Write file
-                        using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
-                        {
-                            await fileStream.WriteAsync(fileData, 0, fileData.Length);
-                            await fileStream.FlushAsync();
-                        }
-                        
-                        // Verify
-                        var fileInfo = new FileInfo(fullPath);
-                        if (fileInfo.Length != fileData.Length)
-                        {
-                            File.Delete(fullPath);
-                            throw new Exception("File write verification failed");
-                        }
-                        
-                        FileReceived?.Invoke(fileName);
-                    }
-                    else
-                    {
-                        throw new Exception("Invalid multipart data");
-                    }
-                }
-                
-                response.StatusCode = 200;
-                byte[] ok = Encoding.UTF8.GetBytes("{\"status\":\"success\"}");
-                response.ContentType = "application/json";
-                response.ContentLength64 = ok.Length;
-                await response.OutputStream.WriteAsync(ok, 0, ok.Length);
-                await response.OutputStream.FlushAsync();
+                string contentType = request.ContentType ?? "";
+                string boundary = GetBoundary(contentType);
+                if (string.IsNullOrWhiteSpace(boundary))
+                    throw new Exception("Invalid multipart upload");
+
+                var form = await ReadMultipartBody(request.InputStream, boundary, request.ContentEncoding ?? Encoding.UTF8);
+                if (form.FileName == null || form.FileBytes == null)
+                    throw new Exception("No file found");
+
+                string fileName = GetUniqueFileName(SanitizeFileName(form.FileName));
+                string fullPath = Path.Combine(SharePath, fileName);
+
+                await File.WriteAllBytesAsync(fullPath, form.FileBytes);
+                FileReceived?.Invoke(fileName);
+                await WriteJson(response, new { status = "success", fileName });
             }
             catch (Exception ex)
             {
-                response.StatusCode = 400;
-                byte[] err = Encoding.UTF8.GetBytes($"{{\"status\":\"error\", \"message\":\"{ex.Message}\"}}");
-                response.ContentType = "application/json";
-                response.ContentLength64 = err.Length;
-                await response.OutputStream.WriteAsync(err, 0, err.Length);
-                await response.OutputStream.FlushAsync();
+                await WriteJson(response, new { status = "error", message = ex.Message }, 400);
             }
         }
 
-        private int FindBytes(byte[] source, byte[] pattern, int startIndex)
+        private async Task StartRemoteDownload(HttpListenerRequest request, HttpListenerResponse response)
+        {
+            try
+            {
+                string body;
+                using (var reader = new StreamReader(request.InputStream, request.ContentEncoding ?? Encoding.UTF8))
+                    body = await reader.ReadToEndAsync();
+
+                var payload = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(body) ?? new();
+                payload.TryGetValue("url", out string? url);
+
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+                    throw new Exception("Enter a valid http or https link");
+
+                string id = Guid.NewGuid().ToString("N");
+                var job = new CloudDownloadJob(id, uri.ToString());
+                _remoteDownloads[id] = job;
+                _ = Task.Run(() => DownloadRemoteFile(job));
+                await WriteJson(response, new { status = "started", id });
+            }
+            catch (Exception ex)
+            {
+                await WriteJson(response, new { status = "error", message = ex.Message }, 400);
+            }
+        }
+
+        private async Task DownloadRemoteFile(CloudDownloadJob job)
+        {
+            string? tempPath = null;
+            try
+            {
+                job.Status = "connecting";
+                using var request = new HttpRequestMessage(HttpMethod.Get, job.Url);
+                using var httpResponse = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, job.Token);
+                httpResponse.EnsureSuccessStatusCode();
+
+                job.TotalBytes = httpResponse.Content.Headers.ContentLength ?? 0;
+                job.FileName = GetUniqueFileName(ResolveRemoteFileName(httpResponse.Content.Headers, httpResponse.RequestMessage?.RequestUri ?? new Uri(job.Url)));
+                string finalPath = Path.Combine(SharePath, job.FileName);
+                tempPath = finalPath + ".part";
+
+                job.Status = "downloading";
+                job.Message = "Downloading to this device";
+                var sw = Stopwatch.StartNew();
+                long previousBytes = 0;
+                var lastSpeedCheck = Stopwatch.StartNew();
+
+                await using var source = await httpResponse.Content.ReadAsStreamAsync(job.Token);
+                await using var target = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.Read, BufferSize, true);
+                byte[] buffer = new byte[BufferSize];
+
+                while (true)
+                {
+                    int read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), job.Token);
+                    if (read <= 0) break;
+
+                    await target.WriteAsync(buffer.AsMemory(0, read), job.Token);
+                    job.DownloadedBytes += read;
+
+                    if (lastSpeedCheck.ElapsedMilliseconds >= 500)
+                    {
+                        job.SpeedBytesPerSecond = (job.DownloadedBytes - previousBytes) / Math.Max(0.001, lastSpeedCheck.Elapsed.TotalSeconds);
+                        previousBytes = job.DownloadedBytes;
+                        lastSpeedCheck.Restart();
+                    }
+                }
+
+                await target.FlushAsync(job.Token);
+                File.Move(tempPath, finalPath);
+                job.Status = "completed";
+                job.SpeedBytesPerSecond = 0;
+                job.Message = $"Ready to download from this device in {sw.Elapsed:mm\\:ss}";
+                FileReceived?.Invoke(job.FileName);
+            }
+            catch (OperationCanceledException)
+            {
+                job.Status = "cancelled";
+                job.Message = "Cancelled";
+                TryDeleteFile(tempPath);
+            }
+            catch (Exception ex)
+            {
+                job.Status = "failed";
+                job.Message = ex.Message;
+                TryDeleteFile(tempPath);
+            }
+        }
+
+        private async Task DeleteSharedFile(string fileName, HttpListenerResponse response)
+        {
+            string? fullPath = GetSafeSharePath(fileName);
+            if (fullPath == null || !File.Exists(fullPath))
+            {
+                await WriteJson(response, new { status = "error", message = "File not found" }, 404);
+                return;
+            }
+
+            File.Delete(fullPath);
+            await WriteJson(response, new { status = "deleted" });
+        }
+
+        private async Task CancelRemoteDownload(string id, HttpListenerResponse response)
+        {
+            if (_remoteDownloads.TryGetValue(id, out var job) && job.Status is "connecting" or "downloading")
+            {
+                job.Cancel();
+                await WriteJson(response, new { status = "cancelled" });
+                return;
+            }
+
+            await WriteJson(response, new { status = "error", message = "Download is not active" }, 404);
+        }
+
+        private static string GetBoundary(string contentType)
+        {
+            const string marker = "boundary=";
+            int index = contentType.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index < 0) return "";
+            string boundary = contentType[(index + marker.Length)..].Trim();
+            if (boundary.StartsWith("\"") && boundary.EndsWith("\""))
+                boundary = boundary[1..^1];
+            return boundary;
+        }
+
+        private static async Task<MultipartUpload> ReadMultipartBody(Stream input, string boundary, Encoding encoding)
+        {
+            using var ms = new MemoryStream();
+            byte[] buffer = new byte[BufferSize];
+            int read;
+            while ((read = await input.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                await ms.WriteAsync(buffer, 0, read);
+
+            byte[] data = ms.ToArray();
+            byte[] headerEnd = encoding.GetBytes("\r\n\r\n");
+            int headerEndIndex = FindBytes(data, headerEnd, 0);
+            if (headerEndIndex < 0) throw new Exception("Invalid multipart format");
+
+            string headerPart = encoding.GetString(data, 0, headerEndIndex);
+            string? fileName = ExtractFileName(headerPart);
+            byte[] footer = encoding.GetBytes("\r\n--" + boundary);
+            int footerIndex = FindBytesReverse(data, footer, data.Length - 1);
+            if (footerIndex <= headerEndIndex) throw new Exception("Invalid multipart data");
+
+            int start = headerEndIndex + headerEnd.Length;
+            byte[] fileBytes = new byte[footerIndex - start];
+            Array.Copy(data, start, fileBytes, 0, fileBytes.Length);
+            return new MultipartUpload(fileName, fileBytes);
+        }
+
+        private static string? ExtractFileName(string headerPart)
+        {
+            const string marker = "filename=\"";
+            int start = headerPart.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (start < 0) return null;
+            start += marker.Length;
+            int end = headerPart.IndexOf("\"", start, StringComparison.Ordinal);
+            if (end < 0) return null;
+            return headerPart[start..end];
+        }
+
+        private static string SanitizeFileName(string fileName)
+        {
+            string safe = Path.GetFileName(WebUtility.UrlDecode(fileName));
+            foreach (char c in Path.GetInvalidFileNameChars())
+                safe = safe.Replace(c, '_');
+            return string.IsNullOrWhiteSpace(safe) ? $"file_{Guid.NewGuid():N}.bin" : safe;
+        }
+
+        private static string GetUniqueFileName(string fileName)
+        {
+            fileName = SanitizeFileName(fileName);
+            string candidate = fileName;
+            string name = Path.GetFileNameWithoutExtension(fileName);
+            string extension = Path.GetExtension(fileName);
+            int index = 1;
+
+            while (File.Exists(Path.Combine(SharePath, candidate)) || File.Exists(Path.Combine(SharePath, candidate + ".part")))
+                candidate = $"{name} ({index++}){extension}";
+
+            return candidate;
+        }
+
+        private static string ResolveRemoteFileName(HttpContentHeaders headers, Uri uri)
+        {
+            string? headerName = headers.ContentDisposition?.FileNameStar ?? headers.ContentDisposition?.FileName;
+            if (!string.IsNullOrWhiteSpace(headerName))
+                return SanitizeFileName(headerName.Trim('"'));
+
+            string pathName = Path.GetFileName(uri.LocalPath);
+            if (!string.IsNullOrWhiteSpace(pathName))
+                return SanitizeFileName(pathName);
+
+            string extension = headers.ContentType?.MediaType?.ToLowerInvariant() switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "application/pdf" => ".pdf",
+                "application/zip" => ".zip",
+                "video/mp4" => ".mp4",
+                _ => ".bin"
+            };
+            return $"remote_{DateTime.Now:yyyyMMdd_HHmmss}{extension}";
+        }
+
+        private static string? GetSafeSharePath(string fileName)
+        {
+            string safeName = SanitizeFileName(fileName);
+            string fullPath = Path.GetFullPath(Path.Combine(SharePath, safeName));
+            string shareRoot = Path.GetFullPath(SharePath) + Path.DirectorySeparatorChar;
+            return fullPath.StartsWith(shareRoot, StringComparison.OrdinalIgnoreCase) ? fullPath : null;
+        }
+
+        private static bool TryParseRange(string? rangeHeader, long fileLength, out long start, out long end)
+        {
+            start = 0;
+            end = fileLength - 1;
+            if (string.IsNullOrWhiteSpace(rangeHeader) || !rangeHeader.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            string[] parts = rangeHeader[6..].Split('-', 2);
+            if (parts.Length != 2) return false;
+
+            if (!string.IsNullOrWhiteSpace(parts[0]) && long.TryParse(parts[0], out long parsedStart))
+                start = parsedStart;
+
+            if (!string.IsNullOrWhiteSpace(parts[1]) && long.TryParse(parts[1], out long parsedEnd))
+                end = parsedEnd;
+
+            if (start < 0 || end < start || start >= fileLength)
+            {
+                start = 0;
+                end = fileLength - 1;
+                return false;
+            }
+
+            end = Math.Min(end, fileLength - 1);
+            return true;
+        }
+
+        private static async Task WriteJson(HttpListenerResponse response, object data, int statusCode = 200)
+        {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+            byte[] buffer = Encoding.UTF8.GetBytes(json);
+            response.StatusCode = statusCode;
+            response.ContentType = "application/json; charset=utf-8";
+            response.ContentLength64 = buffer.Length;
+            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+        }
+
+        private static int FindBytes(byte[] source, byte[] pattern, int startIndex)
         {
             for (int i = startIndex; i <= source.Length - pattern.Length; i++)
             {
@@ -281,7 +565,7 @@ namespace imgsaver
             return -1;
         }
 
-        private int FindBytesReverse(byte[] source, byte[] pattern, int startIndex)
+        private static int FindBytesReverse(byte[] source, byte[] pattern, int startIndex)
         {
             for (int i = startIndex - pattern.Length + 1; i >= 0; i--)
             {
@@ -299,6 +583,16 @@ namespace imgsaver
             return -1;
         }
 
+        private static void TryDeleteFile(string? path)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    File.Delete(path);
+            }
+            catch { }
+        }
+
         public string GetLocalIPAddress()
         {
             try
@@ -307,7 +601,7 @@ namespace imgsaver
                 foreach (var ni in interfaces)
                 {
                     if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
-                    if (ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211 && 
+                    if (ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211 &&
                         ni.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Ethernet) continue;
 
                     string name = ni.Name.ToLower();
@@ -324,7 +618,8 @@ namespace imgsaver
                         }
                     }
                 }
-            } catch { }
+            }
+            catch { }
             return "127.0.0.1";
         }
 
@@ -338,112 +633,85 @@ namespace imgsaver
     <title>Cloud Link - File Share</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --primary: #3b82f6;
-            --primary-glow: rgba(59, 130, 246, 0.5);
-            --accent: #8b5cf6;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-            --success: #10b981;
+            --bg: #10151f;
+            --surface: #171f2d;
+            --surface-soft: #202a3a;
+            --primary: #2f80ed;
+            --danger: #ef4444;
+            --text: #f7fafc;
+            --text-muted: #9aa8bb;
+            --success: #22c55e;
+            --border: rgba(255,255,255,0.1);
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Inter', -apple-system, sans-serif; 
-            background: var(--bg); color: var(--text); 
-            line-height: 1.5; padding: 20px;
-        }
-        .container { max-width: 800px; margin: 0 auto; }
-        header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 30px; padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        h1 { 
-            font-size: 1.5rem; font-weight: 800;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .upload-card {
-            background: var(--surface); border-radius: 20px; padding: 30px;
-            border: 2px dashed rgba(255,255,255,0.1);
-            text-align: center; margin-bottom: 30px;
-            transition: all 0.3s ease;
-        }
-        .upload-card.drag-over {
-            border-color: var(--primary);
-            background: rgba(59, 130, 246, 0.05);
-            box-shadow: 0 0 20px var(--primary-glow);
-        }
-        .upload-btn {
-            background: var(--primary); color: white; border: none;
-            padding: 12px 24px; border-radius: 12px; font-weight: 600;
-            cursor: pointer; margin-top: 15px; transition: transform 0.2s;
-        }
-        .upload-btn:active { transform: scale(0.95); }
-        .file-list { display: grid; gap: 12px; }
-        .file-item {
-            background: var(--surface); padding: 16px; border-radius: 16px;
-            display: flex; justify-content: space-between; align-items: center;
-            border: 1px solid rgba(255,255,255,0.05);
-            animation: fadeIn 0.4s ease-out;
-        }
-        .file-info { display: flex; align-items: center; gap: 15px; }
-        .file-icon { font-size: 1.5rem; }
-        .file-name { font-weight: 600; font-size: 0.95rem; }
-        .file-meta { font-size: 0.75rem; color: var(--text-muted); }
-        .download-btn {
-            background: rgba(255,255,255,0.05); color: var(--text); border: none;
-            width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
-        }
-        .download-btn:hover { background: var(--primary); }
-        #progress-bar {
-            width: 100%; height: 4px; background: rgba(255,255,255,0.1);
-            border-radius: 2px; margin-top: 15px; display: none; overflow: hidden;
-        }
-        #progress-inner {
-            height: 100%; background: var(--primary); width: 0%;
-            transition: width 0.3s;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
-        @media (max-width: 600px) {
-            body { padding: 15px; }
-            h1 { font-size: 1.2rem; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); padding: 18px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        h1 { font-size: 1.35rem; margin: 0; letter-spacing: 0; }
+        h2 { font-size: 1rem; margin: 0; }
+        .online { color: var(--success); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .drop { border: 2px dashed var(--border); text-align: center; transition: border-color .2s, background .2s; }
+        .drop.drag-over { border-color: var(--primary); background: rgba(47,128,237,.08); }
+        .row { display: flex; gap: 10px; align-items: center; }
+        .row.wrap { flex-wrap: wrap; }
+        input[type='url'] { min-width: 0; flex: 1; background: var(--surface-soft); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 0.95rem; }
+        button, .button { border: 0; border-radius: 6px; padding: 10px 12px; color: white; background: var(--primary); cursor: pointer; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-height: 38px; }
+        button.secondary, .button.secondary { background: var(--surface-soft); color: var(--text); border: 1px solid var(--border); }
+        button.danger { background: rgba(239,68,68,.12); color: #fecaca; border: 1px solid rgba(239,68,68,.35); }
+        .muted { color: var(--text-muted); font-size: .82rem; }
+        .progress { width: 100%; height: 7px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+        .progress > div { height: 100%; width: 0%; background: var(--primary); transition: width .2s; }
+        .list { display: grid; gap: 10px; }
+        .item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .name { font-weight: 700; overflow-wrap: anywhere; }
+        .actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .empty { color: var(--text-muted); text-align: center; padding: 18px; border: 1px dashed var(--border); border-radius: 8px; }
+        @media (max-width: 640px) {
+            body { padding: 12px; }
+            .row { align-items: stretch; }
+            .row, .item { flex-direction: column; }
+            .actions, button, .button, input[type='url'] { width: 100%; }
         }
     </style>
 </head>
 <body>
     <div class='container'>
         <header>
-            <h1>CLOUD LINK</h1>
-            <span id='status' style='font-size: 0.8rem; color: var(--success); font-weight: bold;'>● ONLINE</span>
+            <h1>Cloud Link</h1>
+            <span class='online'>ONLINE</span>
         </header>
 
-        <div class='upload-card' id='drop-zone'>
-            <div style='font-size: 3rem; margin-bottom: 10px;'>📁</div>
-            <p style='font-weight: 600;'>Drag & Drop files to share</p>
-            <p style='font-size: 0.8rem; color: var(--text-muted);'>or click to browse your device</p>
+        <section class='panel drop' id='drop-zone'>
+            <h2>Upload from this device</h2>
+            <p class='muted'>Drop a file here or choose one from your device.</p>
             <input type='file' id='file-input' hidden>
-            <button class='upload-btn' onclick='document.getElementById(""file-input"").click()'>Choose File</button>
-            <div id='progress-bar'><div id='progress-inner'></div></div>
-        </div>
+            <button onclick='document.getElementById(""file-input"").click()'>Choose File</button>
+            <div class='progress' id='upload-progress' style='display:none'><div></div></div>
+            <p class='muted' id='upload-status'></p>
+        </section>
 
-        <div style='margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;'>
-            <h2 style='font-size: 1.1rem;'>Shared Files</h2>
-            <button onclick='loadFiles()' style='background: transparent; border: none; color: var(--primary); cursor: pointer; font-size: 0.8rem;'>Refresh</button>
+        <section class='panel'>
+            <h2>Download a web link to this computer</h2>
+            <div class='row wrap' style='margin-top:12px'>
+                <input id='remote-url' type='url' placeholder='https://example.com/file.zip'>
+                <button onclick='startRemoteDownload()'>Start</button>
+            </div>
+            <p class='muted'>The file appears below only after the download is complete.</p>
+            <div class='list' id='remote-list'></div>
+        </section>
+
+        <div class='row' style='justify-content:space-between;margin:18px 0 10px'>
+            <h2>Shared Files</h2>
+            <button class='secondary' onclick='loadFiles()'>Refresh</button>
         </div>
-        <div class='file-list' id='file-list'>
-            <!-- Files populated by JS -->
-        </div>
+        <div class='list' id='file-list'></div>
     </div>
 
     <script>
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
 
-        // Drag & Drop handlers
         dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
         dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
         dropZone.ondrop = (e) => {
@@ -451,80 +719,167 @@ namespace imgsaver
             dropZone.classList.remove('drag-over');
             handleFiles(e.dataTransfer.files);
         };
-
         fileInput.onchange = (e) => handleFiles(e.target.files);
 
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>""']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','""':'&quot;',""'"":'&#39;'}[ch]));
+        }
+
         function handleFiles(files) {
-            if (files.length === 0) return;
+            if (!files.length) return;
             const file = files[0];
             const formData = new FormData();
             formData.append('file', file);
 
-            const progressBar = document.getElementById('progress-bar');
-            const progressInner = document.getElementById('progress-inner');
-            progressBar.style.display = 'block';
+            const progress = document.getElementById('upload-progress');
+            const bar = progress.querySelector('div');
+            const status = document.getElementById('upload-status');
+            progress.style.display = 'block';
+            status.textContent = 'Uploading ' + file.name;
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/api/upload', true);
-            
             xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    progressInner.style.width = percent + '%';
-                }
+                if (!e.lengthComputable) return;
+                const percent = Math.round((e.loaded / e.total) * 100);
+                bar.style.width = percent + '%';
+                status.textContent = percent + '% - ' + formatSize(e.loaded) + ' / ' + formatSize(e.total);
             };
-
             xhr.onload = () => {
-                progressBar.style.display = 'none';
-                progressInner.style.width = '0%';
-                if (xhr.status === 200) {
-                    loadFiles();
-                } else {
-                    alert('Upload failed');
-                }
+                progress.style.display = 'none';
+                bar.style.width = '0%';
+                status.textContent = xhr.status === 200 ? 'Upload complete' : 'Upload failed';
+                fileInput.value = '';
+                loadFiles();
             };
+            xhr.onerror = () => { status.textContent = 'Upload failed'; };
             xhr.send(formData);
         }
 
+        async function startRemoteDownload() {
+            const input = document.getElementById('remote-url');
+            const url = input.value.trim();
+            if (!url) return;
+            const res = await fetch('/api/remote-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.message || 'Download failed to start');
+                return;
+            }
+            input.value = '';
+            loadRemoteDownloads();
+        }
+
+        async function cancelRemoteDownload(id) {
+            await fetch('/api/remote-downloads/' + encodeURIComponent(id), { method: 'DELETE' });
+            loadRemoteDownloads();
+        }
+
+        async function deleteFile(name) {
+            if (!confirm('Delete ' + name + '?')) return;
+            const res = await fetch('/api/files/' + encodeURIComponent(name), { method: 'DELETE' });
+            if (!res.ok) alert('Delete failed');
+            await loadFiles();
+        }
+
+        async function loadRemoteDownloads() {
+            const res = await fetch('/api/remote-downloads');
+            const jobs = await res.json();
+            const list = document.getElementById('remote-list');
+            const active = jobs.filter(j => j.status !== 'completed' || Date.now() - (window._loadedAt || 0) < 3000);
+            list.innerHTML = '';
+            active.forEach(j => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                const percent = j.total > 0 ? j.progress : 0;
+                div.innerHTML = `
+                    <div style='width:100%'>
+                        <div class='name'>${escapeHtml(j.fileName || j.url)}</div>
+                        <div class='muted'>${escapeHtml(j.status)} - ${formatSize(j.downloaded)}${j.total ? ' / ' + formatSize(j.total) : ''} - ${formatSize(j.speed || 0)}/s</div>
+                        <div class='progress'><div style='width:${percent}%'></div></div>
+                        <div class='muted'>${escapeHtml(j.message || '')}</div>
+                    </div>
+                    ${j.status === 'downloading' || j.status === 'connecting' ? `<button class='danger' onclick='cancelRemoteDownload(""${j.id}"")'>Cancel</button>` : ''}
+                `;
+                list.appendChild(div);
+            });
+        }
+
         async function loadFiles() {
-            try {
-                const res = await fetch('/api/files');
-                const files = await res.json();
-                const list = document.getElementById('file-list');
-                list.innerHTML = '';
-                
-                files.forEach(f => {
-                    const div = document.createElement('div');
-                    div.className = 'file-item';
-                    div.innerHTML = `
-                        <div class='file-info'>
-                            <div class='file-icon'>📄</div>
-                            <div>
-                                <div class='file-name'>${f.name}</div>
-                                <div class='file-meta'>${formatSize(f.size)} • ${f.date}</div>
-                            </div>
-                        </div>
-                        <a href='/download/${encodeURIComponent(f.name)}' class='download-btn' download>
-                           <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'></path><polyline points='7 10 12 15 17 10'></polyline><line x1='12' y1='15' x2='12' y2='3'></line></svg>
-                        </a>
-                    `;
-                    list.appendChild(div);
-                });
-            } catch (err) { console.error(err); }
+            const res = await fetch('/api/files');
+            const files = await res.json();
+            const list = document.getElementById('file-list');
+            list.innerHTML = '';
+            if (!files.length) {
+                list.innerHTML = `<div class='empty'>No shared files yet.</div>`;
+                return;
+            }
+            files.forEach(f => {
+                const name = f.name || f.Name;
+                const size = f.size || f.Size || 0;
+                const date = f.date || f.Date || '';
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <div>
+                        <div class='name'>${escapeHtml(name)}</div>
+                        <div class='muted'>${formatSize(size)} - ${escapeHtml(date)}</div>
+                    </div>
+                    <div class='actions'>
+                        <a href='/download/${encodeURIComponent(name)}' class='button secondary' download>Download</a>
+                        <button class='danger' onclick='deleteFile(""${escapeHtml(name).replace(/""/g, '&quot;')}"")'>Delete</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
         }
 
         function formatSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            bytes = Number(bytes || 0);
+            if (bytes <= 0) return '0 B';
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), sizes.length - 1);
+            return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + sizes[i];
         }
 
+        window._loadedAt = Date.now();
         loadFiles();
+        loadRemoteDownloads();
+        setInterval(() => { loadRemoteDownloads(); loadFiles(); }, 1500);
     </script>
 </body>
 </html>";
+        }
+
+        private sealed record MultipartUpload(string? FileName, byte[]? FileBytes);
+
+        private sealed class CloudDownloadJob
+        {
+            private readonly CancellationTokenSource _cts = new();
+
+            public CloudDownloadJob(string id, string url)
+            {
+                Id = id;
+                Url = url;
+                FileName = "Preparing...";
+            }
+
+            public string Id { get; }
+            public string Url { get; }
+            public string FileName { get; set; }
+            public string Status { get; set; } = "pending";
+            public string Message { get; set; } = "";
+            public long DownloadedBytes { get; set; }
+            public long TotalBytes { get; set; }
+            public double SpeedBytesPerSecond { get; set; }
+            public DateTime StartedAt { get; } = DateTime.Now;
+            public CancellationToken Token => _cts.Token;
+
+            public void Cancel() => _cts.Cancel();
         }
     }
 }

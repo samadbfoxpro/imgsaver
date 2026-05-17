@@ -151,6 +151,7 @@ namespace imgsaver
                     $"{FormatBytes(downloadedSize)} / {FormatBytes(totalSize)} - " +
                     $"{FormatBytes((long)totalSpeed)}/s - " +
                     $"Parts: {_downloadService.Settings.PartCount} - " +
+                    $"Proxy: {_downloadService.ProxySettings.DisplayText} - " +
                     _downloadService.DownloadFolder;
             }
             else

@@ -68,6 +68,7 @@ namespace imgsaver
         private void InitializeDownloadService()
         {
             _downloadService = new DownloadManagerService();
+            SyncDownloadProxySettings();
         }
 
         private async void InitializeTabs()
@@ -107,6 +108,7 @@ namespace imgsaver
         private void RefreshSettings()
         {
             _currentSettings = BrowserSettings.Load();
+            SyncDownloadProxySettings();
             if (!_currentSettings.AutoHideStatus)
             {
                 StatusOverlay.Visibility = Visibility.Visible;
@@ -548,6 +550,16 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             {
                 return false;
             }
+        }
+
+        private void SyncDownloadProxySettings()
+        {
+            if (_downloadService == null || _currentSettings == null) return;
+            _downloadService.UpdateProxySettings(
+                _currentSettings.ProxyEnabled,
+                _currentSettings.ProxyType ?? "http",
+                _currentSettings.ProxyAddress ?? "",
+                _currentSettings.ProxyPort ?? "");
         }
 
         private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -1216,7 +1228,8 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 if (proxyChanged)
                 {
                     await ResetEnvironmentAndReloadTabs();
-                    CustomMessageBox.Show("Proxy settings updated. Tabs have been reloaded with new proxy configuration.", "Proxy Updated");
+                    SyncDownloadProxySettings();
+                    CustomMessageBox.Show("Proxy settings updated. Tabs and new downloads will use the new proxy configuration.", "Proxy Updated");
                 }
                 else
                 {

@@ -30,6 +30,26 @@ namespace imgsaver
         public string DownloadFolder { get; set; } = "";
     }
 
+    public class DownloadProxySettings
+    {
+        public bool Enabled { get; set; }
+        public string Type { get; set; } = "http";
+        public string Address { get; set; } = "";
+        public string Port { get; set; } = "";
+
+        public DownloadProxySettings Clone() => new()
+        {
+            Enabled = Enabled,
+            Type = Type,
+            Address = Address,
+            Port = Port
+        };
+
+        public string DisplayText => Enabled && !string.IsNullOrWhiteSpace(Address)
+            ? $"{Type}://{Address}{(string.IsNullOrWhiteSpace(Port) ? "" : ":" + Port)}"
+            : "Direct";
+    }
+
     internal class DownloadPersistedTask
     {
         public string FileName { get; set; } = "";
@@ -196,6 +216,7 @@ namespace imgsaver
         public int Priority { get; set; } = 0;
         public string Category { get; set; } = "Other";
         public Dictionary<string, string>? RequestHeaders { get; set; }
+        public DownloadProxySettings ProxySettings { get; set; } = new();
         public ObservableCollection<DownloadPartProgress> Parts { get; } = new();
         public bool IsCompleted => Status == DownloadStatus.Completed;
         public string PauseResumeIcon => Status == DownloadStatus.Downloading ? "||" : ">";
@@ -254,7 +275,9 @@ namespace imgsaver
             var handler = new SocketsHttpHandler
             {
                 MaxConnectionsPerServer = Math.Max(32, partCount + 4),
-                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+                UseProxy = ProxySettings.Enabled && !string.IsNullOrWhiteSpace(ProxySettings.Address),
+                Proxy = CreateProxy(ProxySettings)
             };
             _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(5) };
             AddDefaultHeaders(_httpClient);
@@ -314,6 +337,32 @@ namespace imgsaver
                 var value = SanitizeHeaderValue(header.Value);
                 if (!string.IsNullOrEmpty(value))
                     client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, value);
+            }
+        }
+
+        private static IWebProxy? CreateProxy(DownloadProxySettings settings)
+        {
+            if (!settings.Enabled || string.IsNullOrWhiteSpace(settings.Address))
+                return null;
+
+            try
+            {
+                var address = settings.Address.Trim();
+                if (address.Contains("://"))
+                    address = address.Split(new[] { "://" }, StringSplitOptions.None)[1];
+
+                var scheme = string.Equals(settings.Type, "socks5", StringComparison.OrdinalIgnoreCase)
+                    ? "socks5"
+                    : "http";
+                var proxyUri = $"{scheme}://{address}";
+                if (!string.IsNullOrWhiteSpace(settings.Port))
+                    proxyUri += ":" + settings.Port.Trim();
+
+                return new WebProxy(new Uri(proxyUri));
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -770,12 +819,14 @@ namespace imgsaver
         private readonly List<DownloadTask> _activeDownloads = new();
         private readonly List<DownloadTask> _history = new();
         private readonly SemaphoreSlim _downloadSemaphore = new(3, 3);
+        private DownloadProxySettings _proxySettings = new();
 
         public event Action<DownloadTask>? OnDownloadAdded;
         public event Action<DownloadTask>? OnDownloadCompleted;
         public event Action<DownloadTask>? OnDownloadFailed;
 
         public DownloadManagerSettings Settings { get; private set; } = new();
+        public DownloadProxySettings ProxySettings => _proxySettings.Clone();
         public string DownloadFolder => Settings.DownloadFolder;
         public string TempRootFolder => _tempRootFolder;
 
@@ -811,6 +862,7 @@ namespace imgsaver
                 FilePath = filePath,
                 TempFolder = CreateTempFolder(),
                 RequestHeaders = requestHeaders,
+                ProxySettings = _proxySettings.Clone(),
                 Category = CategorizeFile(fileName),
                 Status = DownloadStatus.Pending,
                 StatusText = "Waiting...",
@@ -851,6 +903,20 @@ namespace imgsaver
             SaveSettings();
         }
 
+        public void UpdateProxySettings(bool enabled, string type, string address, string port)
+        {
+            _proxySettings = new DownloadProxySettings
+            {
+                Enabled = enabled && !string.IsNullOrWhiteSpace(address),
+                Type = string.Equals(type, "socks5", StringComparison.OrdinalIgnoreCase) ? "socks5" : "http",
+                Address = address.Trim(),
+                Port = port.Trim()
+            };
+
+            foreach (var task in _activeDownloads.Where(t => t.Status is DownloadStatus.Pending or DownloadStatus.Paused or DownloadStatus.Failed))
+                task.ProxySettings = _proxySettings.Clone();
+        }
+
         public bool HasDownload(string url)
         {
             return _activeDownloads.Any(d =>
@@ -869,6 +935,7 @@ namespace imgsaver
                 if (task.Status == DownloadStatus.Cancelled || task.Status == DownloadStatus.Completed)
                     return;
 
+                task.ProxySettings = _proxySettings.Clone();
                 await task.Download(
                     Settings.PartCount,
                     onProgress: _ => SaveQueue(),
