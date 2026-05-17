@@ -2,9 +2,10 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace imgsaver
         {
             public string Address { get; set; } = "";
             public string Status { get; set; } = "Pending";
-            public string PingText { get; set; } = "";
+            public string ConnectionText { get; set; } = "";
             public bool Responded => string.Equals(Status, "Up", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -30,7 +31,7 @@ namespace imgsaver
         {
             public string Address { get; set; } = "";
             public bool Responded { get; set; }
-            public long RoundtripTime { get; set; }
+            public long ConnectionTimeMs { get; set; }
             public string? Error { get; set; }
         }
 
@@ -49,6 +50,10 @@ namespace imgsaver
         private const int DefaultTimeoutMs = 1500;
         private const int MinTimeoutMs = 300;
         private const int MaxTimeoutMs = 10000;
+        private const int HttpsPort = 443;
+        private const int DefaultMaxConcurrentConnections = 75;
+        private const int MinMaxConcurrentConnections = 1;
+        private const int MaxMaxConcurrentConnections = 500;
         private const int DefaultPerIpDelayMs = 50;
         private const int MinPerIpDelayMs = 0;
         private const int MaxPerIpDelayMs = 2000;
@@ -61,7 +66,8 @@ namespace imgsaver
         private int _totalScanned;
         private int _respondedCount;
         private int _logLines;
-        private int _pingTimeoutMs = DefaultTimeoutMs;
+        private int _connectTimeoutMs = DefaultTimeoutMs;
+        private int _maxConcurrentConnections = DefaultMaxConcurrentConnections;
         private int _perIpDelayMs = DefaultPerIpDelayMs;
         private int _batchRestSeconds = DefaultBatchRestSeconds;
         private bool _isApplyingWindowState;
@@ -80,6 +86,7 @@ namespace imgsaver
             TxtRangeStart.Text = "192.168.1.1";
             TxtRangeEnd.Text = "192.168.1.254";
             TxtTimeoutMs.Text = DefaultTimeoutMs.ToString();
+            TxtMaxConcurrentConnections.Text = DefaultMaxConcurrentConnections.ToString();
             TxtPerIpDelayMs.Text = DefaultPerIpDelayMs.ToString();
             TxtBatchRestSeconds.Text = DefaultBatchRestSeconds.ToString();
             UpdateCounts();
@@ -155,7 +162,8 @@ namespace imgsaver
             BtnCancel.IsEnabled = true;
             BtnScan.IsEnabled = false;
             BtnCopyResponded.IsEnabled = false;
-            _pingTimeoutMs = GetPingTimeoutMs();
+            _connectTimeoutMs = GetPingTimeoutMs();
+            _maxConcurrentConnections = GetMaxConcurrentConnections();
             _perIpDelayMs = GetPerIpDelayMs();
             _batchRestSeconds = GetBatchRestSeconds();
             _items.Clear();
@@ -199,7 +207,10 @@ namespace imgsaver
         {
             if (!string.IsNullOrWhiteSpace(_respondedTempFile) && File.Exists(_respondedTempFile))
             {
-                System.Windows.Clipboard.SetText(File.ReadAllText(_respondedTempFile));
+                _respondedWriter?.Flush();
+                using var stream = new FileStream(_respondedTempFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                System.Windows.Clipboard.SetText(reader.ReadToEnd());
             }
             else if (_respondedPreview.Count > 0)
             {
@@ -278,18 +289,20 @@ namespace imgsaver
 
             Shuffle(randomList);
             AppendLog($"Loaded {randomList.Count:N0} targets. Scanning random batches of {RandomBatchSize:N0}.");
-            AppendLog($"Timeout: {_pingTimeoutMs:N0} ms. Delay/IP: {_perIpDelayMs:N0} ms. Batch rest: {_batchRestSeconds:N0} seconds.");
+            AppendLog($"Timeout: {_connectTimeoutMs:N0} ms. Delay/IP: {_perIpDelayMs:N0} ms. Batch rest: {_batchRestSeconds:N0} seconds.");
 
             for (int index = 0; index < randomList.Count; index += RandomBatchSize)
             {
                 token.ThrowIfCancellationRequested();
                 var batch = randomList.Skip(index).Take(RandomBatchSize).ToList();
                 AppendLog($"Random batch {(index / RandomBatchSize) + 1:N0}: scanning {batch.Count:N0} targets...");
+                using var semaphore = new SemaphoreSlim(_maxConcurrentConnections, _maxConcurrentConnections);
                 var running = new List<Task>();
                 foreach (var address in batch)
                 {
                     token.ThrowIfCancellationRequested();
-                    running.Add(ScanOneAsync(address, token));
+                    await semaphore.WaitAsync(token);
+                    running.Add(ScanOneAddressAsync(address, semaphore, token));
                     if (_perIpDelayMs > 0)
                     {
                         await Task.Delay(_perIpDelayMs, token);
@@ -345,18 +358,29 @@ namespace imgsaver
         {
             try
             {
-                using var ping = new Ping();
-                var reply = await ping.SendPingAsync(address, _pingTimeoutMs);
-                token.ThrowIfCancellationRequested();
+                using var tcpClient = new TcpClient();
+                var stopwatch = Stopwatch.StartNew();
+                var connectTask = tcpClient.ConnectAsync(address, HttpsPort);
+                var timeoutTask = Task.Delay(_connectTimeoutMs, token);
+                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+                if (completedTask != connectTask)
+                {
+                    token.ThrowIfCancellationRequested();
+                    throw new TimeoutException($"TCP connect to port {HttpsPort} timed out after {_connectTimeoutMs:N0} ms.");
+                }
+
+                await connectTask;
+                stopwatch.Stop();
 
                 _pendingResults.Enqueue(new ScanResult
                 {
                     Address = address,
-                    Responded = reply.Status == IPStatus.Success,
-                    RoundtripTime = reply.RoundtripTime
+                    Responded = true,
+                    ConnectionTimeMs = stopwatch.ElapsedMilliseconds
                 });
             }
-            catch (Exception ex) when (ex is PingException or TimeoutException or OperationCanceledException)
+            catch (Exception ex) when (ex is SocketException or TimeoutException or OperationCanceledException)
             {
                 if (ex is OperationCanceledException) throw;
                 _pendingResults.Enqueue(new ScanResult
@@ -395,7 +419,7 @@ namespace imgsaver
                 {
                     Address = result.Address,
                     Status = result.Responded ? "Up" : "Down",
-                    PingText = result.Responded ? $"{result.RoundtripTime} ms" : "-"
+                    ConnectionText = result.Responded ? $"{result.ConnectionTimeMs} ms" : "-"
                 };
 
                 if (result.Responded)
@@ -403,7 +427,7 @@ namespace imgsaver
                     _respondedCount++;
                     if (_respondedPreview.Count < MaxRespondedTextRows) _respondedPreview.Add(result.Address);
                     _respondedWriter?.WriteLine(result.Address);
-                    AppendLog($"{result.Address} responded in {result.RoundtripTime} ms");
+                    AppendLog($"{result.Address} responded in {result.ConnectionTimeMs} ms");
                 }
                 else if (_totalScanned <= 200)
                 {
@@ -457,7 +481,8 @@ namespace imgsaver
             var dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
             Directory.CreateDirectory(dataDir);
             _respondedTempFile = Path.Combine(dataDir, $"network_scanner_responded_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
-            _respondedWriter = new StreamWriter(_respondedTempFile, false, Encoding.UTF8, 1024 * 64);
+            var stream = new FileStream(_respondedTempFile, FileMode.Create, FileAccess.Write, FileShare.Read, 1024 * 64);
+            _respondedWriter = new StreamWriter(stream, Encoding.UTF8, 1024 * 64);
             AppendLog($"Responded IPs will be streamed to: {_respondedTempFile}");
         }
 
@@ -491,6 +516,11 @@ namespace imgsaver
         private int GetPingTimeoutMs()
         {
             return GetBoundedInt(TxtTimeoutMs, DefaultTimeoutMs, MinTimeoutMs, MaxTimeoutMs);
+        }
+
+        private int GetMaxConcurrentConnections()
+        {
+            return GetBoundedInt(TxtMaxConcurrentConnections, DefaultMaxConcurrentConnections, MinMaxConcurrentConnections, MaxMaxConcurrentConnections);
         }
 
         private int GetPerIpDelayMs()
