@@ -69,8 +69,6 @@ namespace imgsaver
         public NetworkScannerWindow()
         {
             InitializeComponent();
-            MaxHeight = SystemParameters.WorkArea.Height;
-            MaxWidth = SystemParameters.WorkArea.Width;
             LvResults.ItemsSource = _items;
             _uiFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _uiFlushTimer.Tick += UiFlushTimer_Tick;
@@ -95,7 +93,17 @@ namespace imgsaver
 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
         private void BtnMinimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-        private void BtnMaximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                SystemCommands.RestoreWindow(this);
+            }
+            else
+            {
+                SystemCommands.MaximizeWindow(this);
+            }
+        }
 
         private void Window_StateChanged(object? sender, EventArgs e)
         {
@@ -113,20 +121,12 @@ namespace imgsaver
                     MainBorder.Margin = new Thickness(0);
                     MainBorder.CornerRadius = new CornerRadius(0);
                     MainBorder.Effect = null;
-                    MaxHeight = SystemParameters.WorkArea.Height;
-                    MaxWidth = SystemParameters.WorkArea.Width;
                 }
                 else
                 {
-                    MainBorder.Margin = new Thickness(20);
-                    MainBorder.CornerRadius = new CornerRadius(10);
-                    MainBorder.Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    {
-                        BlurRadius = 30,
-                        ShadowDepth = 12,
-                        Opacity = 0.65,
-                        Color = System.Windows.Media.Colors.Black
-                    };
+                    MainBorder.Margin = new Thickness(0);
+                    MainBorder.CornerRadius = new CornerRadius(0);
+                    MainBorder.Effect = null;
                 }
             }
             finally
