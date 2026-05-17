@@ -44,6 +44,7 @@ namespace imgsaver
         private FileShareWindow? _fileShareWindow;
         private InputRecorderWindow? _inputRecorderWindow;
         private BrowserWindow? _browserWindow;
+        private NetworkScannerWindow? _networkScannerWindow;
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -360,6 +361,14 @@ namespace imgsaver
             if (_browserWindow == null || !_browserWindow.IsLoaded) _browserWindow = new BrowserWindow();
             _browserWindow.Show();
             _browserWindow.Activate();
+        }
+
+        private void BtnNetworkScanner_Click(object sender, RoutedEventArgs e)
+        {
+            if (_networkScannerWindow == null || !_networkScannerWindow.IsLoaded) _networkScannerWindow = new NetworkScannerWindow();
+            _networkScannerWindow.Owner = this;
+            _networkScannerWindow.Show();
+            _networkScannerWindow.Activate();
         }
 
         private void BtnToggleInput_Click(object sender, RoutedEventArgs e)

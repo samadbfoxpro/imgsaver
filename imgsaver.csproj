@@ -51,6 +51,10 @@
 			<Generator>MSBuild:Compile</Generator>
 			<XamlRuntime>Wpf</XamlRuntime>
 		</Page>
+		<Page Update="NetworkScannerWindow.xaml">
+			<Generator>MSBuild:Compile</Generator>
+			<XamlRuntime>Wpf</XamlRuntime>
+		</Page>
 	</ItemGroup>
 
 </Project>
