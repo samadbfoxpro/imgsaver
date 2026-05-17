@@ -23,7 +23,8 @@ namespace imgsaver
     {
         private readonly string _userDataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_profile");
         private readonly string _permanentCacheFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_cache");
-        private const long MaxDiskCacheItemBytes = 100L * 1024L * 1024L;
+        private const long MaxDiskCacheItemBytes = 512L * 1024L * 1024L;
+        private const long ChromiumDiskCacheBytes = 4L * 1024L * 1024L * 1024L;
         private BrowserSettings _currentSettings = null!;
         private string _typeBuffer = "";
         private DispatcherTimer _statusFadeTimer = null!;
@@ -334,6 +335,14 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     if (_sharedEnvironment == null)
                     {
                         var options = new CoreWebView2EnvironmentOptions();
+                        var browserArguments = new List<string>
+                        {
+                            $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
+                            $"--disk-cache-size={ChromiumDiskCacheBytes}",
+                            "--aggressive-cache-discard=false",
+                            "--disable-features=BackForwardCacheMemoryControls"
+                        };
+
                         if (_currentSettings.ProxyEnabled && !string.IsNullOrEmpty(_currentSettings.ProxyAddress))
                         {
                             string proxyAddr = _currentSettings.ProxyAddress;
@@ -343,8 +352,9 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                             string proxyServer = $"{scheme}{proxyAddr}";
                             if (!string.IsNullOrEmpty(_currentSettings.ProxyPort)) proxyServer += ":" + _currentSettings.ProxyPort;
 
-                            options.AdditionalBrowserArguments = $"--proxy-server=\"{proxyServer}\"";
+                            browserArguments.Add($"--proxy-server=\"{proxyServer}\"");
                         }
+                        options.AdditionalBrowserArguments = string.Join(" ", browserArguments);
                         _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
                     }
                 }
@@ -897,7 +907,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 if (response.Headers.Contains("Cache-Control"))
                 {
                     string cacheControl = response.Headers.GetHeader("Cache-Control").ToLowerInvariant();
-                    if (cacheControl.Contains("no-store") || cacheControl.Contains("private"))
+                    if (cacheControl.Contains("no-store"))
                         return true;
                 }
                 if (response.Headers.Contains("Pragma") &&
