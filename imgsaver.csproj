@@ -7,13 +7,13 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UseWindowsForms>true</UseWindowsForms>
 		<UseWPF>true</UseWPF>
-		<ApplicationIcon>4.ico</ApplicationIcon>
-		<PackageIcon>4.ico</PackageIcon>
+		<ApplicationIcon>logo.ico</ApplicationIcon>
+		<PackageIcon>logo.ico</PackageIcon>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Include="4.ico">
+		<None Include="logo.ico">
 		  <Pack>True</Pack>
 		  <PackagePath>\</PackagePath>
 		</None>
@@ -27,10 +27,6 @@
 	<ItemGroup>
 		<None Update="effect.wav">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="icon.ico">
-		  <Pack>True</Pack>
-		  <PackagePath>\</PackagePath>
 		</None>
 	</ItemGroup>
 
