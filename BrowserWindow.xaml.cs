@@ -849,7 +849,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             // Skip caching if host is in no-cache list
             if (IsHostNoCached(uri)) return;
 
-            if (IsCacheableExtension(lowerUri))
+            if (IsCacheableExtension(lowerUri) || IsImageResponse(e.Response))
                 await SaveCacheResponseAsync(uri, e.Response, size);
         }
 
@@ -870,7 +870,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             {
                 if (ShouldSkipDiskCache(response, contentLength)) return;
 
-                string? cachePath = GetCacheFilePath(uri);
+                string? cachePath = GetCacheFilePath(uri, response);
                 if (string.IsNullOrWhiteSpace(cachePath) || File.Exists(cachePath)) return;
 
                 string? dir = Path.GetDirectoryName(cachePath);
@@ -895,8 +895,20 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     File.Move(tempPath, cachePath);
                 else
                     File.Delete(tempPath);
+
             }
             catch { }
+        }
+
+        private bool IsImageResponse(CoreWebView2WebResourceResponseView response)
+        {
+            try
+            {
+                if (!response.Headers.Contains("Content-Type")) return false;
+                return response.Headers.GetHeader("Content-Type")
+                    .StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
         }
 
         private bool ShouldSkipDiskCache(CoreWebView2WebResourceResponseView response, long contentLength)
@@ -1102,7 +1114,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         private bool IsImageContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Image || uri.EndsWith(".jpg") || uri.EndsWith(".png") || uri.EndsWith(".webp") || uri.EndsWith(".gif");
         private bool IsMediaContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Media || uri.EndsWith(".mp4") || uri.EndsWith(".webm") || uri.EndsWith(".mp3");
 
-        private string? GetCacheFilePath(string uri)
+        private string? GetCacheFilePath(string uri, CoreWebView2WebResourceResponseView? response = null)
         {
             try
             {
@@ -1130,10 +1142,33 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     else if (uri.Contains(".mp4")) filename += ".mp4";
                     else if (uri.Contains(".webm")) filename += ".webm";
                     else if (uri.Contains(".mp3")) filename += ".mp3";
+                    else filename += GetExtensionFromResponse(response);
                     return Path.Combine(siteFolder, filename);
                 }
             }
             catch { return null; }
+        }
+
+        private string GetExtensionFromResponse(CoreWebView2WebResourceResponseView? response)
+        {
+            try
+            {
+                if (response == null || !response.Headers.Contains("Content-Type")) return "";
+                string contentType = response.Headers.GetHeader("Content-Type").Split(';')[0].Trim().ToLowerInvariant();
+                return contentType switch
+                {
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "image/webp" => ".webp",
+                    "image/gif" => ".gif",
+                    "image/bmp" => ".bmp",
+                    "image/tiff" => ".tiff",
+                    "image/avif" => ".avif",
+                    "image/svg+xml" => ".svg",
+                    _ => ""
+                };
+            }
+            catch { return ""; }
         }
 
         private string GetMimeType(CoreWebView2WebResourceContext ctx, string uri)

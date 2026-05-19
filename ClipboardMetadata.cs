@@ -11,9 +11,6 @@ namespace imgsaver
         public static string BasePromptName { get; set; }
         public static DateTime LastUpdated { get; set; }
 
-        // Event for browser-to-miniclip communication
-        public static event Action<string> ImageCaptured;
-
         public static void Set(string characterName, string basePromptName)
         {
             CharacterName = characterName;
@@ -34,9 +31,5 @@ namespace imgsaver
                    (DateTime.Now - LastUpdated).TotalSeconds < 5;
         }
 
-        public static void NotifyImageCaptured(string filePath)
-        {
-            ImageCaptured?.Invoke(filePath);
-        }
     }
 }

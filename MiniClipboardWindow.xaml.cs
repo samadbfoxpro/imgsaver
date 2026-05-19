@@ -186,14 +186,6 @@ namespace imgsaver
 
             StartNetMonitoring();
             RefreshAutoImport();
-
-            // Subscribe to Browser Image Captures
-            ClipboardMetadata.ImageCaptured += OnBrowserImageCaptured;
-        }
-
-        private void OnBrowserImageCaptured(string filePath)
-        {
-            Dispatcher.Invoke(() => ProcessImportedFile(filePath));
         }
 
         public void RefreshAutoImport()
@@ -358,7 +350,6 @@ namespace imgsaver
 
         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
         {
-            ClipboardMetadata.ImageCaptured -= OnBrowserImageCaptured;
             _netTimer?.Stop();
             _globalHook?.Dispose();
             if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
@@ -655,7 +646,7 @@ namespace imgsaver
             PersonaInjectorWindow injector = null;
             foreach (Window w in System.Windows.Application.Current.Windows) if (w is PersonaInjectorWindow piw) injector = piw;
             if (injector == null) return;
-            injector.PerformRandomBoth();
+            injector.PerformRandomForCurrentTab();
             System.Threading.Tasks.Task.Delay(150).ContinueWith(_ => Dispatcher.Invoke(() => {
                 if (ClipboardMetadata.IsValid())
                 {

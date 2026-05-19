@@ -14,18 +14,28 @@ namespace imgsaver
     public partial class PersonaInjectorWindow : Window
     {
         private const string PlaceholderTag = "[character]";
+        private const string ExtraPlaceholderTag = "[extra]";
         private readonly DispatcherTimer _feedbackTimer;
         private readonly DispatcherTimer _searchDebounceTimer;
         private readonly DispatcherTimer _promptSearchDebounceTimer;
+        private readonly DispatcherTimer _extraSearchDebounceTimer;
+        private readonly DispatcherTimer _extraPromptSearchDebounceTimer;
+        private readonly DispatcherTimer _extraFeedbackTimer;
 
         private ICollectionView _characterView;
         private ICollectionView _promptView;
+        private ICollectionView _extraView;
+        private ICollectionView _extraPromptView;
         private Random _random = new Random();
 
         private bool _isPromptLocked = false;
         private bool _isCharacterLocked = false;
+        private bool _isExtraPromptLocked = false;
+        private bool _isExtraLocked = false;
         private CharacterPersona _currentPersona = null;
         private BasePrompt _currentPrompt = null;
+        private ExtraItem _currentExtra = null;
+        private ExtraPrompt _currentExtraPrompt = null;
 
         public PersonaInjectorWindow()
         {
@@ -41,12 +51,24 @@ namespace imgsaver
             _promptSearchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
             _promptSearchDebounceTimer.Tick += (s, e) => { _promptSearchDebounceTimer.Stop(); _promptView?.Refresh(); };
 
+            _extraSearchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _extraSearchDebounceTimer.Tick += (s, e) => { _extraSearchDebounceTimer.Stop(); _extraView?.Refresh(); };
+
+            _extraPromptSearchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _extraPromptSearchDebounceTimer.Tick += (s, e) => { _extraPromptSearchDebounceTimer.Stop(); _extraPromptView?.Refresh(); };
+
             // Initialize feedback timer
             _feedbackTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(2)
             };
             _feedbackTimer.Tick += FeedbackTimer_Tick;
+
+            _extraFeedbackTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            _extraFeedbackTimer.Tick += ExtraFeedbackTimer_Tick;
 
             // Load data async
             Loaded += PersonaInjectorWindow_Loaded;
@@ -74,11 +96,21 @@ namespace imgsaver
                 if (LoadingText != null) LoadingText.Text = "Loading prompts...";
                 UpdateLoadingProgress(40);
                 await Task.Run(() => BasePromptManager.Load());
+                UpdateLoadingProgress(55);
+                await Task.Delay(100);
+
+                if (LoadingText != null) LoadingText.Text = "Loading extras...";
                 UpdateLoadingProgress(60);
+                await Task.Run(() =>
+                {
+                    ExtraManager.Load();
+                    ExtraPromptManager.Load();
+                });
+                UpdateLoadingProgress(70);
                 await Task.Delay(100);
 
                 if (LoadingText != null) LoadingText.Text = "Setting up UI...";
-                UpdateLoadingProgress(70);
+                UpdateLoadingProgress(75);
                 await Task.Delay(50);
 
                 await Dispatcher.InvokeAsync(() =>
@@ -94,6 +126,18 @@ namespace imgsaver
                     _promptView.SortDescriptions.Add(new SortDescription("LastModified", ListSortDirection.Descending));
                     _promptView.Filter = PromptFilter;
                     ComboBasePrompts.ItemsSource = _promptView;
+
+                    _extraView = CollectionViewSource.GetDefaultView(ExtraManager.GetAll());
+                    _extraView.SortDescriptions.Add(new SortDescription("IsFavorite", ListSortDirection.Descending));
+                    _extraView.SortDescriptions.Add(new SortDescription("ShortName", ListSortDirection.Ascending));
+                    _extraView.Filter = ExtraFilter;
+                    ExtraList.ItemsSource = _extraView;
+
+                    _extraPromptView = CollectionViewSource.GetDefaultView(ExtraPromptManager.GetAll());
+                    _extraPromptView.SortDescriptions.Add(new SortDescription("IsFavorite", ListSortDirection.Descending));
+                    _extraPromptView.SortDescriptions.Add(new SortDescription("LastModified", ListSortDirection.Descending));
+                    _extraPromptView.Filter = ExtraPromptFilter;
+                    ExtraBasePrompts.ItemsSource = _extraPromptView;
 
                     UpdateLoadingProgress(85);
                 });
@@ -179,12 +223,55 @@ namespace imgsaver
             return false;
         }
 
+        private bool ExtraFilter(object item)
+        {
+            if (item is ExtraItem extra)
+            {
+                string query = TxtExtraSearch?.Text;
+                if (string.IsNullOrWhiteSpace(query)) return true;
+                var terms = query.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                string target = (extra.ShortName + " " + extra.Text).ToLower();
+                foreach (var term in terms)
+                {
+                    if (!target.Contains(term)) return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private bool ExtraPromptFilter(object item)
+        {
+            if (item is ExtraPrompt prompt)
+            {
+                string query = TxtExtraSearchPrompts?.Text;
+                if (string.IsNullOrWhiteSpace(query)) return true;
+                var terms = query.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                string target = (prompt.Name + " " + prompt.PromptText).ToLower();
+                foreach (var term in terms)
+                {
+                    if (!target.Contains(term)) return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
         private void TxtSearchPrompts_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (IsLoaded)
             {
                 _promptSearchDebounceTimer.Stop();
                 _promptSearchDebounceTimer.Start();
+            }
+        }
+
+        private void TxtExtraSearchPrompts_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (IsLoaded)
+            {
+                _extraPromptSearchDebounceTimer.Stop();
+                _extraPromptSearchDebounceTimer.Start();
             }
         }
 
@@ -198,6 +285,19 @@ namespace imgsaver
                 _isSettingPrompt = false;
                 TxtCurrentPromptName.Text = $"Source: {selectedPrompt.Name}";
                 ComboBasePrompts.SelectedItem = null;
+            }
+        }
+
+        private void ExtraBasePrompts_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ExtraBasePrompts.SelectedItem is ExtraPrompt selectedPrompt)
+            {
+                _currentExtraPrompt = selectedPrompt;
+                _isSettingExtraPrompt = true;
+                TxtExtraRawPrompt.Text = selectedPrompt.PromptText;
+                _isSettingExtraPrompt = false;
+                TxtCurrentExtraPromptName.Text = $"Source: {selectedPrompt.Name}";
+                ExtraBasePrompts.SelectedItem = null;
             }
         }
 
@@ -217,12 +317,29 @@ namespace imgsaver
             editorWindow.Show();
         }
 
+        private void BtnManageExtraPrompts_Click(object sender, RoutedEventArgs e)
+        {
+            var editorWindow = new ExtraPromptEditorWindow();
+            editorWindow.Owner = this;
+            editorWindow.Closed += (s, args) => RefreshExtraPrompts();
+            editorWindow.Show();
+        }
+
         private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (IsLoaded)
             {
                 _searchDebounceTimer.Stop();
                 _searchDebounceTimer.Start();
+            }
+        }
+
+        private void TxtExtraSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (IsLoaded)
+            {
+                _extraSearchDebounceTimer.Stop();
+                _extraSearchDebounceTimer.Start();
             }
         }
 
@@ -236,7 +353,18 @@ namespace imgsaver
             TxtRawPrompt.Focus();
         }
 
+        private void BtnInsertExtraTag_Click(object sender, RoutedEventArgs e)
+        {
+            int caretIndex = TxtExtraRawPrompt.CaretIndex;
+            string currentText = TxtExtraRawPrompt.Text;
+            string newText = currentText.Insert(caretIndex, ExtraPlaceholderTag);
+            TxtExtraRawPrompt.Text = newText;
+            TxtExtraRawPrompt.CaretIndex = caretIndex + ExtraPlaceholderTag.Length;
+            TxtExtraRawPrompt.Focus();
+        }
+
         private bool _isSettingPrompt = false;
+        private bool _isSettingExtraPrompt = false;
 
         private void TxtRawPrompt_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -247,6 +375,18 @@ namespace imgsaver
             {
                 TxtCurrentPromptName.Text = "";
                 _currentPrompt = null;
+            }
+        }
+
+        private void TxtExtraRawPrompt_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (TxtExtraCopiedFeedback != null)
+                TxtExtraCopiedFeedback.Visibility = Visibility.Collapsed;
+
+            if (!_isSettingExtraPrompt && TxtCurrentExtraPromptName != null)
+            {
+                TxtCurrentExtraPromptName.Text = "";
+                _currentExtraPrompt = null;
             }
         }
 
@@ -266,10 +406,24 @@ namespace imgsaver
             editorWindow.Show();
         }
 
+        private void BtnManageExtra_Click(object sender, RoutedEventArgs e)
+        {
+            var editorWindow = new ExtraItemEditorWindow();
+            editorWindow.Owner = this;
+            editorWindow.Closed += (s, args) => RefreshExtras();
+            editorWindow.Show();
+        }
+
         private void BtnClearRaw_Click(object sender, RoutedEventArgs e)
         {
             TxtRawPrompt.Clear();
             TxtRawPrompt.Focus();
+        }
+
+        private void BtnExtraClearRaw_Click(object sender, RoutedEventArgs e)
+        {
+            TxtExtraRawPrompt.Clear();
+            TxtExtraRawPrompt.Focus();
         }
 
         private void BtnPasteRaw_Click(object sender, RoutedEventArgs e)
@@ -281,6 +435,20 @@ namespace imgsaver
                     TxtRawPrompt.Text = System.Windows.Clipboard.GetText();
                     TxtRawPrompt.Focus();
                     TxtRawPrompt.CaretIndex = TxtRawPrompt.Text.Length;
+                }
+            }
+            catch { }
+        }
+
+        private void BtnExtraPasteRaw_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (System.Windows.Clipboard.ContainsText())
+                {
+                    TxtExtraRawPrompt.Text = System.Windows.Clipboard.GetText();
+                    TxtExtraRawPrompt.Focus();
+                    TxtExtraRawPrompt.CaretIndex = TxtExtraRawPrompt.Text.Length;
                 }
             }
             catch { }
@@ -305,6 +473,20 @@ namespace imgsaver
                 _promptView.Filter = PromptFilter;
                 ComboBasePrompts.ItemsSource = _promptView;
             };
+            editorWindow.Show();
+        }
+
+        private void BtnExtraSaveRaw_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(TxtExtraRawPrompt.Text))
+            {
+                CustomMessageBox.Show("Please enter some text in the raw prompt box before saving it as an extra template.", "Validation", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var editorWindow = new ExtraPromptEditorWindow(initialPromptText: TxtExtraRawPrompt.Text);
+            editorWindow.Owner = this;
+            editorWindow.Closed += (s, args) => RefreshExtraPrompts();
             editorWindow.Show();
         }
 
@@ -339,6 +521,11 @@ namespace imgsaver
             catch (Exception ex) { CustomMessageBox.Show($"Backup failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
 
+        private void BtnExtraBackupData_Click(object sender, RoutedEventArgs e)
+        {
+            BtnBackupData_Click(sender, e);
+        }
+
         private void CharacterList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CharacterList.SelectedItem is CharacterPersona selectedPersona)
@@ -347,6 +534,17 @@ namespace imgsaver
                 PerformInjection(selectedPersona);
                 if (TxtCurrentCharacterName != null) TxtCurrentCharacterName.Text = selectedPersona.ShortName ?? "Unknown";
                 CharacterList.SelectedItem = null;
+            }
+        }
+
+        private void ExtraList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ExtraList.SelectedItem is ExtraItem selectedExtra)
+            {
+                _currentExtra = selectedExtra;
+                PerformExtraInjection(selectedExtra);
+                if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = selectedExtra.ShortName ?? "Unknown";
+                ExtraList.SelectedItem = null;
             }
         }
 
@@ -382,6 +580,15 @@ namespace imgsaver
             }
         }
 
+        private void BtnStarExtraPrompt_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is string id)
+            {
+                ExtraPromptManager.ToggleFavorite(id);
+                _extraPromptView.Refresh();
+            }
+        }
+
         private void BtnEditPrompt_Click(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button btn && btn.Tag is string id)
@@ -401,12 +608,32 @@ namespace imgsaver
             }
         }
 
+        private void BtnEditExtraPrompt_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is string id)
+            {
+                var editorWindow = new ExtraPromptEditorWindow(promptId: id);
+                editorWindow.Owner = this;
+                editorWindow.Closed += (s, args) => RefreshExtraPrompts();
+                editorWindow.Show();
+            }
+        }
+
         private void BtnStarCharacter_Click(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button btn && btn.Tag is string id)
             {
                 CharacterManager.ToggleFavorite(id);
                 _characterView.Refresh();
+            }
+        }
+
+        private void BtnStarExtra_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is string id)
+            {
+                ExtraManager.ToggleFavorite(id);
+                _extraView.Refresh();
             }
         }
 
@@ -425,6 +652,17 @@ namespace imgsaver
                     _characterView.Filter = CharacterFilter;
                     CharacterList.ItemsSource = _characterView;
                 };
+                editorWindow.Show();
+            }
+        }
+
+        private void BtnEditExtra_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is string id)
+            {
+                var editorWindow = new ExtraItemEditorWindow(extraId: id);
+                editorWindow.Owner = this;
+                editorWindow.Closed += (s, args) => RefreshExtras();
                 editorWindow.Show();
             }
         }
@@ -449,6 +687,24 @@ namespace imgsaver
             TxtCurrentPromptName.Text = $"Source: {randomPrompt.Name}";
         }
 
+        private void BtnExtraRandomPrompt_Click(object sender, RoutedEventArgs e)
+        {
+            var pool = ExtraPromptManager.GetAll();
+            if (ShouldOnlyRandomizeFavorites())
+            {
+                var favorites = pool.Where(p => p.IsFavorite).ToList();
+                if (favorites.Count == 0) return;
+                pool = favorites;
+            }
+            if (pool.Count == 0) return;
+            var randomPrompt = pool[_random.Next(pool.Count)];
+            _currentExtraPrompt = randomPrompt;
+            _isSettingExtraPrompt = true;
+            TxtExtraRawPrompt.Text = randomPrompt.PromptText;
+            _isSettingExtraPrompt = false;
+            TxtCurrentExtraPromptName.Text = $"Source: {randomPrompt.Name}";
+        }
+
         private void BtnRandomCharacter_Click(object sender, RoutedEventArgs e)
         {
             var pool = CharacterManager.GetAll();
@@ -465,7 +721,31 @@ namespace imgsaver
             if (TxtCurrentCharacterName != null) TxtCurrentCharacterName.Text = randomCharacter.ShortName ?? "Unknown";
         }
 
+        private void BtnRandomExtra_Click(object sender, RoutedEventArgs e)
+        {
+            var pool = ExtraManager.GetAll();
+            if (ShouldOnlyRandomizeFavorites())
+            {
+                var favorites = pool.Where(c => c.IsFavorite).ToList();
+                if (favorites.Count == 0) return;
+                pool = favorites;
+            }
+            if (pool.Count == 0) return;
+            var randomExtra = pool[_random.Next(pool.Count)];
+            _currentExtra = randomExtra;
+            PerformExtraInjection(randomExtra);
+            if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = randomExtra.ShortName ?? "Unknown";
+        }
+
         private void BtnRandomBoth_Click(object sender, RoutedEventArgs e) => PerformRandomBoth();
+
+        private void BtnRandomExtraBoth_Click(object sender, RoutedEventArgs e) => PerformRandomExtraBoth();
+
+        public void PerformRandomForCurrentTab()
+        {
+            if (MainTabControl?.SelectedIndex == 1) PerformRandomExtraBoth();
+            else PerformRandomBoth();
+        }
 
         public void PerformRandomBoth()
         {
@@ -510,6 +790,49 @@ namespace imgsaver
             }
         }
 
+        public void PerformRandomExtraBoth()
+        {
+            var promptPool = ExtraPromptManager.GetAll();
+            var extraPool = ExtraManager.GetAll();
+            if (ShouldOnlyRandomizeFavorites())
+            {
+                var favPrompts = promptPool.Where(p => p.IsFavorite).ToList();
+                var favExtras = extraPool.Where(c => c.IsFavorite).ToList();
+                if (favPrompts.Count == 0 || favExtras.Count == 0) return;
+                promptPool = favPrompts; extraPool = favExtras;
+            }
+            if (promptPool.Count == 0 || extraPool.Count == 0) return;
+            if (!_isExtraPromptLocked)
+            {
+                var randomPrompt = promptPool[_random.Next(promptPool.Count)];
+                _currentExtraPrompt = randomPrompt;
+                _isSettingExtraPrompt = true;
+                TxtExtraRawPrompt.Text = randomPrompt.PromptText;
+                _isSettingExtraPrompt = false;
+                TxtCurrentExtraPromptName.Text = $"Source: {randomPrompt.Name}";
+            }
+            if (!_isExtraLocked)
+            {
+                var randomExtra = extraPool[_random.Next(extraPool.Count)];
+                _currentExtra = randomExtra;
+                if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = randomExtra.ShortName ?? "Unknown";
+            }
+            if (_currentExtra != null) PerformExtraInjection(_currentExtra);
+            string outputText = TxtExtraFinalOutput.Text;
+            if (!string.IsNullOrWhiteSpace(outputText) && !outputText.StartsWith("Select an extra") && !outputText.StartsWith("⚠"))
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(outputText);
+                    string extraName = _currentExtra?.ShortName ?? "Unknown";
+                    string promptName = _currentExtraPrompt?.Name ?? "Unknown";
+                    ClipboardMetadata.Set(extraName, promptName);
+                    ShowExtraCopyFeedback();
+                }
+                catch { }
+            }
+        }
+
         private void BtnCopyTitle_Click(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button btn && btn.Tag is string text)
@@ -544,6 +867,27 @@ namespace imgsaver
             ResetCopyFeedback();
         }
 
+        private void PerformExtraInjection(ExtraItem extra)
+        {
+            string rawPrompt = TxtExtraRawPrompt.Text;
+            if (!rawPrompt.Contains(ExtraPlaceholderTag))
+            {
+                TxtExtraFinalOutput.Text = $"⚠ No '{ExtraPlaceholderTag}' placeholder found in the raw prompt.\n\nClick the '📌 Insert [extra]' button to add the placeholder at your cursor position.";
+                TxtExtraFinalOutput.Foreground = (System.Windows.Media.Brush)FindResource("WarningBrush");
+                return;
+            }
+            string extraText = extra.Text;
+            if (ChkExtraNameOnly.IsChecked == true)
+            {
+                int commaIndex = extraText.IndexOf(',');
+                if (commaIndex > 0) extraText = extraText.Substring(0, commaIndex).Trim();
+            }
+            string result = rawPrompt.Replace(ExtraPlaceholderTag, extraText);
+            TxtExtraFinalOutput.Text = result;
+            TxtExtraFinalOutput.Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush");
+            ResetExtraCopyFeedback();
+        }
+
         private void OutputBorder_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             string outputText = TxtFinalOutput.Text;
@@ -560,11 +904,34 @@ namespace imgsaver
             catch { }
         }
 
+        private void ExtraOutputBorder_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            string outputText = TxtExtraFinalOutput.Text;
+            if (string.IsNullOrWhiteSpace(outputText) || outputText.StartsWith("Select an extra") || outputText.StartsWith("⚠")) return;
+            try
+            {
+                System.Windows.Clipboard.SetText(outputText);
+                string extraName = TxtCurrentExtraName?.Text ?? "";
+                string promptName = TxtCurrentExtraPromptName?.Text ?? "";
+                if (promptName.StartsWith("Source: ")) promptName = promptName.Replace("Source: ", "").Trim();
+                ClipboardMetadata.Set(extraName, promptName);
+                ShowExtraCopyFeedback();
+            }
+            catch { }
+        }
+
         private void ShowCopyFeedback()
         {
             TxtOutputLabel.Visibility = Visibility.Collapsed;
             TxtCopiedFeedback.Visibility = Visibility.Visible;
             AnimateGreenBlink();
+        }
+
+        private void ShowExtraCopyFeedback()
+        {
+            TxtExtraOutputLabel.Visibility = Visibility.Collapsed;
+            TxtExtraCopiedFeedback.Visibility = Visibility.Visible;
+            AnimateExtraGreenBlink();
         }
 
         private void AnimateGreenBlink()
@@ -575,6 +942,18 @@ namespace imgsaver
             OutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("SuccessBrush");
             OutputBorder.BorderThickness = new Thickness(2);
             _feedbackTimer.Start();
+        }
+
+        private bool _isExtraBlinking = false;
+
+        private void AnimateExtraGreenBlink()
+        {
+            _isExtraBlinking = true;
+            _extraFeedbackTimer.Stop();
+            _extraFeedbackTimer.Interval = TimeSpan.FromMilliseconds(500);
+            ExtraOutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("SuccessBrush");
+            ExtraOutputBorder.BorderThickness = new Thickness(2);
+            _extraFeedbackTimer.Start();
         }
 
         private void FeedbackTimer_Tick(object? sender, EventArgs e)
@@ -593,10 +972,32 @@ namespace imgsaver
             }
         }
 
+        private void ExtraFeedbackTimer_Tick(object? sender, EventArgs e)
+        {
+            _extraFeedbackTimer.Stop();
+            _isExtraBlinking = false;
+            if (ExtraOutputBorder.IsMouseOver)
+            {
+                ExtraOutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("WarningBrush");
+                ExtraOutputBorder.BorderThickness = new Thickness(2);
+            }
+            else
+            {
+                ExtraOutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
+                ExtraOutputBorder.BorderThickness = new Thickness(1);
+            }
+        }
+
         private void ResetCopyFeedback()
         {
             TxtOutputLabel.Visibility = Visibility.Visible;
             TxtCopiedFeedback.Visibility = Visibility.Collapsed;
+        }
+
+        private void ResetExtraCopyFeedback()
+        {
+            TxtExtraOutputLabel.Visibility = Visibility.Visible;
+            TxtExtraCopiedFeedback.Visibility = Visibility.Collapsed;
         }
 
         private void OutputBorder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -610,11 +1011,29 @@ namespace imgsaver
             }
         }
 
+        private void ExtraOutputBorder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (_isExtraBlinking) return;
+            string outputText = TxtExtraFinalOutput.Text;
+            if (!string.IsNullOrWhiteSpace(outputText) && !outputText.StartsWith("Select an extra") && !outputText.StartsWith("⚠"))
+            {
+                ExtraOutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("WarningBrush");
+                ExtraOutputBorder.BorderThickness = new Thickness(2);
+            }
+        }
+
         private void OutputBorder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
         {
             if (_isBlinking) return;
             OutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
             OutputBorder.BorderThickness = new Thickness(1);
+        }
+
+        private void ExtraOutputBorder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (_isExtraBlinking) return;
+            ExtraOutputBorder.BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
+            ExtraOutputBorder.BorderThickness = new Thickness(1);
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -629,8 +1048,12 @@ namespace imgsaver
         {
             ComboBasePrompts.ItemsSource = null;
             CharacterList.ItemsSource = null;
+            ExtraBasePrompts.ItemsSource = null;
+            ExtraList.ItemsSource = null;
             CharacterManager.Unload();
             BasePromptManager.Unload();
+            ExtraManager.Unload();
+            ExtraPromptManager.Unload();
             base.OnClosing(e);
         }
 
@@ -654,6 +1077,40 @@ namespace imgsaver
             _isCharacterLocked = !_isCharacterLocked;
             TxtLockCharacterIcon.Text = _isCharacterLocked ? "🔒" : "🔓";
             BtnLockCharacter.Background = _isCharacterLocked ? (System.Windows.Media.Brush)FindResource("SelectedBrush") : System.Windows.Media.Brushes.Transparent;
+        }
+
+        private void BtnExtraLockPrompt_Click(object sender, RoutedEventArgs e)
+        {
+            _isExtraPromptLocked = !_isExtraPromptLocked;
+            TxtExtraLockPromptIcon.Text = _isExtraPromptLocked ? "🔒" : "🔓";
+            BtnExtraLockPrompt.Background = _isExtraPromptLocked ? (System.Windows.Media.Brush)FindResource("SelectedBrush") : System.Windows.Media.Brushes.Transparent;
+        }
+
+        private void BtnLockExtra_Click(object sender, RoutedEventArgs e)
+        {
+            _isExtraLocked = !_isExtraLocked;
+            TxtLockExtraIcon.Text = _isExtraLocked ? "🔒" : "🔓";
+            BtnLockExtra.Background = _isExtraLocked ? (System.Windows.Media.Brush)FindResource("SelectedBrush") : System.Windows.Media.Brushes.Transparent;
+        }
+
+        private void RefreshExtraPrompts()
+        {
+            ExtraPromptManager.Load();
+            _extraPromptView = CollectionViewSource.GetDefaultView(ExtraPromptManager.GetAll());
+            _extraPromptView.SortDescriptions.Add(new SortDescription("IsFavorite", ListSortDirection.Descending));
+            _extraPromptView.SortDescriptions.Add(new SortDescription("LastModified", ListSortDirection.Descending));
+            _extraPromptView.Filter = ExtraPromptFilter;
+            ExtraBasePrompts.ItemsSource = _extraPromptView;
+        }
+
+        private void RefreshExtras()
+        {
+            ExtraManager.Load();
+            _extraView = CollectionViewSource.GetDefaultView(ExtraManager.GetAll());
+            _extraView.SortDescriptions.Add(new SortDescription("IsFavorite", ListSortDirection.Descending));
+            _extraView.SortDescriptions.Add(new SortDescription("ShortName", ListSortDirection.Ascending));
+            _extraView.Filter = ExtraFilter;
+            ExtraList.ItemsSource = _extraView;
         }
     }
 }

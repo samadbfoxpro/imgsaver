@@ -82,6 +82,52 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1,1,1,0"
+                                CornerRadius="6,6,0,0"
+                                Margin="0,0,6,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="ContentSite"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabPanel">
+            <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+        </Style>
     </Window.Resources>
 
     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Background="{StaticResource BackgroundBrush}">
@@ -119,355 +165,712 @@
             </Border>
 
             <!-- Main Content -->
-            <Grid Grid.Row="1" Margin="16,12,16,16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <!-- Header -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Base Prompt Section Header -->
-                    <RowDefinition Height="100"/>
-                    <!-- Base Prompt List (Compact) -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Raw Prompt Label + Insert Button -->
-                    <RowDefinition Height="120"/>
-                    <!-- Raw Prompt -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Character Section Buttons -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Character Search Header -->
-                    <RowDefinition Height="*"/>
-                    <!-- Character List -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Output Label -->
-                    <RowDefinition Height="120"/>
-                    <!-- Output Field -->
-                </Grid.RowDefinitions>
-
-                <!-- 1. Header -->
-                <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                    <TextBlock Text="PROMPT PERSONA INJECTOR" FontSize="20" FontWeight="SemiBold" 
-                               Foreground="{StaticResource ForegroundBrush}" 
-                               HorizontalAlignment="Center"/>
-                    <TextBlock Text="Use [character] placeholder • Click template/character to inject • Click output to copy" FontSize="12" 
-                               Foreground="{StaticResource ForegroundMutedBrush}"
-                               HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                </StackPanel>
-
-                <!-- 2. Base Prompt Section Header -->
-                <Grid Grid.Row="1" Margin="0,0,0,6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="BASE PROMPT TEMPLATES" Foreground="{StaticResource SuccessBrush}" 
-                               FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtSearchPrompts" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
-                             TextChanged="TxtSearchPrompts_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Setter Property="Tag" Value="🔍 Search templates..."/>
-                            </Style>
-                        </TextBox.Style>
-                    </TextBox>
-                    <Button x:Name="BtnLockPrompt" Grid.Column="2" Click="BtnLockPrompt_Click"
-                            Padding="8,4" FontSize="13" Margin="0,0,8,0" ToolTip="Lock current template">
-                        <TextBlock x:Name="TxtLockPromptIcon" Text="🔓"/>
-                    </Button>
-                    <Button x:Name="BtnRandomPrompt" Grid.Column="3" Content="🎲 Random" 
-                            Click="BtnRandomPrompt_Click" Padding="12,4" FontSize="13" Margin="0,0,8,0"
-                            ToolTip="Select random base prompt"/>
-                    <Button x:Name="BtnManagePrompts" Grid.Column="4" Content="⚙️ Manage Templates" 
-                            Click="BtnManagePrompts_Click" Padding="12,4" FontSize="13"
-                            Background="{StaticResource PrimaryBrush}"/>
-                </Grid>
-
-                <!-- 3. Base Prompt List (Compact 2-Column) -->
-                <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
-                    <ListBox x:Name="ComboBasePrompts" SelectionChanged="ComboBasePrompts_SelectionChanged"
-                             Background="Transparent" BorderThickness="0"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" VerticalAlignment="Top"/>
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <!-- Star -->
-                                        <ColumnDefinition Width="*"/>
-                                        <!-- Name -->
-                                        <ColumnDefinition Width="Auto"/>
-                                        <!-- Copy -->
-                                        <ColumnDefinition Width="Auto"/>
-                                        <!-- Edit -->
-                                    </Grid.ColumnDefinitions>
-
-                                    <Button Grid.Column="0" Click="BtnStarPrompt_Click" Tag="{Binding Id}"
-                                            Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
-                                        <TextBlock Text="{Binding IsFavorite, Converter={StaticResource BooleanToStarConverter}}" 
-                                                   Foreground="{Binding IsFavorite, Converter={StaticResource BooleanToStarBrushConverter}}" 
-                                                   FontSize="14"/>
-                                    </Button>
-
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
-                                               Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="4,0"/>
-
-                                    <Button Grid.Column="2" Click="BtnCopyTitle_Click" Tag="{Binding Name}"
-                                            Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Copy Name">
-                                        <TextBlock Text="📋" FontSize="11" Opacity="0.5"/>
-                                    </Button>
-
-                                    <Button Grid.Column="3" Click="BtnEditPrompt_Click" Tag="{Binding Id}"
-                                            Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Edit Template">
-                                        <TextBlock Text="✏️" FontSize="11" Opacity="0.5"/>
-                                    </Button>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="Padding" Value="8,4"/>
-                                <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <Border x:Name="border" Background="{TemplateBinding Background}" 
-                                                    Padding="{TemplateBinding Padding}" CornerRadius="4">
-                                                <ContentPresenter/>
+            <TabControl x:Name="MainTabControl" Grid.Row="1" Margin="16,12,16,16"
+                        Background="{StaticResource BackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrush}">
+                <TabItem Header="Persona">
+                    <Grid Grid.Row="1" Margin="16,12,16,16" Background="{StaticResource BackgroundBrush}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Header -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Base Prompt Section Header -->
+                                        <RowDefinition Height="100"/>
+                                        <!-- Base Prompt List (Compact) -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Raw Prompt Label + Insert Button -->
+                                        <RowDefinition Height="120"/>
+                                        <!-- Raw Prompt -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Character Section Buttons -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Character Search Header -->
+                                        <RowDefinition Height="*"/>
+                                        <!-- Character List -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Output Label -->
+                                        <RowDefinition Height="120"/>
+                                        <!-- Output Field -->
+                                    </Grid.RowDefinitions>
+                    
+                                    <!-- 1. Header -->
+                                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                                        <TextBlock Text="PROMPT PERSONA INJECTOR" FontSize="20" FontWeight="SemiBold" 
+                                                   Foreground="{StaticResource ForegroundBrush}" 
+                                                   HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Use [character] placeholder • Click template/character to inject • Click output to copy" FontSize="12" 
+                                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                                   HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                    
+                                    <!-- 2. Base Prompt Section Header -->
+                                    <Grid Grid.Row="1" Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="BASE PROMPT TEMPLATES" Foreground="{StaticResource SuccessBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="TxtSearchPrompts" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
+                                                 TextChanged="TxtSearchPrompts_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                    <Setter Property="Tag" Value="🔍 Search templates..."/>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <Button x:Name="BtnLockPrompt" Grid.Column="2" Click="BtnLockPrompt_Click"
+                                                Padding="8,4" FontSize="13" Margin="0,0,8,0" ToolTip="Lock current template">
+                                            <TextBlock x:Name="TxtLockPromptIcon" Text="🔓"/>
+                                        </Button>
+                                        <Button x:Name="BtnRandomPrompt" Grid.Column="3" Content="🎲 Random" 
+                                                Click="BtnRandomPrompt_Click" Padding="12,4" FontSize="13" Margin="0,0,8,0"
+                                                ToolTip="Select random base prompt"/>
+                                        <Button x:Name="BtnManagePrompts" Grid.Column="4" Content="⚙️ Manage Templates" 
+                                                Click="BtnManagePrompts_Click" Padding="12,4" FontSize="13"
+                                                Background="{StaticResource PrimaryBrush}"/>
+                                    </Grid>
+                    
+                                    <!-- 3. Base Prompt List (Compact 2-Column) -->
+                                    <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                                        <ListBox x:Name="ComboBasePrompts" SelectionChanged="ComboBasePrompts_SelectionChanged"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Star -->
+                                                            <ColumnDefinition Width="*"/>
+                                                            <!-- Name -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Copy -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Edit -->
+                                                        </Grid.ColumnDefinitions>
+                    
+                                                        <Button Grid.Column="0" Click="BtnStarPrompt_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
+                                                            <TextBlock Text="{Binding IsFavorite, Converter={StaticResource BooleanToStarConverter}}" 
+                                                                       Foreground="{Binding IsFavorite, Converter={StaticResource BooleanToStarBrushConverter}}" 
+                                                                       FontSize="14"/>
+                                                        </Button>
+                    
+                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+                                                                   Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                    
+                                                        <Button Grid.Column="2" Click="BtnCopyTitle_Click" Tag="{Binding Name}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Copy Name">
+                                                            <TextBlock Text="📋" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                    
+                                                        <Button Grid.Column="3" Click="BtnEditPrompt_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Edit Template">
+                                                            <TextBlock Text="✏️" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Padding" Value="8,4"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                                                        Padding="{TemplateBinding Padding}" CornerRadius="4">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                        </ListBox>
+                                    </Border>
+                    
+                                    <!-- 4. Raw Prompt Label + Insert Button -->
+                                    <Grid Grid.Row="3" Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="RAW PROMPT" Foreground="{StaticResource AccentBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                    
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                            <Button x:Name="BtnClearRaw" Content="🗑️ Clear" Click="BtnClearRaw_Click"
+                                                    Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
+                                            <Button x:Name="BtnPasteRaw" Content="📋 Paste &amp; Replace" Click="BtnPasteRaw_Click"
+                                                    Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
+                                            <Button x:Name="BtnSaveRaw" Content="💾 Save" Click="BtnSaveRaw_Click"
+                                                    Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
+                                            <Button x:Name="BtnInsertTag" Content="📌 Insert [character]" Click="BtnInsertTag_Click"
+                                                    Padding="12,4" FontSize="13"/>
+                                        </StackPanel>
+                                    </Grid>
+                    
+                                    <!-- 5. Raw Prompt Field -->
+                                    <TextBox x:Name="TxtRawPrompt" Grid.Row="4" AcceptsReturn="True" TextWrapping="Wrap" 
+                                             VerticalScrollBarVisibility="Auto" Padding="10" VerticalContentAlignment="Top" FontSize="14"
+                                             Text="Hello [character], please help me with the following task:"
+                                             TextChanged="TxtRawPrompt_TextChanged"/>
+                    
+                                    <!-- Selected Prompt Indicator -->
+                                    <Border Grid.Row="4" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                                            Background="#CC222222" CornerRadius="12,0,0,0" Padding="12,4" Margin="1"
+                                            Cursor="Hand" MouseLeftButtonDown="Indicator_MouseLeftButtonDown"
+                                            ToolTip="Click to Copy Name">
+                                        <TextBlock x:Name="TxtCurrentPromptName" Text="" Foreground="#FFD700" 
+                                                   FontSize="11" FontStyle="Italic" FontWeight="SemiBold"/>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=TxtCurrentPromptName}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                    
+                                    <!-- 6. Character Section Buttons -->
+                                    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,4">
+                                        <CheckBox x:Name="ChkNameOnly" Content="Name Only" VerticalAlignment="Center" Margin="0,0,12,0" 
+                                                    Foreground="{StaticResource ForegroundMutedBrush}"
+                                                    ToolTip="Only inject text before the first comma (e.g. 'Name from Source')"/>
+                                        <Button x:Name="BtnRandomCharacter" Content="🎲 Random" Click="BtnRandomCharacter_Click"
+                                                Padding="12,4" FontSize="13" Margin="0,0,8,0"
+                                                ToolTip="Select random character"/>
+                                        <Button x:Name="BtnRandomBoth" Content="🎲 Random Both" Click="BtnRandomBoth_Click"
+                                                Padding="12,4" FontSize="13" Margin="0,0,12,0"
+                                                ToolTip="Select random prompt and character"/>
+                                        <Button x:Name="BtnManage" Content="⚙️ Character Editor" Click="BtnManage_Click"
+                                                Padding="12,4" FontSize="13" Margin="0,0,12,0"
+                                                Background="{StaticResource PrimaryBrush}"/>
+                                        <Button x:Name="BtnBackupData" Content="📦 Backup Data" Click="BtnBackupData_Click"
+                                                Style="{StaticResource DarkYellowButtonStyle}"
+                                                Padding="12,4" FontSize="13"
+                                                ToolTip="Zip all JSON data files and move to Share folder"/>
+                                    </StackPanel>
+                    
+                                    <!-- 7. Character Search Header -->
+                                    <Grid Grid.Row="6" Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="CHARACTER LIBRARY" Foreground="{StaticResource WarningBrush}" 
+                                                    FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="TxtSearch" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
+                                                 TextChanged="TxtSearch_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                    <Setter Property="Tag" Value="🔍 Search characters..."/>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <Button x:Name="BtnLockCharacter" Grid.Column="2" Click="BtnLockCharacter_Click"
+                                                Padding="8,4" FontSize="13" ToolTip="Lock current character">
+                                            <TextBlock x:Name="TxtLockCharacterIcon" Text="🔓"/>
+                                        </Button>
+                                    </Grid>
+                    
+                                    <!-- 8. Character List (2-Column) -->
+                                    <Border Grid.Row="7" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <ListBox x:Name="CharacterList" SelectionChanged="CharacterList_SelectionChanged"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Star -->
+                                                            <ColumnDefinition Width="*"/>
+                                                            <!-- Name -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Copy -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Edit -->
+                                                        </Grid.ColumnDefinitions>
+                    
+                                                        <Button Grid.Column="0" Click="BtnStarCharacter_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
+                                                            <TextBlock Text="{Binding IsFavorite, Converter={StaticResource BooleanToStarConverter}}" 
+                                                                       Foreground="{Binding IsFavorite, Converter={StaticResource BooleanToStarBrushConverter}}" 
+                                                                       FontSize="14"/>
+                                                        </Button>
+                    
+                                                        <TextBlock Grid.Column="1" Text="{Binding ShortName}" FontWeight="SemiBold" FontSize="14"
+                                                                   Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                    
+                                                        <Button Grid.Column="2" Click="BtnCopyTitle_Click" Tag="{Binding ShortName}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Copy Name">
+                                                            <TextBlock Text="📋" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                    
+                                                        <Button Grid.Column="3" Click="BtnEditCharacter_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Edit Character">
+                                                            <TextBlock Text="✏️" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Padding" Value="8,4"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                                                        Padding="{TemplateBinding Padding}" CornerRadius="4">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                        </ListBox>
+                                    </Border>
+                    
+                                    <!-- 9. Output Label -->
+                                    <Grid Grid.Row="8" Margin="0,12,0,4">
+                                        <TextBlock x:Name="TxtOutputLabel" Text="FINAL OUTPUT (Click to Copy)" Foreground="{StaticResource SuccessBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtCopiedFeedback" Text="✓ Copied to Clipboard" Foreground="{StaticResource SuccessBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                    </Grid>
+                    
+                                    <!-- 10. Final Output Field -->
+                                    <Border x:Name="OutputBorder" Grid.Row="9" 
+                                            Background="{StaticResource InputBrush}" 
+                                            BorderBrush="{StaticResource BorderBrush}" 
+                                            BorderThickness="1" CornerRadius="4"
+                                            Cursor="Hand" 
+                                            PreviewMouseLeftButtonDown="OutputBorder_PreviewMouseLeftButtonDown"
+                                            MouseEnter="OutputBorder_MouseEnter"
+                                            MouseLeave="OutputBorder_MouseLeave">
+                                        <Grid>
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="10">
+                                                <TextBlock x:Name="TxtFinalOutput" TextWrapping="Wrap" 
+                                                           Foreground="{StaticResource ForegroundBrush}" 
+                                                           FontSize="14" IsHitTestVisible="False"
+                                                           Text="Select a character from the list above to generate output..."/>
+                                            </ScrollViewer>
+                    
+                                            <!-- Selected Character Indicator -->
+                                            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                                                    Background="#CC222222" CornerRadius="12,0,0,0" Padding="12,4" Margin="1"
+                                                    Cursor="Hand" MouseLeftButtonDown="Indicator_MouseLeftButtonDown"
+                                                    ToolTip="Click to Copy Name">
+                                                <TextBlock x:Name="TxtCurrentCharacterName" Text="" Foreground="#FFD700" 
+                                                           FontSize="11" FontStyle="Italic" FontWeight="SemiBold"/>
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Text, ElementName=TxtCurrentCharacterName}" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
                                             </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="border" Property="Background" Value="{StaticResource SelectedBrush}"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                    </ListBox>
-                </Border>
-
-                <!-- 4. Raw Prompt Label + Insert Button -->
-                <Grid Grid.Row="3" Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="RAW PROMPT" Foreground="{StaticResource AccentBrush}" 
-                               FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <Button x:Name="BtnClearRaw" Content="🗑️ Clear" Click="BtnClearRaw_Click"
-                                Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
-                        <Button x:Name="BtnPasteRaw" Content="📋 Paste &amp; Replace" Click="BtnPasteRaw_Click"
-                                Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
-                        <Button x:Name="BtnSaveRaw" Content="💾 Save" Click="BtnSaveRaw_Click"
-                                Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
-                        <Button x:Name="BtnInsertTag" Content="📌 Insert [character]" Click="BtnInsertTag_Click"
-                                Padding="12,4" FontSize="13"/>
-                    </StackPanel>
-                </Grid>
-
-                <!-- 5. Raw Prompt Field -->
-                <TextBox x:Name="TxtRawPrompt" Grid.Row="4" AcceptsReturn="True" TextWrapping="Wrap" 
-                         VerticalScrollBarVisibility="Auto" Padding="10" VerticalContentAlignment="Top" FontSize="14"
-                         Text="Hello [character], please help me with the following task:"
-                         TextChanged="TxtRawPrompt_TextChanged"/>
-
-                <!-- Selected Prompt Indicator -->
-                <Border Grid.Row="4" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
-                        Background="#CC222222" CornerRadius="12,0,0,0" Padding="12,4" Margin="1"
-                        Cursor="Hand" MouseLeftButtonDown="Indicator_MouseLeftButtonDown"
-                        ToolTip="Click to Copy Name">
-                    <TextBlock x:Name="TxtCurrentPromptName" Text="" Foreground="#FFD700" 
-                               FontSize="11" FontStyle="Italic" FontWeight="SemiBold"/>
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Text, ElementName=TxtCurrentPromptName}" Value="">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                </Border>
-
-                <!-- 6. Character Section Buttons -->
-                <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,4">
-                    <CheckBox x:Name="ChkNameOnly" Content="Name Only" VerticalAlignment="Center" Margin="0,0,12,0" 
-                                Foreground="{StaticResource ForegroundMutedBrush}"
-                                ToolTip="Only inject text before the first comma (e.g. 'Name from Source')"/>
-                    <Button x:Name="BtnRandomCharacter" Content="🎲 Random" Click="BtnRandomCharacter_Click"
-                            Padding="12,4" FontSize="13" Margin="0,0,8,0"
-                            ToolTip="Select random character"/>
-                    <Button x:Name="BtnRandomBoth" Content="🎲 Random Both" Click="BtnRandomBoth_Click"
-                            Padding="12,4" FontSize="13" Margin="0,0,12,0"
-                            ToolTip="Select random prompt and character"/>
-                    <Button x:Name="BtnManage" Content="⚙️ Character Editor" Click="BtnManage_Click"
-                            Padding="12,4" FontSize="13" Margin="0,0,12,0"
-                            Background="{StaticResource PrimaryBrush}"/>
-                    <Button x:Name="BtnBackupData" Content="📦 Backup Data" Click="BtnBackupData_Click"
-                            Style="{StaticResource DarkYellowButtonStyle}"
-                            Padding="12,4" FontSize="13"
-                            ToolTip="Zip all JSON data files and move to Share folder"/>
-                </StackPanel>
-
-                <!-- 7. Character Search Header -->
-                <Grid Grid.Row="6" Margin="0,0,0,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="CHARACTER LIBRARY" Foreground="{StaticResource WarningBrush}" 
-                                FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBox x:Name="TxtSearch" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
-                             TextChanged="TxtSearch_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Setter Property="Tag" Value="🔍 Search characters..."/>
-                            </Style>
-                        </TextBox.Style>
-                    </TextBox>
-                    <Button x:Name="BtnLockCharacter" Grid.Column="2" Click="BtnLockCharacter_Click"
-                            Padding="8,4" FontSize="13" ToolTip="Lock current character">
-                        <TextBlock x:Name="TxtLockCharacterIcon" Text="🔓"/>
-                    </Button>
-                </Grid>
-
-                <!-- 8. Character List (2-Column) -->
-                <Border Grid.Row="7" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                    <ListBox x:Name="CharacterList" SelectionChanged="CharacterList_SelectionChanged"
-                             Background="Transparent" BorderThickness="0"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" VerticalAlignment="Top"/>
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <!-- Star -->
-                                        <ColumnDefinition Width="*"/>
-                                        <!-- Name -->
-                                        <ColumnDefinition Width="Auto"/>
-                                        <!-- Copy -->
-                                        <ColumnDefinition Width="Auto"/>
-                                        <!-- Edit -->
-                                    </Grid.ColumnDefinitions>
-
-                                    <Button Grid.Column="0" Click="BtnStarCharacter_Click" Tag="{Binding Id}"
-                                            Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
-                                        <TextBlock Text="{Binding IsFavorite, Converter={StaticResource BooleanToStarConverter}}" 
-                                                   Foreground="{Binding IsFavorite, Converter={StaticResource BooleanToStarBrushConverter}}" 
-                                                   FontSize="14"/>
-                                    </Button>
-
-                                    <TextBlock Grid.Column="1" Text="{Binding ShortName}" FontWeight="SemiBold" FontSize="14"
-                                               Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="4,0"/>
-
-                                    <Button Grid.Column="2" Click="BtnCopyTitle_Click" Tag="{Binding ShortName}"
-                                            Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Copy Name">
-                                        <TextBlock Text="📋" FontSize="11" Opacity="0.5"/>
-                                    </Button>
-
-                                    <Button Grid.Column="3" Click="BtnEditCharacter_Click" Tag="{Binding Id}"
-                                            Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Edit Character">
-                                        <TextBlock Text="✏️" FontSize="11" Opacity="0.5"/>
-                                    </Button>
+                                        </Grid>
+                                    </Border>
                                 </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                        <ListBox.ItemContainerStyle>
-                            <Style TargetType="ListBoxItem">
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="Padding" Value="8,4"/>
-                                <Setter Property="Cursor" Value="Hand"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ListBoxItem">
-                                            <Border x:Name="border" Background="{TemplateBinding Background}" 
-                                                    Padding="{TemplateBinding Padding}" CornerRadius="4">
-                                                <ContentPresenter/>
+                </TabItem>
+                <TabItem Header="Extra">
+                    <Grid Grid.Row="1" Margin="16,12,16,16" Background="{StaticResource BackgroundBrush}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Header -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Base Prompt Section Header -->
+                                        <RowDefinition Height="100"/>
+                                        <!-- Base Prompt List (Compact) -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Raw Prompt Label + Insert Button -->
+                                        <RowDefinition Height="120"/>
+                                        <!-- Raw Prompt -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Character Section Buttons -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Character Search Header -->
+                                        <RowDefinition Height="*"/>
+                                        <!-- Character List -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Output Label -->
+                                        <RowDefinition Height="120"/>
+                                        <!-- Output Field -->
+                                    </Grid.RowDefinitions>
+                    
+                                    <!-- 1. Header -->
+                                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                                        <TextBlock Text="PROMPT EXTRA INJECTOR" FontSize="20" FontWeight="SemiBold" 
+                                                   Foreground="{StaticResource ForegroundBrush}" 
+                                                   HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Use [extra] placeholder • Click template/extra to inject • Click output to copy" FontSize="12" 
+                                                   Foreground="{StaticResource ForegroundMutedBrush}"
+                                                   HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                    
+                                    <!-- 2. Base Prompt Section Header -->
+                                    <Grid Grid.Row="1" Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="EXTRA PROMPT TEMPLATES" Foreground="{StaticResource SuccessBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="TxtExtraSearchPrompts" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
+                                                 TextChanged="TxtExtraSearchPrompts_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                    <Setter Property="Tag" Value="🔍 Search extra templates..."/>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <Button x:Name="BtnExtraLockPrompt" Grid.Column="2" Click="BtnExtraLockPrompt_Click"
+                                                Padding="8,4" FontSize="13" Margin="0,0,8,0" ToolTip="Lock current template">
+                                            <TextBlock x:Name="TxtExtraLockPromptIcon" Text="🔓"/>
+                                        </Button>
+                                        <Button x:Name="BtnExtraRandomPrompt" Grid.Column="3" Content="🎲 Random" 
+                                                Click="BtnExtraRandomPrompt_Click" Padding="12,4" FontSize="13" Margin="0,0,8,0"
+                                                ToolTip="Select random base prompt"/>
+                                        <Button x:Name="BtnManageExtraPrompts" Grid.Column="4" Content="⚙️ Manage Extra Templates" 
+                                                Click="BtnManageExtraPrompts_Click" Padding="12,4" FontSize="13"
+                                                Background="{StaticResource PrimaryBrush}"/>
+                                    </Grid>
+                    
+                                    <!-- 3. Base Prompt List (Compact 2-Column) -->
+                                    <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                                        <ListBox x:Name="ExtraBasePrompts" SelectionChanged="ExtraBasePrompts_SelectionChanged"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Star -->
+                                                            <ColumnDefinition Width="*"/>
+                                                            <!-- Name -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Copy -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Edit -->
+                                                        </Grid.ColumnDefinitions>
+                    
+                                                        <Button Grid.Column="0" Click="BtnStarExtraPrompt_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
+                                                            <TextBlock Text="{Binding IsFavorite, Converter={StaticResource BooleanToStarConverter}}" 
+                                                                       Foreground="{Binding IsFavorite, Converter={StaticResource BooleanToStarBrushConverter}}" 
+                                                                       FontSize="14"/>
+                                                        </Button>
+                    
+                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+                                                                   Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                    
+                                                        <Button Grid.Column="2" Click="BtnCopyTitle_Click" Tag="{Binding Name}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Copy Name">
+                                                            <TextBlock Text="📋" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                    
+                                                        <Button Grid.Column="3" Click="BtnEditExtraPrompt_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Edit Template">
+                                                            <TextBlock Text="✏️" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Padding" Value="8,4"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                                                        Padding="{TemplateBinding Padding}" CornerRadius="4">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                        </ListBox>
+                                    </Border>
+                    
+                                    <!-- 4. Raw Prompt Label + Insert Button -->
+                                    <Grid Grid.Row="3" Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="RAW PROMPT" Foreground="{StaticResource AccentBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                    
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                            <Button x:Name="BtnExtraClearRaw" Content="🗑️ Clear" Click="BtnExtraClearRaw_Click"
+                                                    Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
+                                            <Button x:Name="BtnExtraPasteRaw" Content="📋 Paste &amp; Replace" Click="BtnExtraPasteRaw_Click"
+                                                    Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
+                                            <Button x:Name="BtnExtraSaveRaw" Content="💾 Save" Click="BtnExtraSaveRaw_Click"
+                                                    Margin="0,0,8,0" Padding="12,4" FontSize="13"/>
+                                            <Button x:Name="BtnInsertExtraTag" Content="📌 Insert [extra]" Click="BtnInsertExtraTag_Click"
+                                                    Padding="12,4" FontSize="13"/>
+                                        </StackPanel>
+                                    </Grid>
+                    
+                                    <!-- 5. Raw Prompt Field -->
+                                    <TextBox x:Name="TxtExtraRawPrompt" Grid.Row="4" AcceptsReturn="True" TextWrapping="Wrap" 
+                                             VerticalScrollBarVisibility="Auto" Padding="10" VerticalContentAlignment="Top" FontSize="14"
+                                             Text="tree color [extra] on ground."
+                                             TextChanged="TxtExtraRawPrompt_TextChanged"/>
+                    
+                                    <!-- Selected Prompt Indicator -->
+                                    <Border Grid.Row="4" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                                            Background="#CC222222" CornerRadius="12,0,0,0" Padding="12,4" Margin="1"
+                                            Cursor="Hand" MouseLeftButtonDown="Indicator_MouseLeftButtonDown"
+                                            ToolTip="Click to Copy Name">
+                                        <TextBlock x:Name="TxtCurrentExtraPromptName" Text="" Foreground="#FFD700" 
+                                                   FontSize="11" FontStyle="Italic" FontWeight="SemiBold"/>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=TxtCurrentExtraPromptName}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                    
+                                    <!-- 6. Character Section Buttons -->
+                                    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,4">
+                                        <CheckBox x:Name="ChkExtraNameOnly" Content="Text Only" VerticalAlignment="Center" Margin="0,0,12,0" 
+                                                    Foreground="{StaticResource ForegroundMutedBrush}"
+                                                    ToolTip="Only inject text before the first comma (e.g. 'Name from Source')"/>
+                                        <Button x:Name="BtnRandomExtra" Content="🎲 Random" Click="BtnRandomExtra_Click"
+                                                Padding="12,4" FontSize="13" Margin="0,0,8,0"
+                                                ToolTip="Select random extra"/>
+                                        <Button x:Name="BtnRandomExtraBoth" Content="🎲 Random Both" Click="BtnRandomExtraBoth_Click"
+                                                Padding="12,4" FontSize="13" Margin="0,0,12,0"
+                                                ToolTip="Select random prompt and character"/>
+                                        <Button x:Name="BtnManageExtra" Content="⚙️ Extra Editor" Click="BtnManageExtra_Click"
+                                                Padding="12,4" FontSize="13" Margin="0,0,12,0"
+                                                Background="{StaticResource PrimaryBrush}"/>
+                                        <Button x:Name="BtnExtraBackupData" Content="📦 Backup Data" Click="BtnExtraBackupData_Click"
+                                                Style="{StaticResource DarkYellowButtonStyle}"
+                                                Padding="12,4" FontSize="13"
+                                                ToolTip="Zip all JSON data files and move to Share folder"/>
+                                    </StackPanel>
+                    
+                                    <!-- 7. Character Search Header -->
+                                    <Grid Grid.Row="6" Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="EXTRA LIBRARY" Foreground="{StaticResource WarningBrush}" 
+                                                    FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="TxtExtraSearch" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
+                                                 TextChanged="TxtSearch_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                    <Setter Property="Tag" Value="🔍 Search extras..."/>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <Button x:Name="BtnLockExtra" Grid.Column="2" Click="BtnLockExtra_Click"
+                                                Padding="8,4" FontSize="13" ToolTip="Lock current extra">
+                                            <TextBlock x:Name="TxtLockExtraIcon" Text="🔓"/>
+                                        </Button>
+                                    </Grid>
+                    
+                                    <!-- 8. Character List (2-Column) -->
+                                    <Border Grid.Row="7" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <ListBox x:Name="ExtraList" SelectionChanged="ExtraList_SelectionChanged"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Star -->
+                                                            <ColumnDefinition Width="*"/>
+                                                            <!-- Name -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Copy -->
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <!-- Edit -->
+                                                        </Grid.ColumnDefinitions>
+                    
+                                                        <Button Grid.Column="0" Click="BtnStarExtra_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand">
+                                                            <TextBlock Text="{Binding IsFavorite, Converter={StaticResource BooleanToStarConverter}}" 
+                                                                       Foreground="{Binding IsFavorite, Converter={StaticResource BooleanToStarBrushConverter}}" 
+                                                                       FontSize="14"/>
+                                                        </Button>
+                    
+                                                        <TextBlock Grid.Column="1" Text="{Binding ShortName}" FontWeight="SemiBold" FontSize="14"
+                                                                   Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                    
+                                                        <Button Grid.Column="2" Click="BtnCopyTitle_Click" Tag="{Binding ShortName}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Copy Name">
+                                                            <TextBlock Text="📋" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                    
+                                                        <Button Grid.Column="3" Click="BtnEditExtra_Click" Tag="{Binding Id}"
+                                                                Background="Transparent" BorderThickness="0" Padding="4" Cursor="Hand" ToolTip="Edit Extra">
+                                                            <TextBlock Text="✏️" FontSize="11" Opacity="0.5"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Padding" Value="8,4"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                                                        Padding="{TemplateBinding Padding}" CornerRadius="4">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource SelectedBrush}"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                        </ListBox>
+                                    </Border>
+                    
+                                    <!-- 9. Output Label -->
+                                    <Grid Grid.Row="8" Margin="0,12,0,4">
+                                        <TextBlock x:Name="TxtExtraOutputLabel" Text="FINAL OUTPUT (Click to Copy)" Foreground="{StaticResource SuccessBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TxtExtraCopiedFeedback" Text="✓ Copied to Clipboard" Foreground="{StaticResource SuccessBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                    </Grid>
+                    
+                                    <!-- 10. Final Output Field -->
+                                    <Border x:Name="ExtraOutputBorder" Grid.Row="9" 
+                                            Background="{StaticResource InputBrush}" 
+                                            BorderBrush="{StaticResource BorderBrush}" 
+                                            BorderThickness="1" CornerRadius="4"
+                                            Cursor="Hand" 
+                                            PreviewMouseLeftButtonDown="ExtraOutputBorder_PreviewMouseLeftButtonDown"
+                                            MouseEnter="ExtraOutputBorder_MouseEnter"
+                                            MouseLeave="ExtraOutputBorder_MouseLeave">
+                                        <Grid>
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="10">
+                                                <TextBlock x:Name="TxtExtraFinalOutput" TextWrapping="Wrap" 
+                                                           Foreground="{StaticResource ForegroundBrush}" 
+                                                           FontSize="14" IsHitTestVisible="False"
+                                                           Text="Select an extra from the list above to generate output..."/>
+                                            </ScrollViewer>
+                    
+                                            <!-- Selected Character Indicator -->
+                                            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                                                    Background="#CC222222" CornerRadius="12,0,0,0" Padding="12,4" Margin="1"
+                                                    Cursor="Hand" MouseLeftButtonDown="Indicator_MouseLeftButtonDown"
+                                                    ToolTip="Click to Copy Name">
+                                                <TextBlock x:Name="TxtCurrentExtraName" Text="" Foreground="#FFD700" 
+                                                           FontSize="11" FontStyle="Italic" FontWeight="SemiBold"/>
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Text, ElementName=TxtCurrentExtraName}" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
                                             </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="border" Property="Background" Value="{StaticResource SelectedBrush}"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="border" Property="Background" Value="{StaticResource HoverBrush}"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </ListBox.ItemContainerStyle>
-                    </ListBox>
-                </Border>
-
-                <!-- 9. Output Label -->
-                <Grid Grid.Row="8" Margin="0,12,0,4">
-                    <TextBlock x:Name="TxtOutputLabel" Text="FINAL OUTPUT (Click to Copy)" Foreground="{StaticResource SuccessBrush}" 
-                               FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="TxtCopiedFeedback" Text="✓ Copied to Clipboard" Foreground="{StaticResource SuccessBrush}" 
-                               FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Visibility="Collapsed"/>
-                </Grid>
-
-                <!-- 10. Final Output Field -->
-                <Border x:Name="OutputBorder" Grid.Row="9" 
-                        Background="{StaticResource InputBrush}" 
-                        BorderBrush="{StaticResource BorderBrush}" 
-                        BorderThickness="1" CornerRadius="4"
-                        Cursor="Hand" 
-                        PreviewMouseLeftButtonDown="OutputBorder_PreviewMouseLeftButtonDown"
-                        MouseEnter="OutputBorder_MouseEnter"
-                        MouseLeave="OutputBorder_MouseLeave">
-                    <Grid>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="10">
-                            <TextBlock x:Name="TxtFinalOutput" TextWrapping="Wrap" 
-                                       Foreground="{StaticResource ForegroundBrush}" 
-                                       FontSize="14" IsHitTestVisible="False"
-                                       Text="Select a character from the list above to generate output..."/>
-                        </ScrollViewer>
-
-                        <!-- Selected Character Indicator -->
-                        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" 
-                                Background="#CC222222" CornerRadius="12,0,0,0" Padding="12,4" Margin="1"
-                                Cursor="Hand" MouseLeftButtonDown="Indicator_MouseLeftButtonDown"
-                                ToolTip="Click to Copy Name">
-                            <TextBlock x:Name="TxtCurrentCharacterName" Text="" Foreground="#FFD700" 
-                                       FontSize="11" FontStyle="Italic" FontWeight="SemiBold"/>
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Text, ElementName=TxtCurrentCharacterName}" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                        </Border>
-                    </Grid>
-                </Border>
-            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                </TabItem>
+            </TabControl>
             <!-- Loading Overlay - قبل از </Grid> آخر اضافه کن -->
             <Border x:Name="LoadingOverlay" Grid.RowSpan="2" 
         Background="#DD000000" 
