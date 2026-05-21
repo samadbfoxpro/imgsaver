@@ -162,7 +162,7 @@
                                                             <TextBlock Grid.Column="1" Text="{Binding ProgressText}" FontSize="10" FontWeight="SemiBold" Foreground="#8ee6ff"/>
 
                                                             <Border Grid.Row="1" Grid.ColumnSpan="2" Height="7" Margin="0,6,0,4" Background="#0c2538" CornerRadius="3.5" ClipToBounds="True">
-                                                                <Border Background="#63e883" CornerRadius="3.5">
+                                                                <Border Background="#63e883" CornerRadius="3.5" HorizontalAlignment="Left">
                                                                     <Border.Width>
                                                                         <MultiBinding Converter="{StaticResource ProgressToWidthConverter}">
                                                                             <Binding Path="Progress"/>

@@ -182,8 +182,6 @@
                         <Button Content="TUTORIAL" Tag="🎓" Click="BtnTutorial_Click" Style="{StaticResource NavButtonStyle}"/>
                         <Button Content="INPUT RECORDER" Tag="⏺️" Click="BtnOpenRecorder_Click" Style="{StaticResource NavButtonStyle}"/>
                         <Button Content="SETTINGS" Tag="⚙️" Click="BtnSettings_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="NETWORK SCANNER" Tag="🌐" Click="BtnNetworkScanner_Click" Style="{StaticResource NavButtonStyle}"
-                                Background="#005A9E" Foreground="White"/>
                     </UniformGrid>
                 </Grid>
 
