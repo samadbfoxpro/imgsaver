@@ -833,6 +833,33 @@ namespace imgsaver
             }
         }
 
+        public bool TryGetCurrentExtraText(out string extraText, out string errorMessage)
+        {
+            extraText = "";
+            errorMessage = "";
+
+            if (_currentExtra == null || string.IsNullOrWhiteSpace(_currentExtra.Text))
+            {
+                errorMessage = "Persona Injector must be open and an Extra item must be selected.";
+                return false;
+            }
+
+            extraText = _currentExtra.Text;
+            if (ChkExtraNameOnly.IsChecked == true)
+            {
+                int commaIndex = extraText.IndexOf(',');
+                if (commaIndex > 0) extraText = extraText.Substring(0, commaIndex).Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(extraText))
+            {
+                errorMessage = "The selected Extra text is empty.";
+                return false;
+            }
+
+            return true;
+        }
+
         private void BtnCopyTitle_Click(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.Button btn && btn.Tag is string text)

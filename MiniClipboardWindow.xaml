@@ -392,6 +392,18 @@
                         </Style>
                     </StackPanel.Style>
 
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
                     <UniformGrid Columns="3" Rows="2">
                         <Button x:Name="BtnPlayRec" Click="BtnPlayRec_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Play Last Recording (Ctrl + E)">
                             <Button.Template>
@@ -499,6 +511,90 @@
                             </Button.Template>
                         </Button>
                     </UniformGrid>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <UniformGrid Columns="3" Rows="2">
+                            <Button x:Name="BtnCaptureExtraTemplate" Click="BtnCaptureExtraTemplate_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Capture clipboard template with [extra]">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                            <TextBlock x:Name="txt" Text="GET TXT" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnCopyExtraTemplateOutput" Click="BtnCopyExtraTemplateOutput_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Copy template with selected Persona Injector Extra">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                            <TextBlock x:Name="txt" Text="COPY EX" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </UniformGrid>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                        <Button Click="BtnExtraMenuPageOne_Click" Width="12" Height="12" Margin="3,0" Cursor="Hand" ToolTip="Page 1">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Ellipse x:Name="dot" Width="7" Height="7" Fill="#555"/>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="dot" Property="Fill" Value="#AAA"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="0">
+                                            <Setter TargetName="dot" Property="Width" Value="8"/>
+                                            <Setter TargetName="dot" Property="Height" Value="8"/>
+                                            <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <Button Click="BtnExtraMenuPageTwo_Click" Width="12" Height="12" Margin="3,0" Cursor="Hand" ToolTip="Page 2">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Ellipse x:Name="dot" Width="7" Height="7" Fill="#555"/>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="dot" Property="Fill" Value="#AAA"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+                                            <Setter TargetName="dot" Property="Width" Value="8"/>
+                                            <Setter TargetName="dot" Property="Height" Value="8"/>
+                                            <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </Grid>

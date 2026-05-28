@@ -38,6 +38,8 @@ namespace imgsaver
         private DateTime _lastClipboardTime = DateTime.MinValue;
         private bool _isSaving = false;
         private int _nextMiniSlot = 1;
+        private const string MiniExtraPlaceholderTag = "[extra]";
+        private string _miniExtraTemplate = "";
 
         // Auto-Save Settings
         private bool _autoSaveEnabled = false;
@@ -99,6 +101,15 @@ namespace imgsaver
         {
             get { return (bool)GetValue(IsExtraMenuOpenProperty); }
             set { SetValue(IsExtraMenuOpenProperty, value); }
+        }
+
+        public static readonly DependencyProperty ExtraMenuPageProperty =
+            DependencyProperty.Register("ExtraMenuPage", typeof(int), typeof(MiniClipboardWindow), new PropertyMetadata(0));
+
+        public int ExtraMenuPage
+        {
+            get { return (int)GetValue(ExtraMenuPageProperty); }
+            set { SetValue(ExtraMenuPageProperty, value); }
         }
 
         public static readonly DependencyProperty IsAdditionalTitleEnabledProperty =
@@ -614,6 +625,101 @@ namespace imgsaver
         private void BtnLockAdditionalTitle_Click(object sender, RoutedEventArgs e) => IsAdditionalTitleLocked = !IsAdditionalTitleLocked;
         private void BtnLockTitle_Click(object sender, RoutedEventArgs e) => IsTitleLocked = !IsTitleLocked;
         private void BtnToggleMenu_Click(object sender, RoutedEventArgs e) => IsExtraMenuOpen = !IsExtraMenuOpen;
+        private void BtnExtraMenuPageOne_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 0;
+        private void BtnExtraMenuPageTwo_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 1;
+        private void BtnCaptureExtraTemplate_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!System.Windows.Clipboard.ContainsText())
+                {
+                    CustomMessageBox.Show("Clipboard does not contain text.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var text = System.Windows.Clipboard.GetText();
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    CustomMessageBox.Show("Clipboard text is empty.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (!text.Contains(MiniExtraPlaceholderTag, StringComparison.OrdinalIgnoreCase))
+                {
+                    _miniExtraTemplate = "";
+                    SetMiniExtraButtonState(false);
+                    CustomMessageBox.Show("Template must contain the [extra] tag.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                _miniExtraTemplate = text;
+                SetMiniExtraButtonState(true);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.Message, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnCopyExtraTemplateOutput_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_miniExtraTemplate))
+                {
+                    CustomMessageBox.Show("First capture a clipboard template that contains [extra].", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var injector = GetOpenPersonaInjector();
+                if (injector == null)
+                {
+                    CustomMessageBox.Show("Open Persona Injector and select an Extra item first.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (!injector.TryGetCurrentExtraText(out var extraText, out var errorMessage))
+                {
+                    CustomMessageBox.Show(errorMessage, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var output = _miniExtraTemplate.Replace(MiniExtraPlaceholderTag, extraText, StringComparison.OrdinalIgnoreCase);
+                System.Windows.Clipboard.SetText(output);
+                _miniExtraTemplate = "";
+                SetMiniExtraButtonState(false);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.Message, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private PersonaInjectorWindow GetOpenPersonaInjector()
+        {
+            foreach (Window w in System.Windows.Application.Current.Windows)
+            {
+                if (w is PersonaInjectorWindow injector) return injector;
+            }
+
+            return null;
+        }
+
+        private void SetMiniExtraButtonState(bool hasTemplate)
+        {
+            if (BtnCaptureExtraTemplate?.Template.FindName("txt", BtnCaptureExtraTemplate) is TextBlock captureText)
+                captureText.Foreground = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
+
+            if (BtnCopyExtraTemplateOutput?.Template.FindName("txt", BtnCopyExtraTemplateOutput) is TextBlock copyText)
+                copyText.Foreground = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
+
+            if (BtnCaptureExtraTemplate?.Template.FindName("bd", BtnCaptureExtraTemplate) is Border captureBorder)
+                captureBorder.BorderBrush = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush");
+
+            if (BtnCopyExtraTemplateOutput?.Template.FindName("bd", BtnCopyExtraTemplateOutput) is Border copyBorder)
+                copyBorder.BorderBrush = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush");
+        }
+
         private void BtnReset_Click(object sender, RoutedEventArgs e) => ResetState();
         private void BtnSaveBasePrompt_Click(object sender, RoutedEventArgs e) => IsSaveBasePromptEnabled = !IsSaveBasePromptEnabled;
         private void BtnAutoFill_Click(object sender, RoutedEventArgs e) => IsAutoFillEnabled = !IsAutoFillEnabled;
