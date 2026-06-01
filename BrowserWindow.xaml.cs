@@ -16,6 +16,8 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using System.Windows.Threading;
 using System.Threading;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace imgsaver
 {
@@ -47,6 +49,9 @@ namespace imgsaver
         private string _previousProxyPort = "";
         private bool _previousProxyEnabled = false;
         private string _previousProxyType = "http";
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
 
         public BrowserWindow()
         {
@@ -471,6 +476,17 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         {
             if (BrowserTabs.SelectedItem is TabItem tab && tab.Content is WebView2 webView) return webView;
             return null;
+        }
+
+        public bool IsCurrentWebViewTarget()
+        {
+            if (!IsVisible || WindowState == WindowState.Minimized) return false;
+
+            var helper = new WindowInteropHelper(this);
+            if (helper.Handle == IntPtr.Zero || GetForegroundWindow() != helper.Handle) return false;
+
+            var browser = GetCurrentBrowser();
+            return browser != null && TxtUrl?.IsKeyboardFocusWithin != true;
         }
 
         private void InjectSnippetHelperScript(WebView2 webView)

@@ -555,6 +555,21 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
+
+                            <Button x:Name="BtnBrowserQuickPaste" Click="BtnBrowserQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Browser-only Ctrl trigger: Ctrl+A, then Ctrl+V">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                            <TextBlock x:Name="txt" Text="BR PASTE" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
                         </UniformGrid>
                     </Grid>
 

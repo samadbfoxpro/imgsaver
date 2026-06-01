@@ -31,6 +31,7 @@ namespace imgsaver
                     if (lines.Length > 3) TxtAutoImportPath.Text = lines[3].Trim();
                     if (lines.Length > 4) ChkAutoSaveEnabled.IsChecked = lines[4].Trim().ToLower() == "true";
                     if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
+                    if (lines.Length > 6) ChkAutoCaptureExtraTemplate.IsChecked = lines[6].Trim().ToLower() == "true";
                 }
 
                 // Load minimum image dimensions from BrowserSettings
@@ -60,6 +61,7 @@ namespace imgsaver
                 string autoImportPath = TxtAutoImportPath.Text.Trim();
                 string autoSaveEnabled = (ChkAutoSaveEnabled.IsChecked == true).ToString().ToLower();
                 string autoSaveCount = TxtAutoSaveCount.Text.Trim();
+                string autoCaptureExtraTemplate = (ChkAutoCaptureExtraTemplate.IsChecked == true).ToString().ToLower();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
 
                 File.WriteAllLines(configPath, new string[] {
@@ -68,7 +70,8 @@ namespace imgsaver
                     autoImportEnabled,
                     autoImportPath,
                     autoSaveEnabled,
-                    autoSaveCount
+                    autoSaveCount,
+                    autoCaptureExtraTemplate
                 });
 
                 // Save minimum image dimensions to BrowserSettings

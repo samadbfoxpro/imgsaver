@@ -710,6 +710,7 @@
                                     <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,4">
                                         <CheckBox x:Name="ChkExtraNameOnly" Content="Text Only" VerticalAlignment="Center" Margin="0,0,12,0" 
                                                     Foreground="{StaticResource ForegroundMutedBrush}"
+                                                    Checked="ChkExtraNameOnly_Changed" Unchecked="ChkExtraNameOnly_Changed"
                                                     ToolTip="Only inject text before the first comma (e.g. 'Name from Source')"/>
                                         <Button x:Name="BtnRandomExtra" Content="🎲 Random" Click="BtnRandomExtra_Click"
                                                 Padding="12,4" FontSize="13" Margin="0,0,8,0"

@@ -543,6 +543,7 @@ namespace imgsaver
             {
                 _currentExtra = selectedExtra;
                 PerformExtraInjection(selectedExtra);
+                SaveCurrentExtraSelection();
                 if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = selectedExtra.ShortName ?? "Unknown";
                 ExtraList.SelectedItem = null;
             }
@@ -734,6 +735,7 @@ namespace imgsaver
             var randomExtra = pool[_random.Next(pool.Count)];
             _currentExtra = randomExtra;
             PerformExtraInjection(randomExtra);
+            SaveCurrentExtraSelection();
             if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = randomExtra.ShortName ?? "Unknown";
         }
 
@@ -817,7 +819,11 @@ namespace imgsaver
                 _currentExtra = randomExtra;
                 if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = randomExtra.ShortName ?? "Unknown";
             }
-            if (_currentExtra != null) PerformExtraInjection(_currentExtra);
+            if (_currentExtra != null)
+            {
+                PerformExtraInjection(_currentExtra);
+                SaveCurrentExtraSelection();
+            }
             string outputText = TxtExtraFinalOutput.Text;
             if (!string.IsNullOrWhiteSpace(outputText) && !outputText.StartsWith("Select an extra") && !outputText.StartsWith("⚠"))
             {
@@ -847,8 +853,7 @@ namespace imgsaver
             extraText = _currentExtra.Text;
             if (ChkExtraNameOnly.IsChecked == true)
             {
-                int commaIndex = extraText.IndexOf(',');
-                if (commaIndex > 0) extraText = extraText.Substring(0, commaIndex).Trim();
+                extraText = LastExtraSelectionStore.ApplyTextOnly(extraText, true);
             }
 
             if (string.IsNullOrWhiteSpace(extraText))
@@ -858,6 +863,18 @@ namespace imgsaver
             }
 
             return true;
+        }
+
+        private void SaveCurrentExtraSelection()
+        {
+            if (_currentExtra == null) return;
+            LastExtraSelectionStore.Save(_currentExtra, ChkExtraNameOnly.IsChecked == true);
+        }
+
+        private void ChkExtraNameOnly_Changed(object sender, RoutedEventArgs e)
+        {
+            SaveCurrentExtraSelection();
+            if (_currentExtra != null) PerformExtraInjection(_currentExtra);
         }
 
         private void BtnCopyTitle_Click(object sender, RoutedEventArgs e)

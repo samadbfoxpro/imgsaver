@@ -44,10 +44,13 @@ namespace imgsaver
         // Auto-Save Settings
         private bool _autoSaveEnabled = false;
         private int _autoSaveThreshold = 1;
+        private bool _autoCaptureExtraTemplate = false;
 
         private DispatcherTimer _netTimer;
         private long _lastBytesReceived = 0;
         private long _lastBytesSent = 0;
+        private bool _isBrowserQuickPasteEnabled = false;
+        private bool _isBrowserQuickPasteRunning = false;
 
         public static readonly DependencyProperty IsDisabledProperty =
             DependencyProperty.Register("IsDisabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
@@ -218,6 +221,7 @@ namespace imgsaver
                 // Load Auto-Save Settings
                 if (lines.Length > 4) _autoSaveEnabled = lines[4].Trim().ToLower() == "true";
                 if (lines.Length > 5 && int.TryParse(lines[5].Trim(), out int threshold)) _autoSaveThreshold = threshold;
+                _autoCaptureExtraTemplate = lines.Length > 6 && lines[6].Trim().ToLower() == "true";
 
                 if (lines.Length < 4) return;
 
@@ -328,6 +332,12 @@ namespace imgsaver
 
         private void GlobalHook_OnKeyPressed(System.Windows.Forms.Keys key)
         {
+            if (key == System.Windows.Forms.Keys.ControlKey || key == System.Windows.Forms.Keys.LControlKey || key == System.Windows.Forms.Keys.RControlKey)
+            {
+                Dispatcher.Invoke(() => TriggerBrowserQuickPasteIfReady());
+                return;
+            }
+
             bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & System.Windows.Forms.Keys.Control) == System.Windows.Forms.Keys.Control;
             if (ctrlPressed)
             {
@@ -426,6 +436,11 @@ namespace imgsaver
                 else if (System.Windows.Clipboard.ContainsText())
                 {
                     string rawText = System.Windows.Clipboard.GetText();
+                    if (_autoCaptureExtraTemplate && TrySetMiniExtraTemplate(rawText))
+                    {
+                        return;
+                    }
+
                     if (Regex.IsMatch(rawText, @"[\u0600-\u06FF]"))
                     {
                         if (!IsTitleLocked)
@@ -638,27 +653,29 @@ namespace imgsaver
                 }
 
                 var text = System.Windows.Clipboard.GetText();
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    CustomMessageBox.Show("Clipboard text is empty.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
+                if (TrySetMiniExtraTemplate(text)) return;
 
-                if (!text.Contains(MiniExtraPlaceholderTag, StringComparison.OrdinalIgnoreCase))
-                {
-                    _miniExtraTemplate = "";
-                    SetMiniExtraButtonState(false);
-                    CustomMessageBox.Show("Template must contain the [extra] tag.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                _miniExtraTemplate = text;
-                SetMiniExtraButtonState(true);
+                _miniExtraTemplate = "";
+                SetMiniExtraButtonState(false);
+                string message = string.IsNullOrWhiteSpace(text)
+                    ? "Clipboard text is empty."
+                    : "Template must contain the [extra] tag.";
+                CustomMessageBox.Show(message, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
                 CustomMessageBox.Show(ex.Message, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private bool TrySetMiniExtraTemplate(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            if (!text.Contains(MiniExtraPlaceholderTag, StringComparison.OrdinalIgnoreCase)) return false;
+
+            _miniExtraTemplate = text;
+            SetMiniExtraButtonState(true);
+            return true;
         }
 
         private void BtnCopyExtraTemplateOutput_Click(object sender, RoutedEventArgs e)
@@ -671,14 +688,7 @@ namespace imgsaver
                     return;
                 }
 
-                var injector = GetOpenPersonaInjector();
-                if (injector == null)
-                {
-                    CustomMessageBox.Show("Open Persona Injector and select an Extra item first.", "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (!injector.TryGetCurrentExtraText(out var extraText, out var errorMessage))
+                if (!TryGetLatestExtraText(out var extraText, out var errorMessage))
                 {
                     CustomMessageBox.Show(errorMessage, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
@@ -686,13 +696,26 @@ namespace imgsaver
 
                 var output = _miniExtraTemplate.Replace(MiniExtraPlaceholderTag, extraText, StringComparison.OrdinalIgnoreCase);
                 System.Windows.Clipboard.SetText(output);
-                _miniExtraTemplate = "";
-                SetMiniExtraButtonState(false);
+                SetMiniExtraButtonState(true);
             }
             catch (Exception ex)
             {
                 CustomMessageBox.Show(ex.Message, "Extra Template", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private bool TryGetLatestExtraText(out string extraText, out string errorMessage)
+        {
+            extraText = "";
+            errorMessage = "";
+
+            var injector = GetOpenPersonaInjector();
+            if (injector != null && injector.TryGetCurrentExtraText(out extraText, out errorMessage))
+            {
+                return true;
+            }
+
+            return LastExtraSelectionStore.TryGetText(out extraText, out errorMessage);
         }
 
         private PersonaInjectorWindow GetOpenPersonaInjector()
@@ -723,6 +746,55 @@ namespace imgsaver
         private void BtnReset_Click(object sender, RoutedEventArgs e) => ResetState();
         private void BtnSaveBasePrompt_Click(object sender, RoutedEventArgs e) => IsSaveBasePromptEnabled = !IsSaveBasePromptEnabled;
         private void BtnAutoFill_Click(object sender, RoutedEventArgs e) => IsAutoFillEnabled = !IsAutoFillEnabled;
+        private void BtnBrowserQuickPaste_Click(object sender, RoutedEventArgs e) => SetBrowserQuickPasteEnabled(!_isBrowserQuickPasteEnabled);
+
+        private async void TriggerBrowserQuickPasteIfReady()
+        {
+            if (!_isBrowserQuickPasteEnabled || _isBrowserQuickPasteRunning) return;
+            if (!IsBrowserWebViewTargetActive()) return;
+
+            _isBrowserQuickPasteRunning = true;
+            try
+            {
+                await Task.Delay(50);
+                if (!IsBrowserWebViewTargetActive()) return;
+                InputSimulator.SimulateSelectAll();
+                await Task.Delay(500);
+                if (!IsBrowserWebViewTargetActive()) return;
+                InputSimulator.SimulatePaste();
+            }
+            finally
+            {
+                _isBrowserQuickPasteRunning = false;
+            }
+        }
+
+        private bool IsBrowserWebViewTargetActive()
+        {
+            foreach (Window w in System.Windows.Application.Current.Windows)
+            {
+                if (w is BrowserWindow browser && browser.IsCurrentWebViewTarget()) return true;
+            }
+
+            return false;
+        }
+
+        private void SetBrowserQuickPasteEnabled(bool enabled)
+        {
+            _isBrowserQuickPasteEnabled = enabled;
+            SetToggleButtonState(BtnBrowserQuickPaste, _isBrowserQuickPasteEnabled, "#89D185");
+        }
+
+        private void SetToggleButtonState(System.Windows.Controls.Button button, bool isEnabled, string activeColor)
+        {
+            var activeBrush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(activeColor));
+
+            if (button?.Template.FindName("txt", button) is TextBlock text)
+                text.Foreground = isEnabled ? activeBrush : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
+
+            if (button?.Template.FindName("bd", button) is Border border)
+                border.BorderBrush = isEnabled ? activeBrush : (System.Windows.Media.Brush)FindResource("BorderBrush");
+        }
 
         private async void BtnPlayRec_Click(object sender, RoutedEventArgs e)
         {

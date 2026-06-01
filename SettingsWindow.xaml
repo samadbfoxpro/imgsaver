@@ -37,6 +37,9 @@
                     <TextBlock Text="Mini-Clip Auto-Save" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
                     <CheckBox x:Name="ChkAutoSaveEnabled" Content="Auto-Save when Prompts &amp; Title are ready" 
                               Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"/>
+                    <CheckBox x:Name="ChkAutoCaptureExtraTemplate" Content="Auto Get Text for Extra templates with [extra]" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
+                              ToolTip="When Mini-Clip sees copied text containing [extra], it replaces the previous extra template automatically."/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="Images to collect before saving:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
                         <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="50" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
