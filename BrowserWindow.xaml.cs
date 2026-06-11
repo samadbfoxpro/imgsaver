@@ -870,7 +870,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             if (IsHostNoCached(uri)) return;
 
             if (IsCacheableExtension(lowerUri) || IsImageResponse(e.Response))
-                await SaveCacheResponseAsync(uri, e.Response, size);
+                await SaveCacheResponseAsync(sender as CoreWebView2, uri, e.Response, size);
         }
 
         private bool HasAttachmentDisposition(CoreWebView2WebResourceResponseView response)
@@ -884,7 +884,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             catch { return false; }
         }
 
-        private async Task SaveCacheResponseAsync(string uri, CoreWebView2WebResourceResponseView response, long contentLength)
+        private async Task SaveCacheResponseAsync(CoreWebView2? coreWebView2, string uri, CoreWebView2WebResourceResponseView response, long contentLength)
         {
             try
             {
@@ -893,7 +893,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 if (ShouldSkipDiskCache(response, contentLength))
                 {
                     if (shouldImportImage)
-                        await SaveTemporaryImageImportAsync(uri, response);
+                        await SaveTemporaryImageImportAsync(coreWebView2, uri, response);
                     return;
                 }
 
@@ -902,7 +902,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 if (File.Exists(cachePath))
                 {
                     if (shouldImportImage)
-                        await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+                        await ImportImageToMiniClipAsync(coreWebView2, uri, cachePath);
                     return;
                 }
 
@@ -930,7 +930,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     File.Delete(tempPath);
 
                 if (shouldImportImage)
-                    await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+                    await ImportImageToMiniClipAsync(coreWebView2, uri, cachePath);
             }
             catch { }
         }
@@ -979,12 +979,11 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             return values;
         }
 
-        private async Task SaveTemporaryImageImportAsync(string uri, CoreWebView2WebResourceResponseView response)
+        private async Task SaveTemporaryImageImportAsync(CoreWebView2? coreWebView2, string uri, CoreWebView2WebResourceResponseView response)
         {
             try
             {
                 if (_miniClipImportedImageUris.Contains(uri)) return;
-                _miniClipImportedImageUris.Add(uri);
 
                 Directory.CreateDirectory(_miniClipImportFolder);
                 string tempPath = Path.Combine(_miniClipImportFolder, $"{CreateStableHash(uri)}{GetExtensionFromResponse(response)}");
@@ -1002,7 +1001,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     }
                 }
 
-                await TryImportCachedImageToMiniClipAsync(uri, tempPath);
+                await ImportImageToMiniClipAsync(coreWebView2, uri, tempPath);
             }
             catch { }
         }
@@ -1012,6 +1011,78 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             using MD5 md5 = MD5.Create();
             byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(value));
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
+        private async Task ImportImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath)
+        {
+            if (IsAiWorkflowImageContext(coreWebView2, uri))
+                await TryImportDomConfirmedImageToMiniClipAsync(coreWebView2, uri, cachePath);
+            else
+                await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+        }
+
+        private async Task TryImportDomConfirmedImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath)
+        {
+            try
+            {
+                await Task.Delay(4000);
+                if (!await IsImageLoadedInCurrentPageAsync(coreWebView2, uri)) return;
+                await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+            }
+            catch { }
+        }
+
+        private bool IsAiWorkflowImageContext(CoreWebView2? coreWebView2, string uri)
+        {
+            try
+            {
+                string pageUrl = coreWebView2?.Source ?? "";
+                string title = coreWebView2?.DocumentTitle ?? "";
+                string combined = $"{pageUrl}\n{title}\n{uri}".ToLowerInvariant();
+
+                return combined.Contains("comfyui") ||
+                       combined.Contains("comfy-ui") ||
+                       combined.Contains("/workflow") && combined.Contains("seaart.") ||
+                       combined.Contains("/api/view") ||
+                       combined.Contains("/view?");
+            }
+            catch { return false; }
+        }
+
+        private async Task<bool> IsImageLoadedInCurrentPageAsync(CoreWebView2? coreWebView2, string uri)
+        {
+            if (coreWebView2 == null) return true;
+            try
+            {
+                string target = System.Text.Json.JsonSerializer.Serialize(uri);
+                string script = $@"
+(() => {{
+  const target = {target};
+  const minRendered = 96;
+  const normalize = (value) => {{
+    try {{ return new URL(value || '', document.baseURI).href; }}
+    catch {{ return value || ''; }}
+  }};
+  return Array.from(document.images).some(img => {{
+    if (!img.complete || img.naturalWidth <= 0 || img.naturalHeight <= 0) return false;
+    if (normalize(img.currentSrc || img.src) !== target) return false;
+
+    const rect = img.getBoundingClientRect();
+    const style = getComputedStyle(img);
+    return rect.width >= minRendered &&
+      rect.height >= minRendered &&
+      rect.bottom > 0 &&
+      rect.right > 0 &&
+      rect.top < innerHeight &&
+      rect.left < innerWidth &&
+      style.visibility !== 'hidden' &&
+      style.display !== 'none';
+  }});
+}})()";
+                string result = await coreWebView2.ExecuteScriptAsync(script);
+                return result.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return true; }
         }
 
         private async Task TryImportCachedImageToMiniClipAsync(string uri, string cachePath)
