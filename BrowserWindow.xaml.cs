@@ -18,6 +18,7 @@ using System.Windows.Threading;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 
 namespace imgsaver
 {
@@ -35,6 +36,9 @@ namespace imgsaver
         private readonly Dictionary<CoreWebView2, TabItem> _coreWebViewTabMap = new();
         private readonly HashSet<TabItem> _internalNewTabs = new();
         private readonly HashSet<string> _handledDownloadUris = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _miniClipImportedImageUris = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _miniClipImportedImageSignatures = new(StringComparer.OrdinalIgnoreCase);
+        private readonly string _miniClipImportFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_mini_clip_imports");
 
         // Download Manager
         private DownloadManagerService _downloadService = null!;
@@ -884,10 +888,23 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         {
             try
             {
-                if (ShouldSkipDiskCache(response, contentLength)) return;
+                bool isImage = IsImageResponse(response);
+                bool shouldImportImage = isImage && !IsComfyUiTransientImageUri(uri);
+                if (ShouldSkipDiskCache(response, contentLength))
+                {
+                    if (shouldImportImage)
+                        await SaveTemporaryImageImportAsync(uri, response);
+                    return;
+                }
 
                 string? cachePath = GetCacheFilePath(uri, response);
-                if (string.IsNullOrWhiteSpace(cachePath) || File.Exists(cachePath)) return;
+                if (string.IsNullOrWhiteSpace(cachePath)) return;
+                if (File.Exists(cachePath))
+                {
+                    if (shouldImportImage)
+                        await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+                    return;
+                }
 
                 string? dir = Path.GetDirectoryName(cachePath);
                 if (string.IsNullOrWhiteSpace(dir)) return;
@@ -912,8 +929,160 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 else
                     File.Delete(tempPath);
 
+                if (shouldImportImage)
+                    await TryImportCachedImageToMiniClipAsync(uri, cachePath);
             }
             catch { }
+        }
+
+        private bool IsComfyUiTransientImageUri(string uri)
+        {
+            try
+            {
+                var parsedUri = new Uri(uri);
+                string path = parsedUri.AbsolutePath.TrimEnd('/').ToLowerInvariant();
+                if (!path.EndsWith("/view") && !path.EndsWith("/api/view")) return false;
+
+                var query = ParseQueryString(parsedUri.Query);
+                query.TryGetValue("type", out string? type);
+                query.TryGetValue("filename", out string? filename);
+                type ??= "";
+                filename ??= "";
+
+                if (type.Equals("output", StringComparison.OrdinalIgnoreCase)) return false;
+                if (type.Equals("temp", StringComparison.OrdinalIgnoreCase) ||
+                    type.Equals("preview", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                return filename.Contains("temp", StringComparison.OrdinalIgnoreCase) ||
+                       filename.Contains("preview", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
+        private static Dictionary<string, string> ParseQueryString(string query)
+        {
+            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(query)) return values;
+
+            foreach (string part in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] pair = part.Split('=', 2);
+                string key = Uri.UnescapeDataString(pair[0].Replace("+", " "));
+                if (string.IsNullOrWhiteSpace(key)) continue;
+
+                string value = pair.Length > 1
+                    ? Uri.UnescapeDataString(pair[1].Replace("+", " "))
+                    : "";
+                values[key] = value;
+            }
+            return values;
+        }
+
+        private async Task SaveTemporaryImageImportAsync(string uri, CoreWebView2WebResourceResponseView response)
+        {
+            try
+            {
+                if (_miniClipImportedImageUris.Contains(uri)) return;
+                _miniClipImportedImageUris.Add(uri);
+
+                Directory.CreateDirectory(_miniClipImportFolder);
+                string tempPath = Path.Combine(_miniClipImportFolder, $"{CreateStableHash(uri)}{GetExtensionFromResponse(response)}");
+
+                using (var content = await response.GetContentAsync())
+                {
+                    if (content == null) return;
+                    using var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+                    await content.CopyToAsync(output);
+                    if (output.Length == 0 || output.Length > MaxDiskCacheItemBytes)
+                    {
+                        output.Close();
+                        try { File.Delete(tempPath); } catch { }
+                        return;
+                    }
+                }
+
+                await TryImportCachedImageToMiniClipAsync(uri, tempPath);
+            }
+            catch { }
+        }
+
+        private static string CreateStableHash(string value)
+        {
+            using MD5 md5 = MD5.Create();
+            byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(value));
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
+        private async Task TryImportCachedImageToMiniClipAsync(string uri, string cachePath)
+        {
+            try
+            {
+                if (_miniClipImportedImageUris.Contains(uri)) return;
+                if (!File.Exists(cachePath)) return;
+
+                var settings = _currentSettings ?? BrowserSettings.Load();
+                string? imageSignature = GetImageImportSignature(cachePath, settings.MinImageWidth, settings.MinImageHeight);
+                if (string.IsNullOrEmpty(imageSignature)) return;
+                if (_miniClipImportedImageSignatures.Contains(imageSignature)) return;
+
+                _miniClipImportedImageUris.Add(uri);
+                _miniClipImportedImageSignatures.Add(imageSignature);
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var miniClip = GetOpenMiniClipboardWindow();
+                    if (miniClip == null) return;
+
+                    miniClip.ImportBrowserImage(cachePath, settings.MinImageWidth, settings.MinImageHeight);
+                });
+            }
+            catch { }
+        }
+
+        private string? GetImageImportSignature(string path, int minWidth, int minHeight)
+        {
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                var frame = decoder.Frames.FirstOrDefault();
+                if (frame == null || frame.PixelWidth < minWidth || frame.PixelHeight < minHeight) return null;
+
+                BitmapSource source = frame;
+                if (source.Format != PixelFormats.Bgra32)
+                {
+                    var converted = new FormatConvertedBitmap();
+                    converted.BeginInit();
+                    converted.Source = source;
+                    converted.DestinationFormat = PixelFormats.Bgra32;
+                    converted.EndInit();
+                    source = converted;
+                }
+
+                int stride = source.PixelWidth * 4;
+                byte[] pixels = new byte[stride * source.PixelHeight];
+                source.CopyPixels(pixels, stride, 0);
+
+                using MD5 md5 = MD5.Create();
+                byte[] hash = md5.ComputeHash(pixels);
+                return $"{source.PixelWidth}x{source.PixelHeight}:{BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()}";
+            }
+            catch { return null; }
+        }
+
+        private MiniClipboardWindow? GetOpenMiniClipboardWindow()
+        {
+            try
+            {
+                foreach (Window window in System.Windows.Application.Current.Windows)
+                {
+                    if (window is MiniClipboardWindow miniClip && miniClip.IsLoaded)
+                        return miniClip;
+                }
+            }
+            catch { }
+            return null;
         }
 
         private bool IsImageResponse(CoreWebView2WebResourceResponseView response)

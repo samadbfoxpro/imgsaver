@@ -283,6 +283,34 @@ namespace imgsaver
             catch { }
         }
 
+        public void ImportBrowserImage(string filePath, int minWidth, int minHeight)
+        {
+            try
+            {
+                if (IsDisabled || string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) return;
+
+                string ext = Path.GetExtension(filePath).ToLowerInvariant();
+                string[] allowed = { ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif", ".tiff", ".avif" };
+                if (!Array.Exists(allowed, x => x == ext)) return;
+
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(filePath);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze();
+
+                if (bitmap.PixelWidth < minWidth || bitmap.PixelHeight < minHeight) return;
+
+                _capturedImages.Add(new CapturedImageInfo { Bitmap = bitmap, OriginalPath = filePath });
+                _hasImage = true;
+                UpdateImagePreviews();
+                UpdateState();
+                CheckAutoSaveTrigger();
+            }
+            catch { }
+        }
+
         private void StartNetMonitoring()
         {
             _netTimer = new DispatcherTimer();
