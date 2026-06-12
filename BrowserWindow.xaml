@@ -110,9 +110,11 @@
 
             <!-- Tabs and WebView -->
             <Grid Grid.Row="3">
-                <TabControl x:Name="BrowserTabs" Background="Transparent" BorderThickness="0" SelectionChanged="BrowserTabs_SelectionChanged">
+                <TabControl x:Name="BrowserTabs" Background="Transparent" BorderThickness="0" SelectionChanged="BrowserTabs_SelectionChanged"
+                            AllowDrop="True" PreviewMouseMove="BrowserTabs_PreviewMouseMove" DragOver="BrowserTabs_DragOver" Drop="BrowserTabs_Drop">
                     <TabControl.Resources>
                         <Style TargetType="TabItem">
+                            <Setter Property="AllowDrop" Value="True"/>
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">

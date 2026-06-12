@@ -19,6 +19,18 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using WpfDragEventArgs = System.Windows.DragEventArgs;
+using WpfDragDropEffects = System.Windows.DragDropEffects;
+using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
+using WpfOrientation = System.Windows.Controls.Orientation;
+using WpfPanel = System.Windows.Controls.Panel;
+using WpfPoint = System.Windows.Point;
+using WpfTextBox = System.Windows.Controls.TextBox;
+using WpfBrush = System.Windows.Media.Brush;
+using WpfBrushes = System.Windows.Media.Brushes;
+using WpfButton = System.Windows.Controls.Button;
+using WpfColor = System.Windows.Media.Color;
+using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
 
 namespace imgsaver
 {
@@ -34,11 +46,17 @@ namespace imgsaver
         private readonly Dictionary<TabItem, (TextBlock HeaderText, Border LoadingBadge)> _tabHeaderMap = new();
         private readonly Dictionary<TabItem, TabNetworkInfo> _tabNetworkStats = new();
         private readonly Dictionary<CoreWebView2, TabItem> _coreWebViewTabMap = new();
+        private readonly Dictionary<TabItem, BrowserTabState> _tabStates = new();
         private readonly HashSet<TabItem> _internalNewTabs = new();
         private readonly HashSet<string> _handledDownloadUris = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _miniClipImportedImageUris = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _miniClipImportedImageSignatures = new(StringComparer.OrdinalIgnoreCase);
         private readonly string _miniClipImportFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_mini_clip_imports");
+        private TabItem? _pendingSplitSourceTab;
+        private TabItem? _dragSourceTab;
+        private WpfPoint _tabDragStart;
+        private Border? _splitDropHint;
+        private readonly Dictionary<WebView2, WpfTextBox> _splitAddressBars = new();
 
         // Download Manager
         private DownloadManagerService _downloadService = null!;
@@ -83,7 +101,38 @@ namespace imgsaver
 
         private async void InitializeTabs()
         {
-            if (_currentSettings.OpenTabs != null && _currentSettings.OpenTabs.Count > 0)
+            if (_currentSettings.TabSessions != null && _currentSettings.TabSessions.Count > 0)
+            {
+                var restoredTabs = new List<TabItem>();
+                foreach (var tabSession in _currentSettings.TabSessions)
+                {
+                    var tab = await AddNewTab(IsLegacyNewTabUrl(tabSession.Url) ? null : tabSession.Url, selectTab: false, isPinned: tabSession.IsPinned);
+                    if (tab != null)
+                    {
+                        restoredTabs.Add(tab);
+                        if (TryGetTabState(tab, out var state))
+                        {
+                            state.SplitGroupId = tabSession.SplitGroupId;
+                            state.SplitRatio = tabSession.SplitRatio;
+                            state.SplitOrientation = tabSession.SplitOrientation == "Horizontal" ? WpfOrientation.Vertical : WpfOrientation.Horizontal;
+                        }
+                    }
+                }
+
+                foreach (var group in restoredTabs
+                    .Select(t => TryGetTabState(t, out var s) ? s : null)
+                    .Where(s => !string.IsNullOrWhiteSpace(s?.SplitGroupId))
+                    .GroupBy(s => s!.SplitGroupId)
+                    .Where(g => g.Count() >= 2))
+                {
+                    var pair = group.Take(2).ToArray();
+                    if (pair[0]?.Tab != null && pair[1]?.Tab != null)
+                        await OpenSplitViewAsync(pair[0].Tab, pair[1].Tab);
+                }
+
+                BrowserTabs.SelectedIndex = Math.Clamp(_currentSettings.SelectedTabIndex, 0, Math.Max(0, BrowserTabs.Items.Count - 1));
+            }
+            else if (_currentSettings.OpenTabs != null && _currentSettings.OpenTabs.Count > 0)
             {
                 foreach (var url in _currentSettings.OpenTabs)
                 {
@@ -159,9 +208,9 @@ namespace imgsaver
 
             foreach (TabItem tab in BrowserTabs.Items)
             {
-                if (tab.Content is WebView2 webView && webView.Source != null)
+                if (TryGetTabState(tab, out var state) && state.PrimaryWebView?.Source != null)
                 {
-                    urlsToReload.Add(webView.Source.ToString());
+                    urlsToReload.Add(state.PrimaryWebView.Source.ToString());
                     tabsToRemove.Add(tab);
                 }
             }
@@ -169,13 +218,15 @@ namespace imgsaver
             // Remove old tabs and dispose WebView2 controls
             foreach (var tab in tabsToRemove)
             {
-                if (tab.Content is WebView2 oldWebView)
+                if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null)
                 {
-                    if (oldWebView.CoreWebView2 != null) _coreWebViewTabMap.Remove(oldWebView.CoreWebView2);
-                    oldWebView.Dispose();
+                    if (state.PrimaryWebView.CoreWebView2 != null) _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
+                    state.PrimaryWebView.Dispose();
                 }
                 _tabHeaderMap.Remove(tab);
                 _tabNetworkStats.Remove(tab);
+                _tabStates.Remove(tab);
+                _internalNewTabs.Remove(tab);
                 BrowserTabs.Items.Remove(tab);
             }
 
@@ -294,7 +345,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             }
         }
 
-        private async Task AddNewTab(string? url = null)
+        private async Task<TabItem?> AddNewTab(string? url = null, bool selectTab = true, bool isPinned = false)
         {
             try
             {
@@ -332,11 +383,14 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 headerPanel.Children.Add(loadingBadge);
 
                 tabItem.Header = headerPanel;
+                tabItem.ContextMenu = CreateTabContextMenu(tabItem);
+                tabItem.PreviewMouseLeftButtonDown += TabItem_PreviewMouseLeftButtonDown;
                 tabItem.Content = webView;
                 BrowserTabs.Items.Add(tabItem);
-                BrowserTabs.SelectedItem = tabItem;
+                if (selectTab) BrowserTabs.SelectedItem = tabItem;
                 _tabHeaderMap[tabItem] = (headerText, loadingBadge);
                 _tabNetworkStats[tabItem] = new TabNetworkInfo();
+                _tabStates[tabItem] = new BrowserTabState { Tab = tabItem, PrimaryWebView = webView, ActiveWebView = webView, IsPinned = isPinned };
 
                 await _envLock.WaitAsync();
                 try
@@ -434,7 +488,11 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 {
                     string? currentUrl = webView.Source?.ToString();
                     bool isInternalNewTab = _internalNewTabs.Contains(tabItem) && (string.IsNullOrEmpty(currentUrl) || currentUrl == "about:blank");
-                    if (BrowserTabs.SelectedItem == tabItem)
+                    if (_splitAddressBars.TryGetValue(webView, out var splitAddress))
+                    {
+                        splitAddress.Text = isInternalNewTab ? "" : currentUrl ?? "";
+                    }
+                    if (BrowserTabs.SelectedItem == tabItem && GetCurrentBrowser() == webView)
                     {
                         if (TxtUrl != null) TxtUrl.Text = isInternalNewTab ? "" : currentUrl ?? "";
                     }
@@ -448,24 +506,680 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                         UpdateTabHeader(tabItem, icon, title);
                     }
                 };
+                return tabItem;
             }
-            catch (Exception ex) { CustomMessageBox.Show($"Failed to create tab: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); System.Diagnostics.Debug.WriteLine(ex); }
+            catch (Exception ex) { CustomMessageBox.Show($"Failed to create tab: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); System.Diagnostics.Debug.WriteLine(ex); return null; }
         }
+
+        private ContextMenu CreateTabContextMenu(TabItem tabItem)
+        {
+            var menu = new ContextMenu();
+            menu.Opened += (s, e) =>
+            {
+                menu.Items.Clear();
+                var openSplit = new MenuItem { Header = _pendingSplitSourceTab == null ? "Open in Split View" : "Use this tab as second split pane" };
+                openSplit.Click += async (_, _) => await HandleSplitMenuClickAsync(tabItem);
+                menu.Items.Add(openSplit);
+
+                if (TryGetTabState(tabItem, out var state))
+                {
+                    var pin = new MenuItem { Header = state.IsPinned ? "Unpin Tab" : "Pin Tab" };
+                    pin.Click += (_, _) => TogglePinnedTab(tabItem);
+                    menu.Items.Add(pin);
+
+                    var moveLeft = new MenuItem { Header = "Move Tab Left", IsEnabled = BrowserTabs.Items.IndexOf(tabItem) > 0 };
+                    moveLeft.Click += (_, _) => MoveTab(tabItem, -1);
+                    var moveRight = new MenuItem { Header = "Move Tab Right", IsEnabled = BrowserTabs.Items.IndexOf(tabItem) < BrowserTabs.Items.Count - 1 };
+                    moveRight.Click += (_, _) => MoveTab(tabItem, 1);
+                    menu.Items.Add(moveLeft);
+                    menu.Items.Add(moveRight);
+
+                    if (state.SplitSourceTab != null || state.SplitPartnerTab != null)
+                    {
+                        menu.Items.Add(new Separator());
+                        var ratios = new MenuItem { Header = "Split Ratio" };
+                        AddSplitRatioItem(ratios, tabItem, "50 / 50", 0.5);
+                        AddSplitRatioItem(ratios, tabItem, "30 / 70", 0.3);
+                        AddSplitRatioItem(ratios, tabItem, "70 / 30", 0.7);
+                        menu.Items.Add(ratios);
+
+                        var orientation = new MenuItem { Header = "Split Direction" };
+                        var vertical = new MenuItem { Header = "Vertical (Left / Right)" };
+                        vertical.Click += (_, _) => SetSplitOrientation(tabItem, WpfOrientation.Horizontal);
+                        var horizontal = new MenuItem { Header = "Horizontal (Top / Bottom)" };
+                        horizontal.Click += (_, _) => SetSplitOrientation(tabItem, WpfOrientation.Vertical);
+                        orientation.Items.Add(vertical);
+                        orientation.Items.Add(horizontal);
+                        menu.Items.Add(orientation);
+
+                        var exit = new MenuItem { Header = "Exit Split View" };
+                        exit.Click += (_, _) => ExitSplitView(GetSplitOwner(tabItem) ?? tabItem);
+                        menu.Items.Add(exit);
+                    }
+                }
+            };
+            return menu;
+        }
+
+        private async Task HandleSplitMenuClickAsync(TabItem tabItem)
+        {
+            if (_pendingSplitSourceTab == null)
+            {
+                _pendingSplitSourceTab = tabItem;
+                UpdateStatus("Select another tab to open Split View.", "Split View");
+                return;
+            }
+
+            var source = _pendingSplitSourceTab;
+            _pendingSplitSourceTab = null;
+            if (source == tabItem) return;
+            await OpenSplitViewAsync(source, tabItem);
+        }
+
+        private void AddSplitRatioItem(MenuItem parent, TabItem tabItem, string header, double ratio)
+        {
+            var item = new MenuItem { Header = header };
+            item.Click += (_, _) => SetSplitRatio(tabItem, ratio);
+            parent.Items.Add(item);
+        }
+
+        private async Task OpenSplitViewAsync(TabItem sourceTab, TabItem targetTab)
+        {
+            if (!TryGetTabState(sourceTab, out var source) || !TryGetTabState(targetTab, out var target)) return;
+            if (source.PrimaryWebView == null || target.PrimaryWebView == null) return;
+
+            ExitSplitView(GetSplitOwner(sourceTab) ?? sourceTab, restoreOnly: true);
+            ExitSplitView(GetSplitOwner(targetTab) ?? targetTab, restoreOnly: true);
+
+            if (ReferenceEquals(sourceTab.Content, source.PrimaryWebView)) sourceTab.Content = null;
+            if (ReferenceEquals(targetTab.Content, target.PrimaryWebView)) targetTab.Content = null;
+            DetachFromParent(source.PrimaryWebView);
+            DetachFromParent(target.PrimaryWebView);
+            var host = BuildSplitHost(sourceTab, targetTab, source.PrimaryWebView, target.PrimaryWebView, source.SplitRatio, source.SplitOrientation);
+            source.SplitPartnerTab = targetTab;
+            source.SplitHost = host.Root;
+            source.SplitRatio = host.Ratio;
+            source.SplitOrientation = host.Orientation;
+            source.ActiveWebView = source.PrimaryWebView;
+
+            target.SplitSourceTab = sourceTab;
+            target.ActiveWebView = target.PrimaryWebView;
+
+            sourceTab.Content = host.Root;
+            targetTab.Content = CreateSplitPlaceholder(sourceTab, targetTab);
+            BrowserTabs.SelectedItem = sourceTab;
+            AnimateSplitHost(host.Root, true);
+            SaveSession();
+            await Task.CompletedTask;
+        }
+
+        private SplitHost BuildSplitHost(TabItem sourceTab, TabItem targetTab, WebView2 leftWebView, WebView2 rightWebView, double ratio, WpfOrientation orientation)
+        {
+            ratio = Math.Clamp(ratio <= 0 ? 0.5 : ratio, 0, 1);
+            var root = new Grid { Background = (WpfBrush)FindResource("BackgroundBrush"), ClipToBounds = true };
+
+            var first = CreateSplitPane(sourceTab, leftWebView, "Left pane");
+            var second = CreateSplitPane(targetTab, rightWebView, "Right pane");
+            var divider = CreateSplitDivider(sourceTab, root, orientation);
+
+            if (orientation == WpfOrientation.Horizontal)
+            {
+                root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ratio, GridUnitType.Star), MinWidth = 0 });
+                root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+                root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - ratio, GridUnitType.Star), MinWidth = 0 });
+                Grid.SetColumn(first, 0);
+                Grid.SetColumn(divider, 1);
+                Grid.SetColumn(second, 2);
+            }
+            else
+            {
+                root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(ratio, GridUnitType.Star), MinHeight = 0 });
+                root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(4) });
+                root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1 - ratio, GridUnitType.Star), MinHeight = 0 });
+                Grid.SetRow(first, 0);
+                Grid.SetRow(divider, 1);
+                Grid.SetRow(second, 2);
+            }
+
+            root.Children.Add(first);
+            root.Children.Add(divider);
+            root.Children.Add(second);
+            return new SplitHost(root, ratio, orientation);
+        }
+
+        private Border CreateSplitDivider(TabItem owner, Grid host, WpfOrientation orientation)
+        {
+            var lineBrush = new SolidColorBrush(WpfColor.FromRgb(88, 96, 108));
+            var activeBrush = new SolidColorBrush(WpfColor.FromRgb(138, 180, 248));
+            var dividerLine = new Border
+            {
+                Background = lineBrush,
+                Width = orientation == WpfOrientation.Horizontal ? 1 : double.NaN,
+                Height = orientation == WpfOrientation.Horizontal ? double.NaN : 1,
+                HorizontalAlignment = WpfHorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var divider = new Border
+            {
+                Background = WpfBrushes.Transparent,
+                Cursor = orientation == WpfOrientation.Horizontal ? System.Windows.Input.Cursors.SizeWE : System.Windows.Input.Cursors.SizeNS,
+                HorizontalAlignment = WpfHorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Child = dividerLine
+            };
+
+            bool isDragging = false;
+            bool isTransferringCapture = false;
+            Border? dragOverlay = null;
+
+            void FinishDrag(bool persist)
+            {
+                if (!isDragging) return;
+                isDragging = false;
+                dividerLine.Background = lineBrush;
+
+                if (dragOverlay != null)
+                {
+                    var overlay = dragOverlay;
+                    dragOverlay = null;
+                    overlay.ReleaseMouseCapture();
+                    host.Children.Remove(overlay);
+                }
+
+                if (persist) PersistSplitLayout(owner);
+            }
+
+            void MoveFromPointer(WpfMouseEventArgs e)
+            {
+                if (!isDragging || e.LeftButton != MouseButtonState.Pressed)
+                {
+                    if (isDragging) FinishDrag(true);
+                    return;
+                }
+                UpdateSplitRatioFromPointer(owner, host, orientation, e.GetPosition(host));
+                e.Handled = true;
+            }
+
+            divider.MouseLeftButtonDown += (s, e) =>
+            {
+                if (isDragging) return;
+                isDragging = true;
+                dividerLine.Background = activeBrush;
+
+                dragOverlay = new Border
+                {
+                    Background = WpfBrushes.Transparent,
+                    Cursor = divider.Cursor,
+                    HorizontalAlignment = WpfHorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch
+                };
+
+                if (orientation == WpfOrientation.Horizontal)
+                    Grid.SetColumnSpan(dragOverlay, 3);
+                else
+                    Grid.SetRowSpan(dragOverlay, 3);
+
+                WpfPanel.SetZIndex(dragOverlay, 1000);
+                dragOverlay.MouseMove += (_, moveArgs) => MoveFromPointer(moveArgs);
+                dragOverlay.MouseLeftButtonUp += (_, upArgs) =>
+                {
+                    FinishDrag(true);
+                    upArgs.Handled = true;
+                };
+                dragOverlay.LostMouseCapture += (_, _) =>
+                {
+                    // Only finish if we're not in the middle of transferring capture
+                    if (!isTransferringCapture) FinishDrag(true);
+                };
+
+                host.Children.Add(dragOverlay);
+                isTransferringCapture = true;
+                Mouse.Capture(dragOverlay, CaptureMode.SubTree);
+                isTransferringCapture = false;
+                UpdateSplitRatioFromPointer(owner, host, orientation, e.GetPosition(host));
+                e.Handled = true;
+            };
+
+            divider.MouseMove += (s, e) => MoveFromPointer(e);
+
+            divider.MouseLeftButtonUp += (s, e) =>
+            {
+                FinishDrag(true);
+                e.Handled = true;
+            };
+
+            // Don't call FinishDrag here — capture intentionally moves to dragOverlay
+            divider.LostMouseCapture += (s, e) => { /* capture transferred to overlay, ignore */ };
+
+            return divider;
+        }
+
+        private void UpdateSplitRatioFromPointer(TabItem owner, Grid host, WpfOrientation orientation, WpfPoint pointer)
+        {
+            if (!TryGetTabState(owner, out var state)) return;
+
+            if (orientation == WpfOrientation.Horizontal && host.ColumnDefinitions.Count >= 3)
+            {
+                double dividerWidth = host.ColumnDefinitions[1].ActualWidth;
+                double available = host.ActualWidth - dividerWidth;
+                if (available <= 0) return;
+                double ratio = Math.Clamp((pointer.X - dividerWidth / 2.0) / available, 0.05, 0.95);
+                host.ColumnDefinitions[0].Width = new GridLength(ratio, GridUnitType.Star);
+                host.ColumnDefinitions[2].Width = new GridLength(1 - ratio, GridUnitType.Star);
+                state.SplitRatio = ratio;
+            }
+            else if (host.RowDefinitions.Count >= 3)
+            {
+                double dividerHeight = host.RowDefinitions[1].ActualHeight;
+                double available = host.ActualHeight - dividerHeight;
+                if (available <= 0) return;
+                double ratio = Math.Clamp((pointer.Y - dividerHeight / 2.0) / available, 0.05, 0.95);
+                host.RowDefinitions[0].Height = new GridLength(ratio, GridUnitType.Star);
+                host.RowDefinitions[2].Height = new GridLength(1 - ratio, GridUnitType.Star);
+                state.SplitRatio = ratio;
+            }
+        }
+
+        private DockPanel CreateSplitPane(TabItem tabItem, WebView2 webView, string label)
+        {
+            var pane = new DockPanel { LastChildFill = true, Background = (WpfBrush)FindResource("BackgroundBrush") };
+            pane.GotKeyboardFocus += (_, _) => ActivateSplitPane(tabItem, webView);
+            pane.MouseDown += (_, _) => ActivateSplitPane(tabItem, webView);
+
+            var toolbar = new Grid { Height = 38, Margin = new Thickness(8, 6, 8, 4) };
+            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var title = new TextBlock
+            {
+                Text = label,
+                Foreground = (WpfBrush)FindResource("ForegroundBrush"),
+                Opacity = 0.7,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0),
+                FontSize = 11
+            };
+            var address = new WpfTextBox
+            {
+                Text = IsInternalNewTab(tabItem, webView) ? "" : webView.Source?.ToString() ?? "",
+                Height = 30,
+                Padding = new Thickness(10, 0, 10, 0),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Background = (WpfBrush)FindResource("InputBrush"),
+                Foreground = (WpfBrush)FindResource("ForegroundBrush")
+            };
+            _splitAddressBars[webView] = address;
+            address.GotKeyboardFocus += (_, _) => ActivateSplitPane(tabItem, webView);
+            address.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Enter)
+                {
+                    ActivateSplitPane(tabItem, webView);
+                    _internalNewTabs.Remove(tabItem);
+                    NavigateWebView(webView, address.Text);
+                }
+            };
+
+            var close = new WpfButton
+            {
+                Content = "Exit",
+                Height = 30,
+                MinWidth = 52,
+                Margin = new Thickness(8, 0, 0, 0),
+                Style = (Style)FindResource("SecondaryButtonStyle")
+            };
+            close.Click += (_, _) => ExitSplitView(GetSplitOwner(tabItem) ?? tabItem);
+
+            Grid.SetColumn(title, 0);
+            Grid.SetColumn(address, 1);
+            Grid.SetColumn(close, 2);
+            toolbar.Children.Add(title);
+            toolbar.Children.Add(address);
+            toolbar.Children.Add(close);
+            DockPanel.SetDock(toolbar, Dock.Top);
+            pane.Children.Add(toolbar);
+            pane.Children.Add(webView);
+            return pane;
+        }
+
+        private Border CreateSplitPlaceholder(TabItem ownerTab, TabItem currentTab)
+        {
+            var btn = new WpfButton
+            {
+                Content = "Show Split View",
+                MinWidth = 140,
+                Height = 36,
+                Style = (Style)FindResource("SecondaryButtonStyle")
+            };
+            btn.Click += (_, _) => BrowserTabs.SelectedItem = ownerTab;
+            return new Border
+            {
+                Background = (WpfBrush)FindResource("BackgroundBrush"),
+                Child = new StackPanel
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = WpfHorizontalAlignment.Center,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "This tab is open in Split View.",
+                            Foreground = (WpfBrush)FindResource("ForegroundBrush"),
+                            Margin = new Thickness(0, 0, 0, 12),
+                            FontSize = 14
+                        },
+                        btn
+                    }
+                }
+            };
+        }
+
+        private void ActivateSplitPane(TabItem tabItem, WebView2 webView)
+        {
+            var owner = GetSplitOwner(tabItem) ?? tabItem;
+            if (TryGetTabState(owner, out var ownerState)) ownerState.ActiveWebView = webView;
+            if (TryGetTabState(tabItem, out var state)) state.ActiveWebView = webView;
+            if (BrowserTabs.SelectedItem != owner) BrowserTabs.SelectedItem = owner;
+            if (TxtUrl != null) TxtUrl.Text = IsInternalNewTab(tabItem, webView) ? "" : webView.Source?.ToString() ?? "";
+            UpdateTabStatusOverlay(tabItem);
+            UpdateStopButtonState();
+        }
+
+        private void ExitSplitView(TabItem tabItem, bool restoreOnly = false)
+        {
+            var owner = GetSplitOwner(tabItem) ?? tabItem;
+            if (!TryGetTabState(owner, out var source) || source.SplitPartnerTab == null) return;
+            var partnerTab = source.SplitPartnerTab;
+            if (!TryGetTabState(partnerTab, out var partner)) return;
+
+            source.SplitHost = null;
+            source.SplitPartnerTab = null;
+            source.ActiveWebView = source.PrimaryWebView;
+            partner.SplitSourceTab = null;
+            partner.ActiveWebView = partner.PrimaryWebView;
+
+            if (source.PrimaryWebView != null)
+            {
+                _splitAddressBars.Remove(source.PrimaryWebView);
+                DetachFromParent(source.PrimaryWebView);
+                owner.Content = source.PrimaryWebView;
+            }
+            if (partner.PrimaryWebView != null)
+            {
+                _splitAddressBars.Remove(partner.PrimaryWebView);
+                DetachFromParent(partner.PrimaryWebView);
+                partnerTab.Content = partner.PrimaryWebView;
+            }
+            if (!restoreOnly)
+            {
+                BrowserTabs.SelectedItem = owner;
+                SaveSession();
+            }
+        }
+
+        private void SetSplitRatio(TabItem tabItem, double ratio)
+        {
+            var owner = GetSplitOwner(tabItem) ?? tabItem;
+            if (!TryGetTabState(owner, out var state)) return;
+            state.SplitRatio = ratio;
+            RebuildSplitHost(owner);
+        }
+
+        private void SetSplitOrientation(TabItem tabItem, WpfOrientation orientation)
+        {
+            var owner = GetSplitOwner(tabItem) ?? tabItem;
+            if (!TryGetTabState(owner, out var state)) return;
+            state.SplitOrientation = orientation;
+            RebuildSplitHost(owner);
+        }
+
+        private void RebuildSplitHost(TabItem owner)
+        {
+            if (!TryGetTabState(owner, out var source) || source.SplitPartnerTab == null || source.PrimaryWebView == null) return;
+            if (!TryGetTabState(source.SplitPartnerTab, out var partner) || partner.PrimaryWebView == null) return;
+            DetachFromParent(source.PrimaryWebView);
+            DetachFromParent(partner.PrimaryWebView);
+            var host = BuildSplitHost(owner, source.SplitPartnerTab, source.PrimaryWebView, partner.PrimaryWebView, source.SplitRatio, source.SplitOrientation);
+            source.SplitHost = host.Root;
+            owner.Content = host.Root;
+            source.SplitPartnerTab.Content = CreateSplitPlaceholder(owner, source.SplitPartnerTab);
+            AnimateSplitHost(host.Root, true);
+            SaveSession();
+        }
+
+        private void PersistSplitLayout(TabItem owner)
+        {
+            if (!TryGetTabState(owner, out var state) || state.SplitHost == null) return;
+            if (state.SplitOrientation == WpfOrientation.Horizontal && state.SplitHost.ColumnDefinitions.Count >= 3)
+            {
+                var a = state.SplitHost.ColumnDefinitions[0].ActualWidth;
+                var b = state.SplitHost.ColumnDefinitions[2].ActualWidth;
+                if (a + b > 0) state.SplitRatio = Math.Clamp(a / (a + b), 0, 1);
+            }
+            else if (state.SplitHost.RowDefinitions.Count >= 3)
+            {
+                var a = state.SplitHost.RowDefinitions[0].ActualHeight;
+                var b = state.SplitHost.RowDefinitions[2].ActualHeight;
+                if (a + b > 0) state.SplitRatio = Math.Clamp(a / (a + b), 0, 1);
+            }
+            SaveSession();
+        }
+
+        private void AnimateSplitHost(UIElement element, bool enter)
+        {
+            element.Opacity = enter ? 0 : 1;
+            element.RenderTransform = new TranslateTransform(0, enter ? 10 : 0);
+            element.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(enter ? 1 : 0, TimeSpan.FromMilliseconds(180)));
+            ((TranslateTransform)element.RenderTransform).BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(180)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        }
+
+        private TabItem? GetSplitOwner(TabItem tabItem)
+        {
+            return TryGetTabState(tabItem, out var state) ? state.SplitSourceTab : null;
+        }
+
+        private bool TryGetTabState(TabItem tabItem, out BrowserTabState state) => _tabStates.TryGetValue(tabItem, out state!);
+
+        private bool IsInternalNewTab(TabItem tabItem, WebView2 webView)
+        {
+            string? currentUrl = webView.Source?.ToString();
+            return _internalNewTabs.Contains(tabItem) && (string.IsNullOrEmpty(currentUrl) || currentUrl == "about:blank");
+        }
+
+        private void NavigateWebView(WebView2 webView, string rawUrl)
+        {
+            string url = rawUrl.Trim();
+            if (string.IsNullOrEmpty(url) || webView.CoreWebView2 == null) return;
+            if (!url.Contains(".") && !url.StartsWith("http")) url = "https://www.google.com/search?q=" + Uri.EscapeDataString(url);
+            else if (!url.StartsWith("http")) url = "https://" + url;
+            webView.CoreWebView2.Navigate(url);
+        }
+
+        private static void DetachFromParent(UIElement element)
+        {
+            switch (VisualTreeHelper.GetParent(element))
+            {
+                case WpfPanel panel:
+                    panel.Children.Remove(element);
+                    break;
+                case ContentControl contentControl when ReferenceEquals(contentControl.Content, element):
+                    contentControl.Content = null;
+                    break;
+                case Decorator decorator when ReferenceEquals(decorator.Child, element):
+                    decorator.Child = null;
+                    break;
+            }
+        }
+
+        private void TogglePinnedTab(TabItem tabItem)
+        {
+            if (!TryGetTabState(tabItem, out var state)) return;
+            state.IsPinned = !state.IsPinned;
+            BrowserTabs.Items.Remove(tabItem);
+            BrowserTabs.Items.Insert(state.IsPinned ? 0 : BrowserTabs.Items.Count, tabItem);
+            BrowserTabs.SelectedItem = tabItem;
+            SaveSession();
+        }
+
+        private void MoveTab(TabItem tabItem, int direction)
+        {
+            var index = BrowserTabs.Items.IndexOf(tabItem);
+            var targetIndex = Math.Clamp(index + direction, 0, BrowserTabs.Items.Count - 1);
+            if (index < 0 || index == targetIndex) return;
+            BrowserTabs.Items.Remove(tabItem);
+            BrowserTabs.Items.Insert(targetIndex, tabItem);
+            BrowserTabs.SelectedItem = tabItem;
+            SaveSession();
+        }
+
+        private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TabItem tab)
+            {
+                _dragSourceTab = tab;
+                _tabDragStart = e.GetPosition(BrowserTabs);
+            }
+        }
+
+        private void BrowserTabs_PreviewMouseMove(object sender, WpfMouseEventArgs e)
+        {
+            if (_dragSourceTab == null || e.LeftButton != MouseButtonState.Pressed) return;
+            var current = e.GetPosition(BrowserTabs);
+            if (Math.Abs(current.X - _tabDragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(current.Y - _tabDragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            DragDrop.DoDragDrop(_dragSourceTab, _dragSourceTab, WpfDragDropEffects.Move | WpfDragDropEffects.Link);
+            HideSplitDropHint();
+            _dragSourceTab = null;
+        }
+
+        private void BrowserTabs_DragOver(object sender, WpfDragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(TabItem))) return;
+            var source = e.Data.GetData(typeof(TabItem)) as TabItem;
+            var target = FindAncestor<TabItem>(e.OriginalSource as DependencyObject);
+            if (source != null && target != null && source != target)
+            {
+                e.Effects = WpfDragDropEffects.Link;
+                ShowSplitDropHint();
+            }
+            else
+            {
+                e.Effects = WpfDragDropEffects.Move;
+                HideSplitDropHint();
+            }
+            e.Handled = true;
+        }
+
+        private async void BrowserTabs_Drop(object sender, WpfDragEventArgs e)
+        {
+            HideSplitDropHint();
+            if (!e.Data.GetDataPresent(typeof(TabItem))) return;
+            var source = e.Data.GetData(typeof(TabItem)) as TabItem;
+            var target = FindAncestor<TabItem>(e.OriginalSource as DependencyObject);
+            if (source == null || target == null || source == target) return;
+            await OpenSplitViewAsync(source, target);
+        }
+
+        private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+        {
+            while (current != null)
+            {
+                if (current is T match) return match;
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return null;
+        }
+
+        private void ShowSplitDropHint()
+        {
+            if (_splitDropHint != null) return;
+            _splitDropHint = new Border
+            {
+                Background = new SolidColorBrush(WpfColor.FromArgb(232, 22, 32, 44)),
+                BorderBrush = new SolidColorBrush(WpfColor.FromRgb(78, 164, 255)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(14, 8, 14, 8),
+                HorizontalAlignment = WpfHorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 18, 0, 0),
+                Child = new TextBlock
+                {
+                    Text = "Open in Split View",
+                    Foreground = WpfBrushes.White,
+                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 12
+                }
+            };
+            if (BrowserTabs.Parent is Grid grid) grid.Children.Add(_splitDropHint);
+        }
+
+        private void HideSplitDropHint()
+        {
+            if (_splitDropHint?.Parent is WpfPanel panel) panel.Children.Remove(_splitDropHint);
+            _splitDropHint = null;
+        }
+
+        private sealed class BrowserTabState
+        {
+            public TabItem Tab { get; set; } = null!;
+            public WebView2? PrimaryWebView { get; set; }
+            public WebView2? ActiveWebView { get; set; }
+            public bool IsPinned { get; set; }
+            public TabItem? SplitPartnerTab { get; set; }
+            public TabItem? SplitSourceTab { get; set; }
+            public Grid? SplitHost { get; set; }
+            public string SplitGroupId { get; set; } = "";
+            public double SplitRatio { get; set; } = 0.5;
+            public WpfOrientation SplitOrientation { get; set; } = WpfOrientation.Horizontal;
+        }
+
+        private sealed record SplitHost(Grid Root, double Ratio, WpfOrientation Orientation);
 
         private void SaveSession()
         {
             if (_currentSettings == null) return;
             var urls = new List<string>();
+            var sessions = new List<BrowserTabSession>();
             foreach (TabItem item in BrowserTabs.Items)
             {
-                if (_internalNewTabs.Contains(item)) continue;
-                if (item.Content is WebView2 wv && wv.Source != null)
+                if (!TryGetTabState(item, out var state)) continue;
+                var webView = state.PrimaryWebView;
+                if (webView?.Source != null && !_internalNewTabs.Contains(item))
                 {
-                    string u = wv.Source.ToString();
-                    if (!string.IsNullOrEmpty(u) && u != "about:blank") urls.Add(u);
+                    string u = webView.Source.ToString();
+                    if (!string.IsNullOrEmpty(u) && u != "about:blank")
+                    {
+                        urls.Add(u);
+                        string splitGroupId = state.SplitGroupId;
+                        if ((state.SplitPartnerTab != null || state.SplitSourceTab != null) && string.IsNullOrWhiteSpace(splitGroupId))
+                        {
+                            var owner = GetSplitOwner(item) ?? item;
+                            splitGroupId = TryGetTabState(owner, out var ownerState)
+                                ? ownerState.SplitGroupId = string.IsNullOrWhiteSpace(ownerState.SplitGroupId) ? Guid.NewGuid().ToString("N") : ownerState.SplitGroupId
+                                : Guid.NewGuid().ToString("N");
+                            state.SplitGroupId = splitGroupId;
+                        }
+
+                        var ownerForLayout = GetSplitOwner(item) ?? item;
+                        var layoutState = TryGetTabState(ownerForLayout, out var layout) ? layout : state;
+                        sessions.Add(new BrowserTabSession
+                        {
+                            Url = u,
+                            IsPinned = state.IsPinned,
+                            SplitGroupId = splitGroupId,
+                            SplitRatio = layoutState.SplitRatio,
+                            SplitOrientation = layoutState.SplitOrientation == WpfOrientation.Vertical ? "Horizontal" : "Vertical"
+                        });
+                    }
                 }
             }
             _currentSettings.OpenTabs = urls;
+            _currentSettings.TabSessions = sessions;
+            _currentSettings.SelectedTabIndex = BrowserTabs.SelectedIndex;
             _currentSettings.Save();
         }
 
@@ -478,7 +1192,12 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
 
         private WebView2? GetCurrentBrowser()
         {
-            if (BrowserTabs.SelectedItem is TabItem tab && tab.Content is WebView2 webView) return webView;
+            if (BrowserTabs.SelectedItem is TabItem tab && TryGetTabState(tab, out var state))
+            {
+                if (state.SplitSourceTab != null && TryGetTabState(state.SplitSourceTab, out var ownerState))
+                    return ownerState.ActiveWebView ?? ownerState.PrimaryWebView;
+                return state.ActiveWebView ?? state.PrimaryWebView;
+            }
             return null;
         }
 
@@ -1025,7 +1744,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         {
             try
             {
-                await Task.Delay(4000);
+                await Task.Delay(1000);
                 if (!await IsImageLoadedInCurrentPageAsync(coreWebView2, uri)) return;
                 await TryImportCachedImageToMiniClipAsync(uri, cachePath);
             }
@@ -1205,9 +1924,9 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             {
                 var headers = new Dictionary<string, string>();
                 var tabItem = GetTabItemForCoreWebView2(coreWebView2);
-                if (tabItem?.Content is WebView2 webView && webView.Source != null)
+                if (tabItem != null && TryGetTabState(tabItem, out var state) && state.PrimaryWebView?.Source != null)
                 {
-                    headers["Referer"] = GetAsciiUriHeader(webView.Source);
+                    headers["Referer"] = GetAsciiUriHeader(state.PrimaryWebView.Source);
                 }
 
                 var cookies = await coreWebView2.CookieManager.GetCookiesAsync(uri);
@@ -1468,18 +2187,32 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         {
             if (sender is System.Windows.Controls.Button btn && btn.Tag is TabItem tab)
             {
-                if (tab.Content is WebView2 webView)
-                {
-                    if (webView.CoreWebView2 != null) _coreWebViewTabMap.Remove(webView.CoreWebView2);
-                    webView.Dispose();
-                }
-                _internalNewTabs.Remove(tab);
-                _tabHeaderMap.Remove(tab);
-                _tabNetworkStats.Remove(tab);
-                BrowserTabs.Items.Remove(tab);
-                if (BrowserTabs.Items.Count == 0) _ = AddNewTab();
-                SaveSession();
+                CloseTab(tab);
             }
+        }
+
+        private void CloseTab(TabItem tab)
+        {
+            var owner = GetSplitOwner(tab) ?? tab;
+            if (TryGetTabState(owner, out var ownerState) && ownerState.SplitPartnerTab != null)
+            {
+                var partner = ownerState.SplitPartnerTab;
+                ExitSplitView(owner, restoreOnly: true);
+                if (tab == owner && BrowserTabs.Items.Contains(partner)) BrowserTabs.SelectedItem = partner;
+            }
+
+            if (TryGetTabState(tab, out var state))
+            {
+                if (state.PrimaryWebView?.CoreWebView2 != null) _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
+                state.PrimaryWebView?.Dispose();
+                _tabStates.Remove(tab);
+            }
+            _internalNewTabs.Remove(tab);
+            _tabHeaderMap.Remove(tab);
+            _tabNetworkStats.Remove(tab);
+            BrowserTabs.Items.Remove(tab);
+            if (BrowserTabs.Items.Count == 0) _ = AddNewTab();
+            SaveSession();
         }
 
         private void BtnDownloadManager_Click(object? sender, RoutedEventArgs e)
@@ -1537,7 +2270,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     // For other settings, just apply them to existing tabs
                     foreach (TabItem tab in BrowserTabs.Items)
                     {
-                        if (tab.Content is WebView2 webView) ApplyBrowserSettingsTo(webView);
+                        if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null) ApplyBrowserSettingsTo(state.PrimaryWebView);
                     }
                     CustomMessageBox.Show("Settings updated.", "Success");
                 }
@@ -1683,6 +2416,8 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         public bool AutoHideStatus { get; set; } = true;
         public string LastUrl { get; set; } = "";
         public List<string> OpenTabs { get; set; } = new List<string>();
+        public List<BrowserTabSession> TabSessions { get; set; } = new List<BrowserTabSession>();
+        public int SelectedTabIndex { get; set; } = 0;
         public List<BookmarkItem> Bookmarks { get; set; } = new List<BookmarkItem>();
 
         public bool ProxyEnabled { get; set; } = false;
@@ -1724,5 +2459,14 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             }
             catch { }
         }
+    }
+
+    public class BrowserTabSession
+    {
+        public string Url { get; set; } = "";
+        public bool IsPinned { get; set; }
+        public string SplitGroupId { get; set; } = "";
+        public double SplitRatio { get; set; } = 0.5;
+        public string SplitOrientation { get; set; } = "Vertical";
     }
 }
