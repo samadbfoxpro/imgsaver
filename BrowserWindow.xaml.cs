@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
 using System.Security.Cryptography;
 using System.Text;
@@ -720,7 +721,6 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             
             // Save split view state along with session
             SaveSplitViewState();
-        }
         }
 
         private class TabNetworkInfo
@@ -1896,7 +1896,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
 
             var grid = new Grid
             {
-                Background = (Brush)Application.Current.Resources["BackgroundBrush"]
+                Background = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["BackgroundBrush"]
             };
 
             if (state.IsLeafPanel)
@@ -1904,7 +1904,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 // Leaf panel - create TabControl with tab items
                 var tabControl = new WpfTabControl
                 {
-                    Background = Transparent,
+                    Background = System.Windows.Media.Brushes.Transparent,
                     BorderThickness = new Thickness(0),
                     Name = $"Tab_{state.GroupId}"
                 };
@@ -1939,10 +1939,10 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     var splitter = new GridSplitter
                     {
                         Width = 4,
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        VerticalAlignment = VerticalAlignment.Stretch,
-                        Background = (Brush)Application.Current.Resources["BorderBrush"],
-                        Cursor = Cursors.SizeWE
+                        HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                        VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
+                        Background = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["BorderBrush"],
+                        Cursor = System.Windows.Input.Cursors.SizeWE
                     };
                     Grid.SetColumn(splitter, 1);
                     grid.Children.Add(splitter);
@@ -1972,10 +1972,10 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                     var splitter = new GridSplitter
                     {
                         Height = 4,
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        VerticalAlignment = VerticalAlignment.Stretch,
-                        Background = (Brush)Application.Current.Resources["BorderBrush"],
-                        Cursor = Cursors.SizeNS
+                        HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                        VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
+                        Background = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["BorderBrush"],
+                        Cursor = System.Windows.Input.Cursors.SizeNS
                     };
                     Grid.SetRow(splitter, 1);
                     grid.Children.Add(splitter);
@@ -2231,7 +2231,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         private void Window_PreviewKeyDown(object? sender, System.Windows.Input.KeyEventArgs e)
         {
             // Only process shortcuts when not in edit mode
-            if (Keyboard.FocusedElement is TextBox)
+            if (Keyboard.FocusedElement is System.Windows.Controls.TextBox)
                 return;
 
             // Check for Ctrl+Shift+V for Vertical Split

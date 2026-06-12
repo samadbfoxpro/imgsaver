@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using VerticalAlignment = System.Windows.VerticalAlignment;
 using Microsoft.Web.WebView2.Wpf;
 using WpfTabControl = System.Windows.Controls.TabControl;
 
@@ -29,7 +31,7 @@ namespace imgsaver
 
         private void InitializeRootPanel()
         {
-            this.Background = (Brush)Application.Current.FindResource("BackgroundBrush");
+            this.Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("BackgroundBrush");
             var rootState = _manager.GetRootState();
             var rootGrid = CreatePanelGrid(rootState.GroupId);
             this.Children.Add(rootGrid);
@@ -39,7 +41,7 @@ namespace imgsaver
         {
             var grid = new Grid
             {
-                Background = (Brush)Application.Current.FindResource("BackgroundBrush")
+                Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("BackgroundBrush")
             };
 
             var state = _manager.GetRootState().FindLeafPanel(panelId);
@@ -51,7 +53,7 @@ namespace imgsaver
                 // Leaf panel - create TabControl
                 var tabControl = new WpfTabControl
                 {
-                    Background = Transparent,
+                    Background = System.Windows.Media.Brushes.Transparent,
                     BorderThickness = new Thickness(0),
                     Name = $"Tab_{panelId}"
                 };
@@ -75,10 +77,10 @@ namespace imgsaver
                     var splitter = new GridSplitter
                     {
                         Width = 4,
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        VerticalAlignment = VerticalAlignment.Stretch,
-                        Background = (Brush)Application.Current.FindResource("BorderBrush"),
-                        Cursor = Cursors.SizeWE
+                        HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                        VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
+                        Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("BorderBrush"),
+                        Cursor = System.Windows.Input.Cursors.SizeWE
                     };
                     Grid.SetColumn(splitter, 1);
                     grid.Children.Add(splitter);
@@ -100,10 +102,10 @@ namespace imgsaver
                     var splitter = new GridSplitter
                     {
                         Height = 4,
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        VerticalAlignment = VerticalAlignment.Stretch,
-                        Background = (Brush)Application.Current.FindResource("BorderBrush"),
-                        Cursor = Cursors.SizeNS
+                        HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
+                        VerticalAlignment = System.Windows.VerticalAlignment.Stretch,
+                        Background = (System.Windows.Media.Brush)System.Windows.Application.Current.FindResource("BorderBrush"),
+                        Cursor = System.Windows.Input.Cursors.SizeNS
                     };
                     Grid.SetRow(splitter, 1);
                     grid.Children.Add(splitter);

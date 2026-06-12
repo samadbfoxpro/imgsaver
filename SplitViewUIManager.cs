@@ -15,7 +15,7 @@ namespace imgsaver
     public class SplitViewUIManager
     {
         private readonly SplitViewContainer _container;
-        private readonly Dictionary<string, List<BrowserTabState>> _panelTabs = new();
+        private readonly Dictionary<string, List<WpfTabItem>> _panelTabs = new();
         private string _activePanelId = "";
 
         public SplitViewUIManager(SplitViewContainer container)
@@ -29,7 +29,7 @@ namespace imgsaver
         public void InitializeRootPanel(string rootPanelId)
         {
             _activePanelId = rootPanelId;
-            _panelTabs[rootPanelId] = new List<BrowserTabState>();
+            _panelTabs[rootPanelId] = new List<WpfTabItem>();
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace imgsaver
         {
             if (!_panelTabs.ContainsKey(panelId))
             {
-                _panelTabs[panelId] = new List<BrowserTabState>();
+                _panelTabs[panelId] = new List<WpfTabItem>();
             }
         }
 
@@ -54,17 +54,16 @@ namespace imgsaver
         /// <summary>
         /// Add a tab to a specific panel
         /// </summary>
-        public void AddTabToPanel(string panelId, BrowserTabState tabState)
+        public void AddTabToPanel(string panelId, WpfTabItem tabItem)
         {
             if (!_panelTabs.ContainsKey(panelId))
-                _panelTabs[panelId] = new List<BrowserTabState>();
+                _panelTabs[panelId] = new List<WpfTabItem>();
 
-            _panelTabs[panelId].Add(tabState);
+            _panelTabs[panelId].Add(tabItem);
 
             var tabControl = GetPanelTabControl(panelId);
             if (tabControl != null)
             {
-                var tabItem = CreateTabItem(tabState);
                 tabControl.Items.Add(tabItem);
                 tabControl.SelectedItem = tabItem; // Select newly added tab
             }
@@ -73,44 +72,39 @@ namespace imgsaver
         /// <summary>
         /// Remove a tab from a panel
         /// </summary>
-        public void RemoveTabFromPanel(string panelId, BrowserTabState tabState)
+        public void RemoveTabFromPanel(string panelId, WpfTabItem tabItem)
         {
             if (_panelTabs.TryGetValue(panelId, out var tabs))
             {
-                tabs.Remove(tabState);
+                tabs.Remove(tabItem);
             }
 
             var tabControl = GetPanelTabControl(panelId);
-            if (tabControl != null)
+            if (tabControl != null && tabControl.Items.Contains(tabItem))
             {
-                var itemToRemove = tabControl.Items.Cast<WpfTabItem>()
-                    .FirstOrDefault(ti => (ti.DataContext as BrowserTabState) == tabState);
-                if (itemToRemove != null)
-                {
-                    tabControl.Items.Remove(itemToRemove);
-                }
+                tabControl.Items.Remove(tabItem);
             }
         }
 
         /// <summary>
         /// Transfer a tab from one panel to another
         /// </summary>
-        public bool TransferTabBetweenPanels(string sourcePanelId, string targetPanelId, BrowserTabState tabState)
+        public bool TransferTabBetweenPanels(string sourcePanelId, string targetPanelId, WpfTabItem tabItem)
         {
             if (!_panelTabs.ContainsKey(targetPanelId))
                 return false;
 
-            RemoveTabFromPanel(sourcePanelId, tabState);
-            AddTabToPanel(targetPanelId, tabState);
+            RemoveTabFromPanel(sourcePanelId, tabItem);
+            AddTabToPanel(targetPanelId, tabItem);
             return true;
         }
 
         /// <summary>
         /// Get all tabs in a panel
         /// </summary>
-        public List<BrowserTabState> GetPanelTabs(string panelId)
+        public List<WpfTabItem> GetPanelTabs(string panelId)
         {
-            return _panelTabs.TryGetValue(panelId, out var tabs) ? tabs : new List<BrowserTabState>();
+            return _panelTabs.TryGetValue(panelId, out var tabs) ? tabs : new List<WpfTabItem>();
         }
 
         /// <summary>
@@ -153,32 +147,6 @@ namespace imgsaver
             {
                 _activePanelId = _panelTabs.Keys.FirstOrDefault() ?? "";
             }
-        }
-
-        /// <summary>
-        /// Create a TabItem UI element for a BrowserTabState
-        /// </summary>
-        private WpfTabItem CreateTabItem(BrowserTabState tabState)
-        {
-            var tabItem = new WpfTabItem
-            {
-                Header = GetTabHeader(tabState),
-                DataContext = tabState,
-                Content = tabState.PrimaryWebView,
-                AllowDrop = true
-            };
-
-            return tabItem;
-        }
-
-        /// <summary>
-        /// Get display header for a tab
-        /// </summary>
-        private string GetTabHeader(BrowserTabState tabState)
-        {
-            if (tabState?.Tab != null)
-                return tabState.Tab.Header?.ToString() ?? "New Tab";
-            return "New Tab";
         }
     }
 }
