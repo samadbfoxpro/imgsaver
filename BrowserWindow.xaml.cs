@@ -1727,6 +1727,77 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             {
                 CloseTab(tab);
             }
+            else if (sender is System.Windows.Controls.MenuItem mi && mi.Tag is TabItem miTab)
+            {
+                CloseTab(miTab);
+            }
+        }
+
+        /// <summary>
+        /// Split the selected tab vertically
+        /// </summary>
+        private void MenuItem_SplitVertical(object? sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.MenuItem item && item.Tag is TabItem sourceTab)
+            {
+                SplitTabWithNewTab(sourceTab, SplitOrientation.Vertical);
+            }
+        }
+
+        /// <summary>
+        /// Split the selected tab horizontally
+        /// </summary>
+        private void MenuItem_SplitHorizontal(object? sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.MenuItem item && item.Tag is TabItem sourceTab)
+            {
+                SplitTabWithNewTab(sourceTab, SplitOrientation.Horizontal);
+            }
+        }
+
+        /// <summary>
+        /// Create split view with the source tab in one panel and a new tab in the other
+        /// </summary>
+        private async void SplitTabWithNewTab(TabItem sourceTab, SplitOrientation orientation)
+        {
+            try
+            {
+                // Enable split view if not already enabled
+                if (!_isSplitViewEnabled)
+                {
+                    CreateSplitView(orientation);
+                    await System.Threading.Tasks.Task.Delay(100); // Wait for UI update
+                }
+
+                // Select the source tab to make it active
+                BrowserTabs.SelectedItem = sourceTab;
+
+                // Get the first split panel's tab control
+                var leafPanels = _splitViewManager.GetAllLeafPanels();
+                if (leafPanels.Count >= 2 && _panelTabControls.TryGetValue(leafPanels[0].GroupId, out var leftTabControl))
+                {
+                    // Move source tab to the left/top panel
+                    if (sourceTab.Parent == BrowserTabs)
+                    {
+                        BrowserTabs.Items.Remove(sourceTab);
+                        leftTabControl.Items.Add(sourceTab);
+                        leftTabControl.SelectedItem = sourceTab;
+                    }
+
+                    // Create a new tab in the right/bottom panel
+                    await AddNewTab(selectTab: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in SplitTabWithNewTab: {ex.Message}");
+            }
+        }
+
+        private void TabItem_MouseRightButtonUp(object? sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // Context menu is handled automatically by WPF
+            e.Handled = false;
         }
 
         private void CloseTab(TabItem tab)
