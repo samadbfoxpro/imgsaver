@@ -349,7 +349,7 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             }
         }
 
-        private async Task<TabItem?> AddNewTab(string? url = null, bool selectTab = true, bool isPinned = false)
+        private async Task<TabItem?> AddNewTab(string? url = null, bool selectTab = true, bool isPinned = false, string? targetPanelId = null)
         {
             try
             {
@@ -389,8 +389,19 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 tabItem.Header = headerPanel;
                 tabItem.ContextMenu = CreateTabContextMenu(tabItem);
                 tabItem.Content = webView;
-                BrowserTabs.Items.Add(tabItem);
-                if (selectTab) BrowserTabs.SelectedItem = tabItem;
+                
+                // Add tab to appropriate container (BrowserTabs or split panel)
+                if (_isSplitViewEnabled && !string.IsNullOrEmpty(targetPanelId) && _panelTabControls.TryGetValue(targetPanelId, out var panelControl))
+                {
+                    panelControl.Items.Add(tabItem);
+                    if (selectTab) panelControl.SelectedItem = tabItem;
+                }
+                else
+                {
+                    BrowserTabs.Items.Add(tabItem);
+                    if (selectTab) BrowserTabs.SelectedItem = tabItem;
+                }
+                
                 _tabHeaderMap[tabItem] = (headerText, loadingBadge);
                 _tabNetworkStats[tabItem] = new TabNetworkInfo();
                 _tabStates[tabItem] = new BrowserTabState { Tab = tabItem, PrimaryWebView = webView, ActiveWebView = webView, IsPinned = isPinned };
@@ -1762,35 +1773,68 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         {
             try
             {
-                // Enable split view if not already enabled
                 if (!_isSplitViewEnabled)
                 {
-                    CreateSplitView(orientation);
-                    await System.Threading.Tasks.Task.Delay(100); // Wait for UI update
-                }
-
-                // Select the source tab to make it active
-                BrowserTabs.SelectedItem = sourceTab;
-
-                // Get the first split panel's tab control
-                var leafPanels = _splitViewManager.GetAllLeafPanels();
-                if (leafPanels.Count >= 2 && _panelTabControls.TryGetValue(leafPanels[0].GroupId, out var leftTabControl))
-                {
-                    // Move source tab to the left/top panel
-                    if (sourceTab.Parent == BrowserTabs)
+                    // Create split WITHOUT transferring all tabs yet
+                    _isSplitViewEnabled = true;
+                    var newPanel = _splitViewManager.CreateSplit(_currentActivePanelId, orientation);
+                    if (newPanel == null)
                     {
-                        BrowserTabs.Items.Remove(sourceTab);
-                        leftTabControl.Items.Add(sourceTab);
-                        leftTabControl.SelectedItem = sourceTab;
+                        _isSplitViewEnabled = false;
+                        return;
                     }
 
-                    // Create a new tab in the right/bottom panel
-                    await AddNewTab(selectTab: true);
+                    // Register new panel
+                    _splitViewUIManager?.RegisterNewPanel(newPanel.GroupId);
+                    
+                    // Build UI for split
+                    var rootState = _splitViewManager.GetRootState();
+                    if (SplitViewContainer is SplitViewContainer container)
+                    {
+                        container.Children.Clear();
+                        var rootGrid = BuildPanelGridUI(rootState);
+                        if (rootGrid != null)
+                        {
+                            container.Children.Add(rootGrid);
+                        }
+                    }
+                    
+                    // Hide normal tabs, show split view
+                    BrowserTabs.Visibility = Visibility.Collapsed;
+                    SplitViewContainer.Visibility = Visibility.Visible;
+                    
+                    await System.Threading.Tasks.Task.Delay(100);
                 }
+
+                // Get the two leaf panels
+                var leafPanels = _splitViewManager.GetAllLeafPanels();
+                if (leafPanels.Count < 2)
+                    return;
+
+                var leftPanel = leafPanels[0];
+                var rightPanel = leafPanels[1];
+
+                if (!_panelTabControls.TryGetValue(leftPanel.GroupId, out var leftTabControl))
+                    return;
+                if (!_panelTabControls.TryGetValue(rightPanel.GroupId, out var rightTabControl))
+                    return;
+
+                // Transfer ONLY the source tab to the left panel
+                if (sourceTab.Parent == BrowserTabs)
+                {
+                    BrowserTabs.Items.Remove(sourceTab);
+                    leftTabControl.Items.Add(sourceTab);
+                    leftTabControl.SelectedItem = sourceTab;
+                }
+
+                // Create new tab in right panel
+                _currentActivePanelId = rightPanel.GroupId;
+                await AddNewTab(selectTab: true, targetPanelId: rightPanel.GroupId);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error in SplitTabWithNewTab: {ex.Message}");
+                CustomMessageBox.Show($"Error creating split: {ex.Message}", "Error");
             }
         }
 
