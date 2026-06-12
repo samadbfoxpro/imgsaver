@@ -116,7 +116,16 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">
-                                        <Border x:Name="Border" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0" CornerRadius="4,4,0,0" Margin="2,0">
+                                        <Border x:Name="Border" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0" CornerRadius="4,4,0,0" Margin="2,0"
+                                                MouseRightButtonUp="TabItem_MouseRightButtonUp">
+                                            <Border.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Split Vertical" Click="MenuItem_SplitVertical" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                                    <MenuItem Header="Split Horizontal" Click="MenuItem_SplitHorizontal" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="Close" Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                                </ContextMenu>
+                                            </Border.ContextMenu>
                                             <StackPanel Orientation="Horizontal" Margin="8,4">
                                                 <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                                                 <Button Content="✕" Margin="8,0,0,0" Width="16" Height="16" FontSize="10" 
