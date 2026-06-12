@@ -57,6 +57,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <Button Grid.Column="0" Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnBack_Click" ToolTip="Back">
@@ -98,6 +99,11 @@
                                   Style="{StaticResource SecondaryButtonStyle}" ToolTip="Browser Settings" Click="BtnBrowserSettings_Click" Padding="0">
                         <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
+
+                    <Button x:Name="BtnSplitView" Grid.Column="11" Width="36" Height="36" Margin="8,0,8,0" 
+                                  Style="{StaticResource SecondaryButtonStyle}" ToolTip="Split View (V: Vertical, H: Horizontal)" Click="BtnSplitView_Click" Padding="0">
+                        <TextBlock Text="⊢" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Button>
                 </Grid>
             </Border>
 
@@ -108,10 +114,10 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Tabs and WebView -->
+            <!-- Tabs and WebView with Split View Support -->
             <Grid Grid.Row="3">
                 <TabControl x:Name="BrowserTabs" Background="Transparent" BorderThickness="0" SelectionChanged="BrowserTabs_SelectionChanged"
-                            AllowDrop="True" PreviewMouseMove="BrowserTabs_PreviewMouseMove" DragOver="BrowserTabs_DragOver" Drop="BrowserTabs_Drop">
+                            AllowDrop="True">
                     <TabControl.Resources>
                         <Style TargetType="TabItem">
                             <Setter Property="AllowDrop" Value="True"/>
@@ -137,6 +143,8 @@
                         </Style>
                     </TabControl.Resources>
                 </TabControl>
+                <!-- Split View Container (Overlay for future use) -->
+                <Grid x:Name="SplitViewContainer" Background="Transparent" Visibility="Collapsed"/>
                 <!-- Particle Canvas (Overlay) -->
                 <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" ClipToBounds="False"/>
             </Grid>
