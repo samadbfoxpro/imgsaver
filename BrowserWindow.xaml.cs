@@ -61,6 +61,7 @@ namespace imgsaver
 
         // Split View Management
         private SplitViewManager _splitViewManager = null!;
+        private SplitViewUIManager _splitViewUIManager = null!;
         private string _currentActivePanelId = "";
         private Dictionary<string, WpfTabControl> _panelTabControls = new();
         private bool _isSplitViewEnabled = false;
@@ -108,10 +109,24 @@ namespace imgsaver
             _splitViewManager = new SplitViewManager();
             _currentActivePanelId = _splitViewManager.GetRootState().GroupId;
             _isSplitViewEnabled = false;
+            
+            // Initialize UI Manager
+            if (SplitViewContainer is SplitViewContainer container)
+            {
+                _splitViewUIManager = new SplitViewUIManager(container);
+                _splitViewUIManager.InitializeRootPanel(_currentActivePanelId);
+                
+                // Wire up event handlers
+                container.OnPanelClosed += SplitViewContainer_OnPanelClosed;
+                container.OnPanelActivated += SplitViewContainer_OnPanelActivated;
+            }
         }
 
         private async void InitializeTabs()
         {
+            // Load split view state if it was enabled before
+            LoadSplitViewState();
+
             if (_currentSettings.TabSessions != null && _currentSettings.TabSessions.Count > 0)
             {
                 foreach (var tabSession in _currentSettings.TabSessions)
@@ -578,9 +593,51 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         {
             if (_splitViewManager != null)
             {
-                _currentSettings.SplitViewState = _splitViewManager.GetRootState().GroupId;
+                // Save complete split view state for restoration
+                _currentSettings.SplitViewState = _splitViewManager.SerializeState();
                 _currentSettings.EnableSplitView = _isSplitViewEnabled;
                 _currentSettings.Save();
+            }
+        }
+
+        /// <summary>
+        /// Load and restore split view state from settings
+        /// </summary>
+        private void LoadSplitViewState()
+        {
+            if (string.IsNullOrEmpty(_currentSettings.SplitViewState) || !_currentSettings.EnableSplitView)
+                return;
+
+            try
+            {
+                // Deserialize the saved state
+                if (_splitViewManager.DeserializeState(_currentSettings.SplitViewState))
+                {
+                    // State was restored, now enable split view
+                    if (_splitViewManager.IsInSplitMode)
+                    {
+                        _isSplitViewEnabled = true;
+                        
+                        // Build UI from restored state
+                        var rootState = _splitViewManager.GetRootState();
+                        if (SplitViewContainer is SplitViewContainer container)
+                        {
+                            var rootGrid = BuildPanelGridUI(rootState);
+                            if (rootGrid != null)
+                            {
+                                container.Children.Add(rootGrid);
+                            }
+                        }
+                        
+                        // Show split view UI
+                        BrowserTabs.Visibility = Visibility.Collapsed;
+                        SplitViewContainer.Visibility = Visibility.Visible;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading split view state: {ex.Message}");
             }
         }
 
@@ -660,7 +717,10 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
             _currentSettings.OpenTabs = urls;
             _currentSettings.TabSessions = sessions;
             _currentSettings.SelectedTabIndex = BrowserTabs.SelectedIndex;
-            _currentSettings.Save();
+            
+            // Save split view state along with session
+            SaveSplitViewState();
+        }
         }
 
         private class TabNetworkInfo
@@ -1769,23 +1829,286 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
 
         private void CreateSplitView(SplitOrientation orientation)
         {
-            if (!_isSplitViewEnabled)
+            if (_isSplitViewEnabled)
+                return;
+
+            try
             {
                 _isSplitViewEnabled = true;
+                
+                // Create the split in the state manager
                 var newPanel = _splitViewManager.CreateSplit(_currentActivePanelId, orientation);
-                if (newPanel != null)
+                if (newPanel == null)
                 {
-                    BrowserTabs.ItemsSource = null; // Unbind old items
-                    // Create a new tab control for the split panel
-                    var newTabControl = new WpfTabControl
-                    {
-                        Background = Transparent,
-                        BorderThickness = new Thickness(0)
-                    };
-                    _panelTabControls[newPanel.GroupId] = newTabControl;
-                    
-                    CustomMessageBox.Show("Split view enabled. The active panel will be split.", "Split View Created");
+                    _isSplitViewEnabled = false;
+                    CustomMessageBox.Show("Cannot create split view at this time.", "Error");
+                    return;
                 }
+
+                // Register the new panel with UI manager
+                _splitViewUIManager?.RegisterNewPanel(newPanel.GroupId);
+                
+                // Get the current state
+                var rootState = _splitViewManager.GetRootState();
+                
+                // Render the split view container with the updated state
+                if (SplitViewContainer is SplitViewContainer container)
+                {
+                    // Rebuild the container UI based on the updated state
+                    container.Children.Clear();
+                    var rootGrid = BuildPanelGridUI(rootState);
+                    if (rootGrid != null)
+                    {
+                        container.Children.Add(rootGrid);
+                    }
+                    
+                    // Transfer tabs from current panel to left/top panel
+                    if (rootState.LeftTopPanel != null)
+                    {
+                        TransferTabsToPanel(rootState.LeftTopPanel.GroupId);
+                    }
+                    
+                    // Set the new panel as active
+                    _currentActivePanelId = newPanel.GroupId;
+                    _splitViewUIManager?.SetActivePanel(_currentActivePanelId);
+                }
+                
+                // Hide normal tabs, show split view
+                BrowserTabs.Visibility = Visibility.Collapsed;
+                SplitViewContainer.Visibility = Visibility.Visible;
+                
+                CustomMessageBox.Show($"Split view enabled ({orientation.ToString()}). Tabs have been transferred to the left/top panel.", "Split View Created");
+            }
+            catch (Exception ex)
+            {
+                _isSplitViewEnabled = false;
+                CustomMessageBox.Show($"Error creating split view: {ex.Message}", "Error");
+            }
+        }
+
+        /// <summary>
+        /// Build the UI grid structure for a split view state recursively
+        /// </summary>
+        private Grid? BuildPanelGridUI(SplitViewState state)
+        {
+            if (state == null)
+                return null;
+
+            var grid = new Grid
+            {
+                Background = (Brush)Application.Current.Resources["BackgroundBrush"]
+            };
+
+            if (state.IsLeafPanel)
+            {
+                // Leaf panel - create TabControl with tab items
+                var tabControl = new WpfTabControl
+                {
+                    Background = Transparent,
+                    BorderThickness = new Thickness(0),
+                    Name = $"Tab_{state.GroupId}"
+                };
+                
+                // Apply tab styling
+                ApplyTabControlStyle(tabControl);
+                
+                // Store reference for later access
+                _panelTabControls[state.GroupId] = tabControl;
+                _splitViewUIManager?.RegisterNewPanel(state.GroupId);
+                
+                grid.Children.Add(tabControl);
+            }
+            else
+            {
+                // Split panel - create child grids with splitter
+                if (state.Orientation == SplitOrientation.Vertical)
+                {
+                    // Vertical split: Left and Right
+                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(state.SplitRatio, GridUnitType.Star) });
+                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - state.SplitRatio, GridUnitType.Star) });
+
+                    var leftGrid = BuildPanelGridUI(state.LeftTopPanel);
+                    if (leftGrid != null)
+                    {
+                        Grid.SetColumn(leftGrid, 0);
+                        grid.Children.Add(leftGrid);
+                    }
+
+                    // Splitter
+                    var splitter = new GridSplitter
+                    {
+                        Width = 4,
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        VerticalAlignment = VerticalAlignment.Stretch,
+                        Background = (Brush)Application.Current.Resources["BorderBrush"],
+                        Cursor = Cursors.SizeWE
+                    };
+                    Grid.SetColumn(splitter, 1);
+                    grid.Children.Add(splitter);
+
+                    var rightGrid = BuildPanelGridUI(state.RightBottomPanel);
+                    if (rightGrid != null)
+                    {
+                        Grid.SetColumn(rightGrid, 2);
+                        grid.Children.Add(rightGrid);
+                    }
+                }
+                else // Horizontal
+                {
+                    // Horizontal split: Top and Bottom
+                    grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(state.SplitRatio, GridUnitType.Star) });
+                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                    grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1 - state.SplitRatio, GridUnitType.Star) });
+
+                    var topGrid = BuildPanelGridUI(state.LeftTopPanel);
+                    if (topGrid != null)
+                    {
+                        Grid.SetRow(topGrid, 0);
+                        grid.Children.Add(topGrid);
+                    }
+
+                    // Splitter
+                    var splitter = new GridSplitter
+                    {
+                        Height = 4,
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        VerticalAlignment = VerticalAlignment.Stretch,
+                        Background = (Brush)Application.Current.Resources["BorderBrush"],
+                        Cursor = Cursors.SizeNS
+                    };
+                    Grid.SetRow(splitter, 1);
+                    grid.Children.Add(splitter);
+
+                    var bottomGrid = BuildPanelGridUI(state.RightBottomPanel);
+                    if (bottomGrid != null)
+                    {
+                        Grid.SetRow(bottomGrid, 2);
+                        grid.Children.Add(bottomGrid);
+                    }
+                }
+            }
+
+            return grid;
+        }
+
+        /// <summary>
+        /// Apply tab control styling to match the main browser tabs style
+        /// </summary>
+        private void ApplyTabControlStyle(WpfTabControl tabControl)
+        {
+            var resources = this.Resources;
+            if (resources.Contains("TabItemStyle"))
+            {
+                tabControl.ItemContainerStyle = (Style)resources["TabItemStyle"];
+            }
+        }
+
+        /// <summary>
+        /// Transfer tabs from the current main tab control to a panel
+        /// </summary>
+        private void TransferTabsToPanel(string targetPanelId)
+        {
+            var targetTabControl = _panelTabControls.TryGetValue(targetPanelId, out var tc) ? tc : null;
+            if (targetTabControl == null)
+                return;
+
+            // Copy all tabs from BrowserTabs to the target panel
+            var itemsToTransfer = BrowserTabs.Items.Cast<WpfTabItem>().ToList();
+            foreach (var tabItem in itemsToTransfer)
+            {
+                if (tabItem.DataContext is BrowserTabState tabState)
+                {
+                    var newTabItem = new WpfTabItem
+                    {
+                        Header = tabItem.Header,
+                        Content = tabItem.Content,
+                        DataContext = tabState,
+                        AllowDrop = true
+                    };
+                    targetTabControl.Items.Add(newTabItem);
+                }
+            }
+
+            // Select the first tab in the new panel
+            if (targetTabControl.Items.Count > 0)
+            {
+                targetTabControl.SelectedIndex = 0;
+            }
+        }
+
+        /// <summary>
+        /// Handle panel closed event
+        /// </summary>
+        private void SplitViewContainer_OnPanelClosed(object? sender, string panelId)
+        {
+            if (_splitViewManager.ClosePanel(panelId))
+            {
+                _splitViewUIManager?.UnregisterPanel(panelId);
+                _panelTabControls.Remove(panelId);
+
+                // If only one panel left, exit split view mode
+                if (_splitViewManager.GetPanelCount() <= 1)
+                {
+                    ExitSplitView();
+                }
+                else
+                {
+                    // Rebuild UI with updated state
+                    var rootState = _splitViewManager.GetRootState();
+                    if (SplitViewContainer is SplitViewContainer container)
+                    {
+                        container.Children.Clear();
+                        var rootGrid = BuildPanelGridUI(rootState);
+                        if (rootGrid != null)
+                        {
+                            container.Children.Add(rootGrid);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handle panel activated event
+        /// </summary>
+        private void SplitViewContainer_OnPanelActivated(object? sender, string panelId)
+        {
+            _currentActivePanelId = panelId;
+            _splitViewUIManager?.SetActivePanel(panelId);
+        }
+
+        /// <summary>
+        /// Exit split view mode and return to normal tab mode
+        /// </summary>
+        private void ExitSplitView()
+        {
+            if (!_isSplitViewEnabled)
+                return;
+
+            try
+            {
+                _isSplitViewEnabled = false;
+                
+                // Reset split view manager to single panel
+                _splitViewManager.ResetToSinglePanel();
+                _splitViewUIManager?.ClearAll();
+                _panelTabControls.Clear();
+                _currentActivePanelId = _splitViewManager.GetRootState().GroupId;
+                
+                // Clear and hide split view container
+                if (SplitViewContainer is SplitViewContainer container)
+                {
+                    container.Children.Clear();
+                    container.Visibility = Visibility.Collapsed;
+                }
+                
+                // Show normal tabs
+                BrowserTabs.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show($"Error exiting split view: {ex.Message}", "Error");
             }
         }
 
@@ -1901,6 +2224,42 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
         private void BtnReload_Click(object? sender, RoutedEventArgs e) => GetCurrentBrowser()?.Reload();
         private void BtnGo_Click(object? sender, RoutedEventArgs e) => Navigate();
         private void TxtUrl_KeyDown(object? sender, System.Windows.Input.KeyEventArgs e) { if (e.Key == Key.Enter) Navigate(); }
+
+        /// <summary>
+        /// Handle window-level keyboard shortcuts
+        /// </summary>
+        private void Window_PreviewKeyDown(object? sender, System.Windows.Input.KeyEventArgs e)
+        {
+            // Only process shortcuts when not in edit mode
+            if (Keyboard.FocusedElement is TextBox)
+                return;
+
+            // Check for Ctrl+Shift+V for Vertical Split
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
+                (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                if (e.Key == Key.V && !_isSplitViewEnabled)
+                {
+                    CreateSplitView(SplitOrientation.Vertical);
+                    e.Handled = true;
+                    return;
+                }
+                else if (e.Key == Key.H && !_isSplitViewEnabled)
+                {
+                    CreateSplitView(SplitOrientation.Horizontal);
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            // Check for Escape to exit split view
+            if (e.Key == Key.Escape && _isSplitViewEnabled)
+            {
+                ExitSplitView();
+                e.Handled = true;
+                return;
+            }
+        }
 
         private void Navigate()
         {
