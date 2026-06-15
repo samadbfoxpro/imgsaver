@@ -570,21 +570,6 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
-
-                            <Button x:Name="BtnPlayBrowserRec" Click="BtnPlayBrowserRec_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Play browser recording in Browser window">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="RC BRWS" FontSize="9" FontWeight="Bold" Foreground="#F1C40F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
                         </UniformGrid>
                     </Grid>
 
