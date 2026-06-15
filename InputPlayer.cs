@@ -20,6 +20,7 @@ namespace imgsaver
         private LowLevelMouseProc _mouseProc;
         private LowLevelKeyboardProc _kbProc;
         private DateTime _playStartTime = DateTime.MinValue;
+        private Func<IntPtr>? _relativeTargetProvider;
 
         private static readonly IntPtr Magic = (IntPtr)0x42424242;
 
@@ -31,6 +32,7 @@ namespace imgsaver
 
         public void SetEvents(IEnumerable<InputEvent> events) { _events = new List<InputEvent>(events); }
         public void SetSpeed(double speed) { _speed = Math.Max(0.1, speed); }
+        public void SetRelativeTargetProvider(Func<IntPtr>? targetProvider) { _relativeTargetProvider = targetProvider; }
 
         public async Task PlayAsync(bool loop = false)
         {
@@ -98,6 +100,16 @@ namespace imgsaver
 
         private IntPtr GetProcessWindow()
         {
+            if (_relativeTargetProvider != null)
+            {
+                try
+                {
+                    IntPtr target = _relativeTargetProvider();
+                    if (target != IntPtr.Zero) return target;
+                }
+                catch { }
+            }
+
             IntPtr found = IntPtr.Zero;
             uint pid = (uint)Process.GetCurrentProcess().Id;
             EnumWindows((hWnd, lParam) => {

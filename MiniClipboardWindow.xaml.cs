@@ -776,6 +776,25 @@ namespace imgsaver
         private void BtnAutoFill_Click(object sender, RoutedEventArgs e) => IsAutoFillEnabled = !IsAutoFillEnabled;
         private void BtnBrowserQuickPaste_Click(object sender, RoutedEventArgs e) => SetBrowserQuickPasteEnabled(!_isBrowserQuickPasteEnabled);
 
+        private async void BtnPlayBrowserRec_Click(object sender, RoutedEventArgs e)
+        {
+            BrowserWindow browserTarget = null;
+            foreach (Window w in System.Windows.Application.Current.Windows)
+            {
+                if (w is BrowserWindow browser && browser.IsLoaded)
+                {
+                    browserTarget = browser;
+                    break;
+                }
+            }
+
+            if (browserTarget == null) return;
+
+            BtnPlayBrowserRec.IsEnabled = false;
+            await browserTarget.PlayBrowserRecordingAsync();
+            BtnPlayBrowserRec.IsEnabled = true;
+        }
+
         private async void TriggerBrowserQuickPasteIfReady()
         {
             if (!_isBrowserQuickPasteEnabled || _isBrowserQuickPasteRunning) return;

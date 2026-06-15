@@ -55,6 +55,7 @@ namespace imgsaver
         private readonly HashSet<string> _miniClipImportedImageUris = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _miniClipImportedImageSignatures = new(StringComparer.OrdinalIgnoreCase);
         private readonly string _miniClipImportFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_mini_clip_imports");
+        private readonly InputPlayer _browserRecordingPlayer = new InputPlayer();
 
         // Download Manager
         private DownloadManagerService _downloadService = null!;
@@ -97,6 +98,12 @@ namespace imgsaver
             this.StateChanged += BrowserWindow_StateChanged;
 
             InitializeTabs();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _browserRecordingPlayer.Stop();
+            base.OnClosed(e);
         }
 
         private void InitializeDownloadService()
@@ -2388,6 +2395,28 @@ function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([],
                 GetCurrentBrowser()?.CoreWebView2.Navigate(url);
             }
             catch { }
+        }
+
+        public async Task PlayBrowserRecordingAsync()
+        {
+            RecordingManager.LoadState();
+            int slotToPlay = RecordingManager.SelectedSlot == 2 ? 2 : 1;
+            if (!RecordingManager.HasEvents(slotToPlay))
+            {
+                int other = slotToPlay == 1 ? 2 : 1;
+                if (RecordingManager.HasEvents(other)) slotToPlay = other;
+                else return;
+            }
+
+            _browserRecordingPlayer.Stop();
+            _browserRecordingPlayer.SetEvents(RecordingManager.GetEvents(slotToPlay));
+            _browserRecordingPlayer.SetSpeed(RecordingManager.PlaybackSpeed);
+            _browserRecordingPlayer.SetRelativeTargetProvider(() =>
+            {
+                var helper = new WindowInteropHelper(this);
+                return helper.Handle;
+            });
+            await _browserRecordingPlayer.PlayAsync(loop: false);
         }
     }
 
