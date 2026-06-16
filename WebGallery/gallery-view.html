@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imgsaver Gallery View</title>
+  <link rel="stylesheet" href="/gallery/assets/css/gallery-base-style.css">
+  <link rel="stylesheet" href="/gallery/assets/css/gallery-components-style.css">
+</head>
+<body>
+  <div id="notif" class="notification">Done</div>
+  <div class="container">
+    <div class="top-menu">
+      <a href="/">File Share</a>
+      <a href="/gallery">Gallery View</a>
+      <a href="/gallery/random">Random Gallery</a>
+      <button onclick="reloadAll()">Refresh</button>
+    </div>
+    <h1>Gallery View</h1>
+    <input id="searchInput" class="search-box" placeholder="Search filename, positive prompt, negative prompt, description">
+    <div id="calendarStrip" class="calendar-strip"></div>
+    <div id="content"></div>
+  </div>
+
+  <div id="imageModal" class="modal">
+    <span class="close-btn" onclick="closeModal()">&times;</span>
+    <img class="modal-img" id="modalImg" src="" alt="preview">
+  </div>
+
+  <script src="/gallery/assets/js/gallery-view.js"></script>
+</body>
+</html>

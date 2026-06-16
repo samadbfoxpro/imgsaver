@@ -21,9 +21,12 @@ namespace imgsaver
 
         private string _galleryPath = "";
         private const string GalleryConfigFileName = "gallery_config.txt";
+        private const int RecentWindowDays = 31;
         
         private Dictionary<string, List<string>> _imagesByDate = new Dictionary<string, List<string>>();
+        private Dictionary<string, GalleryImageInfo> _imageIndexByPath = new Dictionary<string, GalleryImageInfo>(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, string> _imagePrompts = new Dictionary<string, string>(); // imagePath -> prompt content
+        private List<GalleryImageInfo> _allImages = new List<GalleryImageInfo>();
         private List<string> _availableDates = new List<string>();
         private int _currentDateIndex = 0;
         private DateTime _currentCalendarMonth = DateTime.Now;
@@ -129,7 +132,7 @@ namespace imgsaver
             ImageGrid.Children.Clear();
 
             bool showUnorganized = ChkShowUnorganized.IsChecked == true;
-            await Task.Run(() => ScanImages(showUnorganized));
+            await Task.Run(() => ScanImageIndex(showUnorganized));
 
             if (_imagesByDate.Count == 0)
             {
@@ -142,21 +145,25 @@ namespace imgsaver
             _availableDates = _imagesByDate.Keys.OrderByDescending(d => d).ToList();
             _currentDateIndex = 0;
 
-            int totalImages = _imagesByDate.Values.Sum(list => list.Count);
+            int totalImages = _allImages.Count;
             TxtImageCount.Text = $"{totalImages} Images";
 
+            MoveToRecentStart();
+            PreloadRecentPromptMetadata();
             ShowDate(_availableDates[_currentDateIndex]);
 
             LoadingIndicator.Visibility = Visibility.Collapsed;
         }
 
-        private void ScanImages(bool showUnorganized)
+        private void ScanImageIndex(bool showUnorganized)
         {
             if (string.IsNullOrEmpty(_galleryPath) || !Directory.Exists(_galleryPath))
                 return;
 
             _imagesByDate.Clear();
             _imagePrompts.Clear();
+            _imageIndexByPath.Clear();
+            _allImages.Clear();
 
             var imageExtensions = new[] { ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff" };
             var files = Directory.GetFiles(_galleryPath, "*.*", SearchOption.AllDirectories)
@@ -172,22 +179,50 @@ namespace imgsaver
                 if (!showUnorganized && !hasPrompt)
                     continue;
 
-                // Load prompt content if exists
-                if (hasPrompt)
+                var lastWriteTime = File.GetLastWriteTime(file);
+                var dateKey = lastWriteTime.ToString("yyyy-MM-dd");
+                var info = new GalleryImageInfo
                 {
-                    try
-                    {
-                        _imagePrompts[file] = File.ReadAllText(txtPath).ToLower();
-                    }
-                    catch { }
-                }
+                    Path = file,
+                    FileName = Path.GetFileNameWithoutExtension(file),
+                    DateKey = dateKey,
+                    MonthKey = lastWriteTime.ToString("yyyy-MM"),
+                    LastWriteTime = lastWriteTime,
+                    HasPrompt = hasPrompt,
+                    PromptPath = txtPath
+                };
 
-                var dateKey = File.GetLastWriteTime(file).ToString("yyyy-MM-dd");
+                _allImages.Add(info);
+                _imageIndexByPath[file] = info;
+
                 if (!_imagesByDate.ContainsKey(dateKey))
                 {
                     _imagesByDate[dateKey] = new List<string>();
                 }
                 _imagesByDate[dateKey].Add(file);
+            }
+        }
+
+        private void MoveToRecentStart()
+        {
+            DateTime recentStart = DateTime.Now.Date.AddDays(-RecentWindowDays + 1);
+            int recentIndex = _availableDates.FindIndex(date =>
+                DateTime.TryParse(date, out DateTime parsed) && parsed.Date >= recentStart);
+
+            _currentDateIndex = recentIndex >= 0 ? recentIndex : 0;
+        }
+
+        private void PreloadRecentPromptMetadata()
+        {
+            DateTime recentStart = DateTime.Now.Date.AddDays(-RecentWindowDays + 1);
+            var recentPromptImages = _allImages
+                .Where(img => img.HasPrompt && img.LastWriteTime.Date >= recentStart)
+                .Take(300)
+                .ToList();
+
+            foreach (var image in recentPromptImages)
+            {
+                _ = GetPromptForImage(image.Path);
             }
         }
 
@@ -262,21 +297,18 @@ namespace imgsaver
 
                 var results = new List<string>();
 
-                foreach (var dateImages in _imagesByDate.Values)
+                foreach (var image in _allImages)
                 {
-                    foreach (var imagePath in dateImages)
+                    string fileName = image.FileName.ToLower();
+                    string promptContent = GetPromptForImage(image.Path);
+
+                    // Check if ALL search words are found in filename OR prompt
+                    bool allWordsFound = searchWords.All(word => 
+                        fileName.Contains(word) || promptContent.Contains(word));
+
+                    if (allWordsFound)
                     {
-                        string fileName = Path.GetFileNameWithoutExtension(imagePath).ToLower();
-                        string promptContent = _imagePrompts.ContainsKey(imagePath) ? _imagePrompts[imagePath] : "";
-
-                        // Check if ALL search words are found in filename OR prompt
-                        bool allWordsFound = searchWords.All(word => 
-                            fileName.Contains(word) || promptContent.Contains(word));
-
-                        if (allWordsFound)
-                        {
-                            results.Add(imagePath);
-                        }
+                        results.Add(image.Path);
                     }
                 }
 
@@ -520,8 +552,7 @@ namespace imgsaver
             ImageGrid.Children.Clear();
             EmptyState.Visibility = Visibility.Collapsed;
             
-            var allImages = _imagesByDate.Values.SelectMany(x => x).ToList();
-            if (allImages.Count == 0)
+            if (_allImages.Count == 0)
             {
                 EmptyState.Visibility = Visibility.Visible;
                 TxtEmptyMessage.Text = "No images found in gallery";
@@ -530,9 +561,9 @@ namespace imgsaver
 
             TxtCurrentDate.Text = "🎲 Random Gallery";
             
-            // Pick up to 10 random images
+            // Pick from the whole lightweight index, including months not yet viewed.
             var random = new Random();
-            var randomImages = allImages.OrderBy(x => random.Next()).Take(10).ToList();
+            var randomImages = _allImages.OrderBy(x => random.Next()).Take(10).Select(x => x.Path).ToList();
             
             TxtDateInfo.Text = $"{randomImages.Count} Random Images";
 
@@ -818,6 +849,27 @@ namespace imgsaver
             return dateStr;
         }
 
+        private string GetPromptForImage(string imagePath)
+        {
+            if (_imagePrompts.TryGetValue(imagePath, out string cachedPrompt))
+                return cachedPrompt;
+
+            if (!_imageIndexByPath.TryGetValue(imagePath, out GalleryImageInfo? info) || !info.HasPrompt)
+                return "";
+
+            try
+            {
+                string prompt = File.Exists(info.PromptPath) ? File.ReadAllText(info.PromptPath).ToLower() : "";
+                _imagePrompts[imagePath] = prompt;
+                return prompt;
+            }
+            catch
+            {
+                _imagePrompts[imagePath] = "";
+                return "";
+            }
+        }
+
         #endregion
 
         #region Window Controls
@@ -841,6 +893,17 @@ namespace imgsaver
         public async Task RefreshAfterExternalChange()
         {
         await LoadGalleryAsync();
+        }
+
+        private sealed class GalleryImageInfo
+        {
+            public string Path { get; init; } = "";
+            public string FileName { get; init; } = "";
+            public string DateKey { get; init; } = "";
+            public string MonthKey { get; init; } = "";
+            public DateTime LastWriteTime { get; init; }
+            public bool HasPrompt { get; init; }
+            public string PromptPath { get; init; } = "";
         }
     }
 }

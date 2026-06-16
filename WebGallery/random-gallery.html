@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Gallery</title>
+  <link rel="stylesheet" href="/gallery/assets/css/random-gallery.css">
+</head>
+<body>
+  <div class="notification" id="notif">Done</div>
+  <div class="container">
+    <div class="top-menu">
+      <a href="/gallery">Gallery View</a>
+      <a href="/">File Share</a>
+    </div>
+    <h1>Random Gallery</h1>
+    <div class="controls">
+      <button class="refresh-btn" onclick="loadRandomImages()">Load random images</button>
+    </div>
+    <div id="randomGrid" class="random-grid">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <div id="imageModal">
+    <span class="close-modal" onclick="closeModal()">&times;</span>
+    <div class="modal-content">
+      <img class="modal-img" id="modalImg" src="" alt="image">
+      <div id="modalPrompts"></div>
+    </div>
+  </div>
+
+  <script src="/gallery/assets/js/random-gallery.js"></script>
+</body>
+</html>
