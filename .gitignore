@@ -3,4 +3,5 @@ obj/
 data/
 .vs/
 *.user
-*.suowebhost/
+*.suo
+webhost/
