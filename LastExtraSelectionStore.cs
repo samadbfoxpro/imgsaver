@@ -21,6 +21,13 @@ namespace imgsaver
         {
             if (extra == null || string.IsNullOrWhiteSpace(extra.Text)) return;
 
+            Save(extra.Id ?? "", extra.ShortName ?? "", extra.Text, textOnly);
+        }
+
+        public static void Save(string extraId, string shortName, string text, bool textOnly)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+
             try
             {
                 string? dataDir = Path.GetDirectoryName(FilePath);
@@ -28,9 +35,9 @@ namespace imgsaver
 
                 var selection = new LastExtraSelection
                 {
-                    ExtraId = extra.Id ?? "",
-                    ShortName = extra.ShortName ?? "",
-                    Text = extra.Text,
+                    ExtraId = extraId ?? "",
+                    ShortName = shortName ?? "",
+                    Text = text,
                     TextOnly = textOnly,
                     SavedAt = DateTime.Now
                 };

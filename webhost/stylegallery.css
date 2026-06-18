@@ -1,0 +1,298 @@
+/* stylegallery.css */
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=block');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
+    background: #0f0f0f;
+    color: #e0e0e0;
+    padding: 20px;
+    direction: rtl;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    color: #ffffff;
+    margin: 30px 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.section-title {
+    color: #bb86fc;
+    border-right: 4px solid #bb86fc;
+    padding-right: 12px;
+    margin: 40px 0 20px;
+    font-size: 1.5rem;
+}
+
+.no-data {
+    text-align: center;
+    color: #aaaaaa;
+    font-style: italic;
+    padding: 30px;
+    background: #1a1a1a;
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.card {
+    background: #1a1a1a;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #2a2a2a;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.image-wrapper {
+    height: 280px;
+    overflow: hidden;
+    background: #000;
+}
+
+.image-wrapper img {
+    width: 100%;
+    height: auto;
+    max-height: 280px;
+    object-fit: contain;
+    transition: transform 0.5s ease;
+    display: block;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+.card:hover .image-wrapper img {
+    transform: scale(1.05);
+}
+
+.prompt-box {
+    padding: 20px;
+    border-top: 1px solid #2a2a2a;
+}
+
+.prompt-box h4 {
+    color: #cf6679;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.copy-box {
+    position: relative;
+    background: #222;
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #333;
+}
+
+.copy-box pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #e0e0e0;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.copy-btn {
+    position: absolute;
+    left: 15px;
+    bottom: 15px;
+    background: #bb86fc;
+    color: #000;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: #d7a8ff;
+    transform: scale(1.05);
+}
+
+/* ریسپانسیو */
+@media (max-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .image-wrapper {
+        height: 220px;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 10px;
+    }
+
+    .copy-btn {
+        left: 10px;
+        bottom: 10px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+}
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95);
+    overflow: auto;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-img {
+    display: block;
+    margin: auto;
+    max-width: 90%;
+    max-height: 90vh;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+    animation: zoomIn 0.3s ease;
+}
+
+.close-btn {
+    position: absolute;
+    top: 25px;
+    left: 35px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 1001;
+    padding: 5px 12px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+}
+
+.close-btn:hover {
+    color: #ff4444;
+    background: rgba(255,0,0,0.3);
+}
+
+/* انیمیشن ورود */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+/* ریسپانسیو */
+@media (max-width: 768px) {
+    .modal-img {
+        max-width: 95%;
+        max-height: 85vh;
+    }
+    .close-btn {
+        top: 15px;
+        left: 15px;
+        font-size: 32px;
+    }
+}
+
+
+
+        /* دکمه حذف گروهی بالای هر بخش */
+        .bulk-actions {
+            margin: 15px 0;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #cf6679;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .select-all {
+            margin-left: 10px;
+            cursor: pointer;
+            color: #bb86fc;
+        }
+
+        /* جستجو */
+        .search-box {
+            width: 100%;
+            max-width: 500px;
+            padding: 12px 16px;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 16px;
+            margin: 20px auto;
+            display: block;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-box:focus {
+            border-color: #bb86fc;
+            box-shadow: 0 0 0 3px rgba(187, 134, 252, 0.2);
+        }
+
+        /* نام فایل */
+        .filename-display {
+            text-align: center;
+            padding: 8px;
+            background: #252525;
+            border-top: 1px solid #333;
+            font-size: 0.9rem;
+            color: #bb86fc;
+            font-weight: 500;
+            direction: ltr;
+            font-family: 'Courier New', monospace;
+            border-radius: 0 0 8px 8px;
+        }
+
+        /* فیلتر شده */
+        .card.filtered {
+            display: none;
+        }
+        

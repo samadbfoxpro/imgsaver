@@ -1,0 +1,37 @@
+[Sat Oct  4 02:31:29 2025] PHP 8.4.2 Development Server (http://127.0.0.1:8080) started
+[Sat Oct  4 02:31:35 2025] 127.0.0.1:38716 Accepted
+[Sat Oct  4 02:31:35 2025] 127.0.0.1:38716 [200]: GET /log_viewer.php
+[Sat Oct  4 02:31:35 2025] 127.0.0.1:38716 Closing
+[Sat Oct  4 02:31:35 2025] 127.0.0.1:38718 Accepted
+[Sat Oct  4 02:31:35 2025] 127.0.0.1:38718 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:35 2025] 127.0.0.1:38718 Closing
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38726 Accepted
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38726 [200]: GET /log_viewer.php
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38726 Closing
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38728 Accepted
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38728 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38728 Closing
+[Sat Oct  4 02:31:42 2025] 127.0.0.1:38730 Accepted
+[Sat Oct  4 02:31:44 2025] 127.0.0.1:38730 [200]: GET /code.php
+[Sat Oct  4 02:31:44 2025] 127.0.0.1:38730 Closing
+[Sat Oct  4 02:31:44 2025] 127.0.0.1:38732 Accepted
+[Sat Oct  4 02:31:44 2025] 127.0.0.1:38732 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:44 2025] 127.0.0.1:38732 Closing
+[Sat Oct  4 02:31:45 2025] 127.0.0.1:38734 Accepted
+[Sat Oct  4 02:31:45 2025] 127.0.0.1:38736 Accepted
+[Sat Oct  4 02:31:45 2025] 127.0.0.1:38734 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:45 2025] 127.0.0.1:38734 Closing
+[Sat Oct  4 02:31:46 2025] 127.0.0.1:38736 [200]: GET /code.pho
+[Sat Oct  4 02:31:46 2025] 127.0.0.1:38736 Closing
+[Sat Oct  4 02:31:46 2025] 127.0.0.1:38738 Accepted
+[Sat Oct  4 02:31:46 2025] 127.0.0.1:38738 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:46 2025] 127.0.0.1:38738 Closing
+[Sat Oct  4 02:31:47 2025] 127.0.0.1:38742 Accepted
+[Sat Oct  4 02:31:47 2025] 127.0.0.1:38744 Accepted
+[Sat Oct  4 02:31:47 2025] 127.0.0.1:38742 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:47 2025] 127.0.0.1:38742 Closing
+[Sat Oct  4 02:31:48 2025] 127.0.0.1:38744 [200]: GET /index.php
+[Sat Oct  4 02:31:48 2025] 127.0.0.1:38744 Closing
+[Sat Oct  4 02:31:48 2025] 127.0.0.1:38746 Accepted
+[Sat Oct  4 02:31:48 2025] 127.0.0.1:38746 [200]: GET /favicon.ico
+[Sat Oct  4 02:31:48 2025] 127.0.0.1:38746 Closing

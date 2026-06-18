@@ -1,0 +1,105 @@
+/* استایل اختصاصی گالری دوم */
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+
+body {
+    background: linear-gradient(135deg, #232526 0%, #414345 100%);
+    color: #f5f5f5;
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.gallery2-container {
+    max-width: 1300px;
+    margin: 40px auto;
+    padding: 32px 24px;
+    background: rgba(30,34,40,0.95);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #7fd7fa;
+    margin-bottom: 40px;
+    letter-spacing: 1px;
+}
+
+/* گرید حرفه‌ای تصاویر */
+.gallery2-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 36px;
+    margin-bottom: 40px;
+}
+
+.gallery2-card {
+    background: #23272f;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+    transition: transform 0.18s cubic-bezier(.4,0,.2,1), box-shadow 0.18s;
+    position: relative;
+}
+.gallery2-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 12px 32px rgba(127,215,250,0.13);
+}
+
+.gallery2-image-wrapper {
+    width: 100%;
+    aspect-ratio: 1.2/1;
+    background: #181a1f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.gallery2-image-wrapper img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 0 0 18px 18px;
+    transition: filter 0.2s;
+}
+
+.gallery2-card-info {
+    padding: 18px 16px 12px 16px;
+}
+
+.gallery2-filename {
+    font-size: 1.1rem;
+    color: #7fd7fa;
+    margin-bottom: 8px;
+    font-weight: bold;
+    direction: ltr;
+    text-align: left;
+}
+
+.gallery2-prompts {
+    font-size: 0.98rem;
+    color: #e0e0e0;
+    margin-bottom: 10px;
+    line-height: 1.7;
+}
+
+.gallery2-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+.gallery2-btn {
+    background: #7fd7fa;
+    color: #23272f;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+}
+.gallery2-btn:hover {
+    background: #4a86e8;
+    color: #fff;
+}

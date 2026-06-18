@@ -32,6 +32,8 @@ namespace imgsaver
         private bool _isCharacterLocked = false;
         private bool _isExtraPromptLocked = false;
         private bool _isExtraLocked = false;
+        private bool _isUsingCustomExtra = false;
+        private string _currentCustomExtraText = "";
         private CharacterPersona _currentPersona = null;
         private BasePrompt _currentPrompt = null;
         private ExtraItem _currentExtra = null;
@@ -541,12 +543,25 @@ namespace imgsaver
         {
             if (ExtraList.SelectedItem is ExtraItem selectedExtra)
             {
+                _isUsingCustomExtra = false;
+                _currentCustomExtraText = "";
                 _currentExtra = selectedExtra;
                 PerformExtraInjection(selectedExtra);
                 SaveCurrentExtraSelection();
                 if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = selectedExtra.ShortName ?? "Unknown";
                 ExtraList.SelectedItem = null;
             }
+        }
+
+        private void BtnUseCustomExtra_Click(object sender, RoutedEventArgs e)
+        {
+            UseCustomExtraText();
+        }
+
+        private void TxtCustomExtraText_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            if (_isUsingCustomExtra) UseCustomExtraText();
         }
 
         private async void Indicator_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -816,6 +831,8 @@ namespace imgsaver
             if (!_isExtraLocked)
             {
                 var randomExtra = extraPool[_random.Next(extraPool.Count)];
+                _isUsingCustomExtra = false;
+                _currentCustomExtraText = "";
                 _currentExtra = randomExtra;
                 if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = randomExtra.ShortName ?? "Unknown";
             }
@@ -844,17 +861,25 @@ namespace imgsaver
             extraText = "";
             errorMessage = "";
 
+            if (_isUsingCustomExtra)
+            {
+                extraText = GetPreparedExtraText(_currentCustomExtraText);
+                if (string.IsNullOrWhiteSpace(extraText))
+                {
+                    errorMessage = "The custom Extra text is empty.";
+                    return false;
+                }
+
+                return true;
+            }
+
             if (_currentExtra == null || string.IsNullOrWhiteSpace(_currentExtra.Text))
             {
                 errorMessage = "Persona Injector must be open and an Extra item must be selected.";
                 return false;
             }
 
-            extraText = _currentExtra.Text;
-            if (ChkExtraNameOnly.IsChecked == true)
-            {
-                extraText = LastExtraSelectionStore.ApplyTextOnly(extraText, true);
-            }
+            extraText = GetPreparedExtraText(_currentExtra.Text);
 
             if (string.IsNullOrWhiteSpace(extraText))
             {
@@ -867,6 +892,12 @@ namespace imgsaver
 
         private void SaveCurrentExtraSelection()
         {
+            if (_isUsingCustomExtra)
+            {
+                SaveCurrentCustomExtraSelection();
+                return;
+            }
+
             if (_currentExtra == null) return;
             LastExtraSelectionStore.Save(_currentExtra, ChkExtraNameOnly.IsChecked == true);
         }
@@ -874,7 +905,8 @@ namespace imgsaver
         private void ChkExtraNameOnly_Changed(object sender, RoutedEventArgs e)
         {
             SaveCurrentExtraSelection();
-            if (_currentExtra != null) PerformExtraInjection(_currentExtra);
+            if (_isUsingCustomExtra) PerformExtraInjection(_currentCustomExtraText);
+            else if (_currentExtra != null) PerformExtraInjection(_currentExtra);
         }
 
         private void BtnCopyTitle_Click(object sender, RoutedEventArgs e)
@@ -913,6 +945,11 @@ namespace imgsaver
 
         private void PerformExtraInjection(ExtraItem extra)
         {
+            PerformExtraInjection(extra.Text);
+        }
+
+        private void PerformExtraInjection(string extraText)
+        {
             string rawPrompt = TxtExtraRawPrompt.Text;
             if (!rawPrompt.Contains(ExtraPlaceholderTag))
             {
@@ -920,16 +957,40 @@ namespace imgsaver
                 TxtExtraFinalOutput.Foreground = (System.Windows.Media.Brush)FindResource("WarningBrush");
                 return;
             }
-            string extraText = extra.Text;
-            if (ChkExtraNameOnly.IsChecked == true)
-            {
-                int commaIndex = extraText.IndexOf(',');
-                if (commaIndex > 0) extraText = extraText.Substring(0, commaIndex).Trim();
-            }
+            extraText = GetPreparedExtraText(extraText);
             string result = rawPrompt.Replace(ExtraPlaceholderTag, extraText);
             TxtExtraFinalOutput.Text = result;
             TxtExtraFinalOutput.Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush");
             ResetExtraCopyFeedback();
+        }
+
+        private void UseCustomExtraText()
+        {
+            string customText = TxtCustomExtraText?.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(customText))
+            {
+                TxtExtraFinalOutput.Text = "Enter custom extra text first, or select an extra from the library above.";
+                TxtExtraFinalOutput.Foreground = (System.Windows.Media.Brush)FindResource("WarningBrush");
+                return;
+            }
+
+            _isUsingCustomExtra = true;
+            _currentCustomExtraText = customText;
+            _currentExtra = null;
+            if (TxtCurrentExtraName != null) TxtCurrentExtraName.Text = "Custom Extra";
+            PerformExtraInjection(customText);
+            SaveCurrentCustomExtraSelection();
+        }
+
+        private void SaveCurrentCustomExtraSelection()
+        {
+            if (string.IsNullOrWhiteSpace(_currentCustomExtraText)) return;
+            LastExtraSelectionStore.Save("", "Custom Extra", _currentCustomExtraText, ChkExtraNameOnly.IsChecked == true);
+        }
+
+        private string GetPreparedExtraText(string extraText)
+        {
+            return LastExtraSelectionStore.ApplyTextOnly(extraText ?? "", ChkExtraNameOnly.IsChecked == true);
         }
 
         private void OutputBorder_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

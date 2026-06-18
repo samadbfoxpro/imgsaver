@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Persona Injector" 
-        Width="650" Height="750"
-        MinWidth="550" MinHeight="600"
+        Width="700" Height="820"
+        MinWidth="600" MinHeight="680"
         Background="Transparent"
         WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" 
@@ -539,6 +539,8 @@
                                         <RowDefinition Height="*"/>
                                         <!-- Character List -->
                                         <RowDefinition Height="Auto"/>
+                                        <!-- Custom Extra Entry -->
+                                        <RowDefinition Height="Auto"/>
                                         <!-- Output Label -->
                                         <RowDefinition Height="120"/>
                                         <!-- Output Field -->
@@ -737,7 +739,7 @@
                                         <TextBlock Text="EXTRA LIBRARY" Foreground="{StaticResource WarningBrush}" 
                                                     FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
                                         <TextBox x:Name="TxtExtraSearch" Grid.Column="1" Margin="12,0,12,0" Height="30" FontSize="13"
-                                                 TextChanged="TxtSearch_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
+                                                 TextChanged="TxtExtraSearch_TextChanged" VerticalContentAlignment="Center" Padding="8,0">
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                                     <Setter Property="Tag" Value="🔍 Search extras..."/>
@@ -824,9 +826,31 @@
                                             </ListBox.ItemContainerStyle>
                                         </ListBox>
                                     </Border>
+
+                                    <!-- Custom Extra Entry -->
+                                    <Grid Grid.Row="8" Margin="0,12,0,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="72"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CUSTOM EXTRA" Foreground="{StaticResource AccentBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                                        <Button x:Name="BtnUseCustomExtra" Grid.Row="0" Grid.Column="1" Content="Use Text" 
+                                                Click="BtnUseCustomExtra_Click" Padding="12,4" FontSize="13" Margin="12,0,0,4"
+                                                Background="{StaticResource PrimaryBrush}"
+                                                ToolTip="Use this text without saving it to the Extra library"/>
+                                        <TextBox x:Name="TxtCustomExtraText" Grid.Row="1" Grid.ColumnSpan="2" AcceptsReturn="True" TextWrapping="Wrap"
+                                                 VerticalScrollBarVisibility="Auto" Padding="10" VerticalContentAlignment="Top" FontSize="14"
+                                                 TextChanged="TxtCustomExtraText_TextChanged"/>
+                                    </Grid>
                     
                                     <!-- 9. Output Label -->
-                                    <Grid Grid.Row="8" Margin="0,12,0,4">
+                                    <Grid Grid.Row="9" Margin="0,12,0,4">
                                         <TextBlock x:Name="TxtExtraOutputLabel" Text="FINAL OUTPUT (Click to Copy)" Foreground="{StaticResource SuccessBrush}" 
                                                    FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
                                         <TextBlock x:Name="TxtExtraCopiedFeedback" Text="✓ Copied to Clipboard" Foreground="{StaticResource SuccessBrush}" 
@@ -834,7 +858,7 @@
                                     </Grid>
                     
                                     <!-- 10. Final Output Field -->
-                                    <Border x:Name="ExtraOutputBorder" Grid.Row="9" 
+                                    <Border x:Name="ExtraOutputBorder" Grid.Row="10" 
                                             Background="{StaticResource InputBrush}" 
                                             BorderBrush="{StaticResource BorderBrush}" 
                                             BorderThickness="1" CornerRadius="4"

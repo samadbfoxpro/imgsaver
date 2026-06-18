@@ -1,0 +1,61 @@
+
+        body {
+            background: #181818;
+            color: #e0e0e0;
+            font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+/* حذف استایل منوی قدیمی، استفاده از vertical-menu.css */
+        .manage-container {
+            max-width: 580px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .upload-form {
+            background: #232d3f;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1.5px solid #bb86fc;
+            background: #1a1a1a;
+            color: white;
+        }
+        .btn {
+            background: #bb86fc;
+            color: #232d3f;
+            border: none;
+            padding: 10px 32px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.08rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #d0a0ff;
+        }
+        .message {
+            margin-top: 1rem;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .message.success { background: #27ae60; color: white; }
+        .message.error { background: #cf6679; color: white; }
