@@ -344,21 +344,21 @@ namespace imgsaver
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
 
-        private async Task ImportImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath)
+        private async Task ImportImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath, bool force = false)
         {
             if (IsAiWorkflowImageContext(coreWebView2, uri))
-                await TryImportDomConfirmedImageToMiniClipAsync(coreWebView2, uri, cachePath);
+                await TryImportDomConfirmedImageToMiniClipAsync(coreWebView2, uri, cachePath, force);
             else
-                await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+                await TryImportCachedImageToMiniClipAsync(uri, cachePath, force);
         }
 
-        private async Task TryImportDomConfirmedImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath)
+        private async Task TryImportDomConfirmedImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath, bool force = false)
         {
             try
             {
                 await Task.Delay(1000);
-                if (!await IsImageLoadedInCurrentPageAsync(coreWebView2, uri)) return;
-                await TryImportCachedImageToMiniClipAsync(uri, cachePath);
+                if (!force && !await IsImageLoadedInCurrentPageAsync(coreWebView2, uri)) return;
+                await TryImportCachedImageToMiniClipAsync(uri, cachePath, force);
             }
             catch { }
         }
@@ -416,17 +416,17 @@ namespace imgsaver
             catch { return true; }
         }
 
-        private async Task TryImportCachedImageToMiniClipAsync(string uri, string cachePath)
+        private async Task TryImportCachedImageToMiniClipAsync(string uri, string cachePath, bool force = false)
         {
             try
             {
-                if (_miniClipImportedImageUris.Contains(uri)) return;
+                if (!force && _miniClipImportedImageUris.Contains(uri)) return;
                 if (!File.Exists(cachePath)) return;
 
                 var settings = _currentSettings ?? BrowserSettings.Load();
                 string? imageSignature = GetImageImportSignature(cachePath, settings.MinImageWidth, settings.MinImageHeight);
                 if (string.IsNullOrEmpty(imageSignature)) return;
-                if (_miniClipImportedImageSignatures.Contains(imageSignature)) return;
+                if (!force && _miniClipImportedImageSignatures.Contains(imageSignature)) return;
 
                 _miniClipImportedImageUris.Add(uri);
                 _miniClipImportedImageSignatures.Add(imageSignature);
@@ -440,6 +440,102 @@ namespace imgsaver
                 });
             }
             catch { }
+        }
+
+        private void CoreWebView2_ContextMenuRequested(object? sender, CoreWebView2ContextMenuRequestedEventArgs e)
+        {
+            try
+            {
+                string imageUri = e.ContextMenuTarget?.SourceUri ?? "";
+                if (string.IsNullOrWhiteSpace(imageUri)) return;
+                if (!Uri.TryCreate(imageUri, UriKind.Absolute, out var parsed) ||
+                    (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
+                    return;
+
+                var coreWebView2 = sender as CoreWebView2;
+                var importItem = coreWebView2?.Environment.CreateContextMenuItem(
+                    "Import image to Mini Clip again",
+                    null,
+                    CoreWebView2ContextMenuItemKind.Command);
+                if (importItem == null) return;
+
+                importItem.CustomItemSelected += async (_, _) =>
+                {
+                    await ManualImportImageToMiniClipAsync(coreWebView2, imageUri);
+                };
+
+                e.MenuItems.Insert(0, importItem);
+            }
+            catch { }
+        }
+
+        private async Task ManualImportImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri)
+        {
+            try
+            {
+                string? cachePath = GetCacheFilePath(uri);
+                if (!string.IsNullOrWhiteSpace(cachePath) && File.Exists(cachePath))
+                {
+                    await ImportImageToMiniClipAsync(coreWebView2, uri, cachePath, force: true);
+                    return;
+                }
+
+                string tempPath = await DownloadImageForManualImportAsync(coreWebView2, uri);
+                if (!string.IsNullOrWhiteSpace(tempPath) && File.Exists(tempPath))
+                    await ImportImageToMiniClipAsync(coreWebView2, uri, tempPath, force: true);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show($"Could not import image: {ex.Message}", "Mini Clip Import", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async Task<string> DownloadImageForManualImportAsync(CoreWebView2? coreWebView2, string uri)
+        {
+            Directory.CreateDirectory(_miniClipImportFolder);
+            string extension = GetImageExtensionFromUri(uri);
+            string tempPath = Path.Combine(_miniClipImportFolder, $"{CreateStableHash(uri)}_manual_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}");
+
+            using var client = new System.Net.Http.HttpClient();
+            var headers = await GetDownloadHeadersAsync(coreWebView2, uri);
+            if (headers != null)
+            {
+                foreach (var header in headers)
+                    client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            using var response = await client.GetAsync(uri);
+            response.EnsureSuccessStatusCode();
+
+            string contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+            if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The selected resource is not an image.");
+
+            await using var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+            await response.Content.CopyToAsync(output);
+            if (output.Length == 0 || output.Length > MaxDiskCacheItemBytes)
+                throw new InvalidOperationException("The selected image could not be saved for import.");
+
+            return tempPath;
+        }
+
+        private string GetImageExtensionFromUri(string uri)
+        {
+            try
+            {
+                string extension = Path.GetExtension(new Uri(uri).AbsolutePath);
+                if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".avif", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+                    return extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ? ".jpg" : extension.ToLowerInvariant();
+            }
+            catch { }
+
+            return ".img";
         }
 
         private string? GetImageImportSignature(string path, int minWidth, int minHeight)

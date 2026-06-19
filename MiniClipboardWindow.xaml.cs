@@ -670,6 +670,7 @@ namespace imgsaver
         private void BtnToggleMenu_Click(object sender, RoutedEventArgs e) => IsExtraMenuOpen = !IsExtraMenuOpen;
         private void BtnExtraMenuPageOne_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 0;
         private void BtnExtraMenuPageTwo_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 1;
+        private void BtnExtraMenuPageThree_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 2;
         private void BtnCaptureExtraTemplate_Click(object sender, RoutedEventArgs e)
         {
             try

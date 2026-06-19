@@ -74,7 +74,11 @@ namespace imgsaver
             {
                 if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null)
                 {
-                    if (state.PrimaryWebView.CoreWebView2 != null) _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
+                    if (state.PrimaryWebView.CoreWebView2 != null)
+                    {
+                        _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
+                        state.PrimaryWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
+                    }
                     state.PrimaryWebView.Dispose();
                 }
                 _tabHeaderMap.Remove(tab);
@@ -226,6 +230,7 @@ namespace imgsaver
                 webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
                 webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                 webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+                webView.CoreWebView2.ContextMenuRequested += CoreWebView2_ContextMenuRequested;
 
                 webView.NavigationStarting += (s, e) =>
                 {
@@ -489,7 +494,11 @@ namespace imgsaver
         {
             if (TryGetTabState(tab, out var state))
             {
-                if (state.PrimaryWebView?.CoreWebView2 != null) _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
+                if (state.PrimaryWebView?.CoreWebView2 != null)
+                {
+                    _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
+                    state.PrimaryWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
+                }
                 state.PrimaryWebView?.Dispose();
                 _tabStates.Remove(tab);
             }

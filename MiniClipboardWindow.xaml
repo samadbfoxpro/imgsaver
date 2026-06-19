@@ -400,6 +400,9 @@
                                     <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Grid.Style>
@@ -570,22 +573,55 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
+                        </UniformGrid>
+                    </Grid>
 
-                            <Button x:Name="BtnPlayBrowserRec" Click="BtnPlayBrowserRec_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Play recorded input in browser">
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="28"/>
+                                <RowDefinition Height="28"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button x:Name="BtnPlayBrowserRec" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="3"
+                                    Click="BtnPlayBrowserRec_Click" Margin="2" Cursor="Hand" ToolTip="Play recorded input in browser">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="RC BRWS" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Border x:Name="bd" Background="#050505" CornerRadius="6" BorderBrush="#FFD700" BorderThickness="1.5">
+                                            <TextBlock x:Name="txt" Text="RC BRWS" FontSize="16" FontWeight="Bold" Foreground="#FFD700" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                                <Setter TargetName="bd" Property="Background" Value="#111111"/>
+                                                <Setter TargetName="bd" Property="BorderBrush" Value="#FFE680"/>
+                                                <Setter TargetName="txt" Property="Foreground" Value="#FFE680"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#000000"/>
+                                                <Setter TargetName="bd" Property="BorderBrush" Value="#D9A900"/>
+                                                <Setter TargetName="txt" Property="Foreground" Value="#D9A900"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
-                        </UniformGrid>
+                        </Grid>
                     </Grid>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
@@ -616,6 +652,24 @@
                                             <Setter TargetName="dot" Property="Fill" Value="#AAA"/>
                                         </Trigger>
                                         <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+                                            <Setter TargetName="dot" Property="Width" Value="8"/>
+                                            <Setter TargetName="dot" Property="Height" Value="8"/>
+                                            <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <Button Click="BtnExtraMenuPageThree_Click" Width="12" Height="12" Margin="3,0" Cursor="Hand" ToolTip="Page 3">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Ellipse x:Name="dot" Width="7" Height="7" Fill="#555"/>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="dot" Property="Fill" Value="#AAA"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
                                             <Setter TargetName="dot" Property="Width" Value="8"/>
                                             <Setter TargetName="dot" Property="Height" Value="8"/>
                                             <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>
