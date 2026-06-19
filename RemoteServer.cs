@@ -374,13 +374,39 @@ textarea{width:100%;min-height:150px;padding:12px;border-radius:12px;border:1px 
 .mode-item{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:pointer;background:rgba(255,255,255,0.03);font-size:0.85rem}
 .mode-item.active{border-color:var(--primary);background:rgba(59,130,246,0.15)}
 .mode-item input{margin-right:6px}
+
+/* ---- دکمه‌های لمسی با حس کلید فیزیکی ---- */
 .btn-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
-.btn{padding:12px;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:0.9rem;color:white}
-.btn-primary{background:var(--primary)}.btn-accent{background:var(--accent)}.btn-danger{background:#ef4444}
+.btn{padding:12px;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:0.9rem;color:white;
+  box-shadow:0 4px 0 rgba(0,0,0,0.25),0 6px 10px rgba(0,0,0,0.25);
+  transform:translateY(0);transition:transform .08s ease,box-shadow .08s ease;}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,0.25),0 2px 4px rgba(0,0,0,0.2)}
+.btn-primary{background:linear-gradient(180deg,#4f95ff,var(--primary))}
+.btn-accent{background:linear-gradient(180deg,#a78bfa,var(--accent))}
+.btn-danger{background:linear-gradient(180deg,#f87171,#ef4444)}
+
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.grid button{padding:14px 8px;border:none;border-radius:14px;background:#0f172a;color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.8rem}
-.grid button:hover{background:rgba(59,130,246,0.2)}
+.grid button{padding:14px 8px;border:none;border-radius:14px;background:linear-gradient(180deg,#1c2a45,#0f172a);color:var(--text);
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:0.8rem;
+  box-shadow:0 3px 0 rgba(0,0,0,0.35),0 5px 8px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
+  transform:translateY(0);transition:transform .08s ease,box-shadow .08s ease,background .15s ease;}
+.grid button:active{transform:translateY(3px);box-shadow:0 0px 0 rgba(0,0,0,0.3),0 1px 3px rgba(0,0,0,0.25);background:rgba(59,130,246,0.25)}
+.grid button.btn-accent,.grid button.btn-danger{box-shadow:0 3px 0 rgba(0,0,0,0.35),0 5px 8px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.12)}
+.grid button.btn-accent:active,.grid button.btn-danger:active{transform:translateY(3px);box-shadow:0 0px 0 rgba(0,0,0,0.3),0 1px 3px rgba(0,0,0,0.25)}
 .grid svg{width:20px;height:20px}
+
+/* ---- دکمه دایره‌ای بزرگ پخش رکورد (پایین صفحه) ---- */
+.play-wrap{display:flex;justify-content:center;margin-top:24px}
+#playMiniBtn{width:96px;height:96px;border-radius:50%;border:none;cursor:pointer;
+  background:radial-gradient(circle at 35% 30%,#a78bfa,var(--accent) 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  color:white;font-size:0.7rem;font-weight:700;letter-spacing:.02em;
+  box-shadow:0 6px 0 rgba(0,0,0,0.3),0 10px 18px rgba(139,92,246,0.45),inset 0 2px 0 rgba(255,255,255,0.25);
+  transform:translateY(0);transition:transform .08s ease,box-shadow .08s ease;}
+#playMiniBtn svg{width:30px;height:30px}
+#playMiniBtn:active{transform:translateY(5px);box-shadow:0 1px 0 rgba(0,0,0,0.3),0 3px 8px rgba(139,92,246,0.4),inset 0 2px 0 rgba(255,255,255,0.2)}
+#playMiniBtn:disabled{opacity:.6;cursor:default}
+
 .toast{position:fixed;bottom:20px;right:20px;background:var(--card);padding:12px 18px;border-radius:12px;border:1px solid var(--border);opacity:0;transform:translateY(10px);transition:all 0.2s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 </style></head><body>
@@ -405,8 +431,10 @@ textarea{width:100%;min-height:150px;padding:12px;border-radius:12px;border:1px 
 <button onclick='key(""copy"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M16 1H4v14h2V3h12V1zm3 4H8v14h11V7zm0 16H8V7h11v14z'/></svg>Copy</button>
 <button onclick='key(""cut"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6s1.79 4 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1L9.64 7.64z'/></svg>Cut</button>
 <button class='btn-accent' onclick='key(""paste"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16h14V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1z'/></svg>Paste</button>
-<button id='playMiniBtn' class='btn-accent' style='grid-column:span 2' onclick='playMini(this)'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M8 5v14l11-7L8 5z'/></svg>Play Rec</button>
 <button class='btn-primary' style='grid-column:span 4' onclick='key(""enter"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7z'/></svg>Enter</button>
+</div>
+<div class='play-wrap'>
+<button id='playMiniBtn' onclick='playMini(this)'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M8 5v14l11-7L8 5z'/></svg>Play Rec</button>
 </div>
 </div>
 <div id='toast' class='toast'></div>
