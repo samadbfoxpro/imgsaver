@@ -852,13 +852,21 @@ namespace imgsaver
 
         private async void BtnPlayRec_Click(object sender, RoutedEventArgs e)
         {
+            await PlayMiniRecordingAsync();
+        }
+
+        public async Task<bool> PlayMiniRecordingAsync()
+        {
+            if (IsDisabled || !BtnPlayRec.IsEnabled || _playerRec.IsPlaying)
+                return false;
+
             RecordingManager.LoadState();
             int slotToPlay = RecordingManager.SequentialMode ? _nextMiniSlot : RecordingManager.SelectedSlot;
             if (!RecordingManager.HasEvents(slotToPlay))
             {
                 int other = (slotToPlay == 1) ? 2 : 1;
                 if (RecordingManager.HasEvents(other)) slotToPlay = other;
-                else return;
+                else return false;
             }
             BtnPlayRec.IsEnabled = false;
             if (BtnPlayRec.Template.FindName("txtPlay", BtnPlayRec) is TextBlock txt)
@@ -871,6 +879,7 @@ namespace imgsaver
             await _playerRec.PlayAsync(false);
             if (RecordingManager.SequentialMode) _nextMiniSlot = (slotToPlay == 1) ? 2 : 1;
             BtnPlayRec.IsEnabled = true;
+            return true;
         }
 
         private void BtnSaveFromPersonaInjector_Click(object sender, RoutedEventArgs e)

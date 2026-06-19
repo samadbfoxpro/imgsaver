@@ -146,6 +146,11 @@ namespace imgsaver
             SimulateShortcut(0x11, 0x41); // Ctrl + A
         }
 
+        public static void SimulateCtrlE()
+        {
+            SimulateShortcut(0x11, 0x45); // Ctrl + E
+        }
+
         public static void SimulateTab()
         {
             SimulateKeyPress(0x09); // VK_TAB

@@ -94,7 +94,7 @@ namespace imgsaver
             }
         }
 
-        private void ProcessRequest(HttpListenerContext context)
+        private async Task ProcessRequest(HttpListenerContext context)
         {
             var request = context.Request;
             var response = context.Response;
@@ -120,7 +120,7 @@ namespace imgsaver
                 }
                 else if (request.HttpMethod == "POST")
                 {
-                    HandlePost(request, response);
+                    await HandlePost(request, response);
                 }
                 else
                 {
@@ -184,7 +184,7 @@ namespace imgsaver
         }
 
         // ✅ پردازش درخواست‌های POST
-        private void HandlePost(HttpListenerRequest request, HttpListenerResponse response)
+        private async Task HandlePost(HttpListenerRequest request, HttpListenerResponse response)
         {
             using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
             string rawData = reader.ReadToEnd();
@@ -205,11 +205,10 @@ namespace imgsaver
             if (formData.TryGetValue("action", out string? action) &&
                 formData.TryGetValue("value", out string? actionValue))
             {
-                // ✅ اجرا در ترد اصلی UI برای دسترسی به کلیپ‌بورد و Input
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    ExecuteAction(action, actionValue);
-                });
+                string result = await ExecuteActionAsync(action, actionValue);
+                response.StatusCode = result == "OK" ? 200 : 409;
+                ServeText(response, result);
+                return;
             }
 
             response.StatusCode = 200;
@@ -217,7 +216,7 @@ namespace imgsaver
         }
 
         // ✅ اجرای دستورها بر اساس action
-        private void ExecuteAction(string action, string value)
+        private async Task<string> ExecuteActionAsync(string action, string value)
         {
             try
             {
@@ -225,40 +224,79 @@ namespace imgsaver
                 {
                     case "type":
                         if (!string.IsNullOrEmpty(value))
-                            InputSimulator.SimulateTextEntry(value);
-                        break;
+                        {
+                            System.Windows.Application.Current?.Dispatcher.Invoke(() => InputSimulator.SimulateTextEntry(value));
+                        }
+                        return "OK";
                     case "pasteText":
                         if (!string.IsNullOrEmpty(value))
                         {
-                            System.Windows.Clipboard.SetText(value);
-                            System.Threading.Thread.Sleep(50); // ⏱ زمان برای ست شدن کلیپ‌بورد
-                            InputSimulator.SimulatePaste();
+                            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                            {
+                                System.Windows.Clipboard.SetText(value);
+                                System.Threading.Thread.Sleep(50); // ⏱ زمان برای ست شدن کلیپ‌بورد
+                                InputSimulator.SimulatePaste();
+                            });
                         }
-                        break;
+                        return "OK";
                     case "key":
-                        ExecuteKeyCommand(value);
-                        break;
+                        return await ExecuteKeyCommandAsync(value);
                 }
             }
-            catch { /* خطاها را نادیده بگیر تا سرور کرش نکند */ }
+            catch (Exception ex)
+            {
+                return $"Error: {ex.Message}";
+            }
+
+            return "OK";
         }
 
         // ✅ اجرای دستورات کیبورد
-        private void ExecuteKeyCommand(string key)
+        private async Task<string> ExecuteKeyCommandAsync(string key)
         {
             switch (key?.ToLowerInvariant())
             {
-                case "enter": InputSimulator.SimulateEnter(); break;
-                case "backspace": InputSimulator.SimulateBackspace(1); break;
-                case "tab": InputSimulator.SimulateTab(); break;
-                case "undo": InputSimulator.SimulateUndo(); break;
-                case "redo": InputSimulator.SimulateRedo(); break;
-                case "copy": InputSimulator.SimulateCopy(); break;
-                case "cut": InputSimulator.SimulateCut(); break;
-                case "paste": InputSimulator.SimulatePaste(); break;
-                case "selectall": InputSimulator.SimulateSelectAll(); break;
-                case "win": InputSimulator.SimulateWinKey(); break;
-                case "ctrl": InputSimulator.SimulateCtrlKey(); break;
+                case "enter": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateEnter); return "OK";
+                case "backspace": System.Windows.Application.Current?.Dispatcher.Invoke(() => InputSimulator.SimulateBackspace(1)); return "OK";
+                case "tab": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateTab); return "OK";
+                case "undo": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateUndo); return "OK";
+                case "redo": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateRedo); return "OK";
+                case "copy": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateCopy); return "OK";
+                case "cut": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateCut); return "OK";
+                case "paste": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulatePaste); return "OK";
+                case "selectall": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateSelectAll); return "OK";
+                case "playmini": return await PlayMiniClipboardRecordingAsync() ? "OK" : "Mini recording is not ready";
+                case "ctrle": return await PlayMiniClipboardRecordingAsync() ? "OK" : "Mini recording is not ready";
+                case "win": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateWinKey); return "OK";
+                case "ctrl": System.Windows.Application.Current?.Dispatcher.Invoke(InputSimulator.SimulateCtrlKey); return "OK";
+            }
+
+            return "OK";
+        }
+
+        private async Task<bool> PlayMiniClipboardRecordingAsync()
+        {
+            try
+            {
+                var dispatcher = System.Windows.Application.Current?.Dispatcher;
+                if (dispatcher == null) return false;
+
+                Task<bool> playTask = await dispatcher.InvokeAsync(() =>
+                {
+                    foreach (Window window in System.Windows.Application.Current.Windows)
+                    {
+                        if (window is MiniClipboardWindow miniClip && miniClip.IsLoaded)
+                            return miniClip.PlayMiniRecordingAsync();
+                    }
+
+                    return Task.FromResult(false);
+                });
+
+                return await playTask;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -367,6 +405,7 @@ textarea{width:100%;min-height:150px;padding:12px;border-radius:12px;border:1px 
 <button onclick='key(""copy"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M16 1H4v14h2V3h12V1zm3 4H8v14h11V7zm0 16H8V7h11v14z'/></svg>Copy</button>
 <button onclick='key(""cut"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6s1.79 4 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1L9.64 7.64z'/></svg>Cut</button>
 <button class='btn-accent' onclick='key(""paste"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16h14V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1z'/></svg>Paste</button>
+<button id='playMiniBtn' class='btn-accent' style='grid-column:span 2' onclick='playMini(this)'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M8 5v14l11-7L8 5z'/></svg>Play Rec</button>
 <button class='btn-primary' style='grid-column:span 4' onclick='key(""enter"")'><svg viewBox='0 0 24 24'><path fill='currentColor' d='M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7z'/></svg>Enter</button>
 </div>
 </div>
@@ -386,7 +425,8 @@ function send(){if(mode==='paste'){if(!txt.value)return toastMsg('⚠ Text is em
 function getClip(){fetch('/clipboard').then(r=>r.json()).then(d=>{txt.value=d.text||'';toastMsg(d.text?'📥 Clipboard received':'⚠ Empty clipboard');}).catch(()=>toastMsg('❌ Connection failed'));}
 function clearTxt(){txt.value='';toastMsg('🗑 Cleared');}
 function key(k){sendAction('key',k);}
-function sendAction(action,value){fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`action=${action}&value=${encodeURIComponent(value)}`}).catch(()=>toastMsg('❌ Send failed'));}
+function playMini(btn){btn.disabled=true;sendAction('key','playmini').then(ok=>toastMsg(ok?'▶ Playing':'⚠ Mini Clip not ready')).finally(()=>setTimeout(()=>btn.disabled=false,600));}
+function sendAction(action,value){return fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`action=${action}&value=${encodeURIComponent(value)}`}).then(r=>r.ok).catch(()=>{toastMsg('❌ Send failed');return false;});}
 function toastMsg(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(window.tid);window.tid=setTimeout(()=>toast.classList.remove('show'),2500);}
 </script></body></html>";
 
