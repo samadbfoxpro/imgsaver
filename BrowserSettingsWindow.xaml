@@ -1,114 +1,260 @@
 <Window x:Class="imgsaver.BrowserSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Browser Settings" Width="400" Height="720"
+        Title="Browser Settings" Width="980" Height="700" MinWidth="760" MinHeight="560"
         Background="Transparent" WindowStyle="None" AllowsTransparency="True"
         WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="SettingsNavButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="SettingsPanelStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+
+        <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style x:Key="SettingsMutedTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </Window.Resources>
+
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="32" GlassFrameThickness="0" CornerRadius="8"/>
+        <WindowChrome CaptionHeight="36" GlassFrameThickness="0" CornerRadius="8"/>
     </WindowChrome.WindowChrome>
+
     <Border Background="{StaticResource BackgroundBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="32"/>
+                <RowDefinition Height="36"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <Border Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="⚙ Browser Configuration" VerticalAlignment="Center" Margin="12,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
-                    <Button Content="✕" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnCancel_Click"/>
+                    <TextBlock Text="Browser Settings" VerticalAlignment="Center" Margin="14,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
+                    <Button Content="X" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnCancel_Click"/>
                 </Grid>
             </Border>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="20">
-                    <TextBlock Text="Content Filtering" FontSize="14" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,15"/>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="240"/>
+                </Grid.ColumnDefinitions>
 
-                    <CheckBox x:Name="ChkLoadImages" Content="Load Images" Margin="0,0,0,12" Foreground="{StaticResource ForegroundBrush}"/>
-                    <CheckBox x:Name="ChkLoadMedia" Content="Load Video &amp; Audio Media" Margin="0,0,0,12" Foreground="{StaticResource ForegroundBrush}"/>
-                    <CheckBox x:Name="ChkEnableJS" Content="Enable JavaScript" Margin="0,0,0,12" Foreground="{StaticResource ForegroundBrush}"/>
-                    <CheckBox x:Name="ChkMuteAudio" Content="Mute Browser Audio" Margin="0,0,0,12" Foreground="{StaticResource ForegroundBrush}"/>
-                    <CheckBox x:Name="ChkAutoHideStatus" Content="Auto-hide Status Bar (Bottom)" Margin="0,0,0,12" Foreground="{StaticResource ForegroundBrush}"/>
+                <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0" Padding="18">
+                    <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Top">
+                            <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                            <TextBlock Text="Browser configuration and storage controls" Style="{StaticResource SettingsMutedTextStyle}" FontSize="12" Margin="0,0,0,20"/>
 
-                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,10"/>
-
-                    <TextBlock Text="Proxy Configuration" FontSize="14" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,5,0,10"/>
-                    <CheckBox x:Name="ChkEnableProxy" Content="Enable Proxy Server" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
-                    <Grid Margin="0,0,0,15">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="80"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Margin="0,0,8,0">
-                            <TextBlock Text="Type" FontSize="10" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <ComboBox x:Name="CmbProxyType" Height="32">
-                                <ComboBoxItem Content="HTTP" Tag="http"/>
-                                <ComboBoxItem Content="SOCKS5" Tag="socks5"/>
-                            </ComboBox>
+                            <Button x:Name="BtnNavGeneral" Tag="GeneralPanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
+                                <TextBlock Text="General"/>
+                            </Button>
+                            <Button x:Name="BtnNavProxy" Tag="ProxyPanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
+                                <TextBlock Text="Proxy"/>
+                            </Button>
+                            <Button x:Name="BtnNavSiteRules" Tag="SiteRulesPanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
+                                <TextBlock Text="Site Rules"/>
+                            </Button>
+                            <Button x:Name="BtnNavCache" Tag="CachePanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
+                                <TextBlock Text="Cache Management"/>
+                            </Button>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                            <TextBlock Text="Proxy Address" FontSize="10" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtProxyAddress" Height="32" Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}" VerticalContentAlignment="Center" Padding="5,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Port" FontSize="10" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtProxyPort" Height="32" Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}" VerticalContentAlignment="Center" Padding="5,0"/>
-                        </StackPanel>
-                    </Grid>
-                    <TextBlock Text="Note: Proxy changes require browser restart to take full effect." TextWrapping="Wrap" FontSize="10" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,-10,0,10"/>
+                    </DockPanel>
+                </Border>
 
-                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,10"/>
+                <Grid Grid.Column="0" Margin="28,24,28,24">
+                    <Grid x:Name="ContentHost">
+                        <ScrollViewer x:Name="GeneralPanel" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="General" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <TextBlock Text="Content loading and browser behavior." Style="{StaticResource SettingsMutedTextStyle}" Margin="0,0,0,18"/>
 
-                    <TextBlock Text="Site-Specific Cache" FontSize="14" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,5,0,10"/>
-                    <TextBlock Text="No-Cache Sites (only cookies/login cache):" FontSize="11" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,8"/>
-                    <ListBox x:Name="LstNoCacheSites" Height="100" Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}" Margin="0,0,0,8">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <TextBox x:Name="TxtNewNoCacheSite" Height="28" Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}" VerticalContentAlignment="Center" Padding="5,0" Margin="0,0,8,0"/>
-                        <Button Content="➕ Add" Click="BtnAddNoCacheSite_Click" Height="28" Width="70" Style="{StaticResource SecondaryButtonStyle}"/>
-                        <Button x:Name="BtnRemoveNoCacheSite" Content="➖ Remove" Click="BtnRemoveNoCacheSite_Click" Height="28" Width="80" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"/>
-                    </StackPanel>
+                                <Border Style="{StaticResource SettingsPanelStyle}">
+                                    <StackPanel>
+                                        <CheckBox x:Name="ChkLoadImages" Content="Load Images" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkLoadMedia" Content="Load Video and Audio Media" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkEnableJS" Content="Enable JavaScript" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkMuteAudio" Content="Mute Browser Audio" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkAutoHideStatus" Content="Auto-hide Status Bar" Margin="0,0,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
 
-                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,10"/>
+                        <ScrollViewer x:Name="ProxyPanel" Visibility="Collapsed" Opacity="0" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Proxy" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <TextBlock Text="Configure the proxy used by browser tabs and downloads." Style="{StaticResource SettingsMutedTextStyle}" Margin="0,0,0,18"/>
 
-                    <TextBlock Text="Cached Sites" FontSize="14" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,5,0,10"/>
-                    <ListBox x:Name="LstCachedSites" Height="120" Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}" Margin="0,0,0,8">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="2">
+                                <Border Style="{StaticResource SettingsPanelStyle}">
+                                    <StackPanel>
+                                        <CheckBox x:Name="ChkEnableProxy" Content="Enable Proxy Server" Margin="0,0,0,18"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="130"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="120"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,12,0">
+                                                <TextBlock Text="Type" FontSize="12" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                                <ComboBox x:Name="CmbProxyType" Height="34">
+                                                    <ComboBoxItem Content="HTTP" Tag="http"/>
+                                                    <ComboBoxItem Content="SOCKS5" Tag="socks5"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                                <TextBlock Text="Proxy Address" FontSize="12" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                                <TextBox x:Name="TxtProxyAddress" Height="34"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Port" FontSize="12" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                                <TextBox x:Name="TxtProxyPort" Height="34"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Text="Proxy changes reload tabs so the active WebView profile can use the new network configuration." Style="{StaticResource SettingsMutedTextStyle}" FontSize="12" Margin="0,14,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <ScrollViewer x:Name="SiteRulesPanel" Visibility="Collapsed" Opacity="0" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Site Rules" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <TextBlock Text="Exclude selected hosts from the custom file cache while keeping normal site login data available." Style="{StaticResource SettingsMutedTextStyle}" Margin="0,0,0,18"/>
+
+                                <Border Style="{StaticResource SettingsPanelStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="No-Cache Sites" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                        <ListBox x:Name="LstNoCacheSites" Height="190" Background="{StaticResource InputBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="TxtNewNoCacheSite" Height="34" Margin="0,0,10,0"/>
+                                            <Button Grid.Column="1" Content="Add" Click="BtnAddNoCacheSite_Click" Height="34" Width="78" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
+                                            <Button x:Name="BtnRemoveNoCacheSite" Grid.Column="2" Content="Remove" Click="BtnRemoveNoCacheSite_Click" Height="34" Width="90" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <ScrollViewer x:Name="CachePanel" Visibility="Collapsed" Opacity="0" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,18">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Info}" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="10" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                    <StackPanel>
+                                        <TextBlock Text="Cache Management" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                        <TextBlock Text="Remove saved browser cache files without signing out of websites." Style="{StaticResource SettingsMutedTextStyle}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Refresh" Click="BtnRefreshCache_Click" Height="34" Width="92" Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Top"/>
                                 </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    <Button x:Name="BtnClearSelectedSite" Content="🗑 Clear Selected Site Cache" Click="BtnClearSelectedSite_Click" 
-                            Height="32" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,0,15"/>
 
-                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,10"/>
+                                <Border Style="{StaticResource SettingsPanelStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Total cache" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="12"/>
+                                            <TextBlock x:Name="TxtTotalCacheSize" Text="0 B" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Cached sites" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="12"/>
+                                            <TextBlock x:Name="TxtCachedSiteCount" Text="0" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Cached files" Foreground="{StaticResource ForegroundMutedBrush}" FontSize="12"/>
+                                            <TextBlock x:Name="TxtCachedFileCount" Text="0" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
 
-                    <TextBlock Text="Global Maintenance" FontSize="14" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10"/>
-                    <Button x:Name="BtnClearData" Content="🔥 Clear ALL Browsing Data" Click="BtnClearData_Click" 
-                            Height="32" Style="{StaticResource SecondaryButtonStyle}" Foreground="#FF5555"/>
-                </StackPanel>
-            </ScrollViewer>
+                                <Border Style="{StaticResource SettingsPanelStyle}">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Saved Website Cache" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <TextBlock Text="Sort by" Foreground="{StaticResource ForegroundMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ComboBox x:Name="CmbCacheSort" Width="150" Height="32" SelectionChanged="CmbCacheSort_SelectionChanged">
+                                                    <ComboBoxItem Content="Site name" Tag="name"/>
+                                                    <ComboBoxItem Content="Cache size" Tag="size"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </Grid>
 
-            <Border Grid.Row="2" Padding="20" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                                        <ListView x:Name="LstCachedSites" Height="260" Background="{StaticResource InputBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" SelectionMode="Single">
+                                            <ListView.View>
+                                                <GridView>
+                                                    <GridViewColumn Header="Website" Width="260" DisplayMemberBinding="{Binding Name}"/>
+                                                    <GridViewColumn Header="Size" Width="120" DisplayMemberBinding="{Binding SizeText}"/>
+                                                    <GridViewColumn Header="Files" Width="90" DisplayMemberBinding="{Binding FileCount}"/>
+                                                    <GridViewColumn Header="Action" Width="120">
+                                                        <GridViewColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <Button Content="Delete" Click="BtnDeleteSiteCache_Click" Style="{StaticResource SecondaryButtonStyle}" Height="28" Padding="10,3" Tag="{Binding}"/>
+                                                            </DataTemplate>
+                                                        </GridViewColumn.CellTemplate>
+                                                    </GridViewColumn>
+                                                </GridView>
+                                            </ListView.View>
+                                        </ListView>
+
+                                        <CheckBox x:Name="ChkDeleteLoginData" Content="Delete Login Data and Cookies" Margin="0,14,0,8" Checked="ChkDeleteLoginData_Changed" Unchecked="ChkDeleteLoginData_Changed"/>
+                                        <TextBlock Text="Leave this off to delete only files saved in the custom cache folder. Turn it on only when you also want WebView browsing data, cookies, and login sessions cleared." Style="{StaticResource SettingsMutedTextStyle}" FontSize="12" Margin="0,0,0,14"/>
+
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button x:Name="BtnClearSelectedSite" Content="Delete Selected Site Cache" Click="BtnClearSelectedSite_Click" Height="34" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,0"/>
+                                            <Button x:Name="BtnClearData" Content="Delete All Cache" Click="BtnClearData_Click" Height="34" Foreground="#F14C4C" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <Border Grid.Row="2" Padding="20,14" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,8,8">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Cancel" Click="BtnCancel_Click" Width="80" Height="32" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
-                    <Button Content="Save Settings" Click="BtnSave_Click" Width="110" Height="32" FontWeight="Bold"/>
+                    <Button Content="Cancel" Click="BtnCancel_Click" Width="86" Height="34" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
+                    <Button Content="Save Settings" Click="BtnSave_Click" Width="122" Height="34" FontWeight="SemiBold"/>
                 </StackPanel>
             </Border>
         </Grid>

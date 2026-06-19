@@ -1,87 +1,132 @@
+/* ============================================================
+   Gallery View — components
+   Pagination, toolbars, calendar filmstrip, day headers, toasts.
+   ============================================================ */
+
+/* ---------- pagination ---------- */
 .pagination {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin: 40px 0;
+  gap: 8px;
+  margin: 36px 0;
   flex-wrap: wrap;
 }
 
 .pagination button,
 .pagination span {
-  padding: 8px 16px;
-  border: 1px solid #3a3a3a;
-  background: #1a1a1a;
-  color: #e0e0e0;
-  border-radius: 6px;
-  transition: all 0.3s;
-  min-width: 40px;
+  padding: 9px 16px;
+  border: 1px solid var(--hairline-strong);
+  background: var(--ink-900);
+  color: var(--ink-text);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  min-width: 42px;
   text-align: center;
   cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .pagination button:hover {
-  background: #2a2a2a;
-  color: #bb86fc;
+  background: var(--ink-800);
+  color: var(--safelight);
+  border-color: var(--safelight-soft);
 }
 
 .pagination .current {
-  background: #bb86fc;
-  color: #000;
-  font-weight: bold;
+  background: var(--safelight);
+  color: #1a1206;
+  border-color: var(--safelight);
+  font-weight: 700;
 }
 
 .pagination .disabled {
-  color: #555;
+  color: var(--mist-dim);
   cursor: not-allowed;
-  background: #151515;
-  border-color: #2a2a2a;
+  background: var(--ink-950);
+  border-color: var(--hairline);
 }
 
+/* ---------- toolbars ---------- */
 .download-section {
-  text-align: left;
-  margin: 15px 0;
-  padding: 10px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  border: 1px solid #333;
+  text-align: right;
+  margin: 16px 0;
+  padding: 14px 18px;
+  background: var(--ink-900);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 15px;
+  gap: 14px;
+  font-size: 0.88rem;
+}
+
+.download-section strong {
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.download-section span {
+  color: var(--mist) !important;
 }
 
 .download-btn,
 .delete-btn,
 .load-more-btn {
-  background: #3a3a3a;
-  color: #fff;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 6px;
+  background: var(--ink-800);
+  color: var(--paper);
+  border: 1px solid var(--hairline-strong);
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.3s;
+  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  transition: var(--transition);
   text-decoration: none;
   display: inline-flex;
   justify-content: center;
+  align-items: center;
 }
 
 .download-btn:hover {
-  background: #4a4a4a;
+  background: var(--safelight-soft);
+  border-color: var(--safelight);
+  color: var(--safelight);
 }
 
 .delete-btn {
-  background: #cf6679;
+  background: var(--negative-soft);
+  border-color: rgba(209, 104, 95, 0.35);
+  color: var(--negative);
 }
 
 .delete-btn:hover {
-  background: #e57373;
+  background: var(--negative);
+  color: #1c0a08;
+  border-color: var(--negative);
+}
+
+.load-more-btn {
+  display: flex;
+  margin: 0 auto 36px;
+  padding: 11px 30px;
+  background: var(--ink-900);
+  border-color: var(--hairline-strong);
+}
+
+.load-more-btn:hover {
+  background: var(--ink-800);
+  color: var(--safelight);
+  border-color: var(--safelight-soft);
 }
 
 .card-actions {
-  padding: 10px 20px;
-  background: #1a1a1a;
-  border-top: 1px solid #333;
+  padding: 12px 18px 16px;
+  background: var(--ink-900);
+  border-top: 1px solid var(--hairline);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -90,17 +135,17 @@
 
 .card-actions .download-btn {
   width: 100%;
-  padding: 8px;
-  font-size: 0.85rem;
+  padding: 9px;
+  font-size: 0.82rem;
 }
 
 .delete-single-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(207, 102, 121, 0.9);
-  color: white;
-  border: none;
+  top: 12px;
+  right: 12px;
+  background: rgba(10, 12, 16, 0.65);
+  color: var(--negative);
+  border: 1px solid rgba(209, 104, 95, 0.4);
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -110,90 +155,161 @@
   align-items: center;
   justify-content: center;
   z-index: 10;
+  backdrop-filter: blur(4px);
+  transition: var(--transition);
+}
+
+.delete-single-btn:hover {
+  background: var(--negative);
+  color: #1c0a08;
+  border-color: var(--negative);
 }
 
 .select-checkbox {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 24px;
-  height: 24px;
+  top: 12px;
+  left: 12px;
+  width: 21px;
+  height: 21px;
   cursor: pointer;
   z-index: 10;
+  accent-color: var(--safelight);
 }
 
 .bulk-actions {
-  margin: 15px 0;
-  padding: 10px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  border: 1px solid #cf6679;
+  margin: 16px 0;
+  padding: 12px 18px;
+  background: var(--ink-900);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(209, 104, 95, 0.3);
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
   flex-wrap: wrap;
+  font-size: 0.88rem;
 }
 
-.day-header {
-  background: linear-gradient(90deg, #2a2a2a, #1a1a1a);
-  padding: 15px;
-  border-radius: 10px;
-  margin: 25px 0 15px;
-  text-align: center;
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #bb86fc;
-  border: 1px solid #333;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.bulk-actions label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-text);
+  cursor: pointer;
 }
+
+.bulk-actions input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--negative);
+  cursor: pointer;
+}
+
+/* ---------- day header / calendar strip ---------- */
+.day-header {
+  background: linear-gradient(90deg, var(--ink-800), var(--ink-900));
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  margin: 28px 0 16px;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--safelight);
+  border: 1px solid var(--hairline);
+  position: relative;
+}
+
+.day-header::before,
+.day-header::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 26px;
+  height: 1px;
+  background: var(--hairline-strong);
+  transform: translateY(-50%);
+}
+
+.day-header::before { right: 18px; display: none; }
+.day-header::after { left: 18px; display: none; }
 
 .calendar-strip {
   display: flex;
   gap: 8px;
-  overflow: auto;
-  padding: 10px;
-  background: #151515;
-  border: 1px solid #2a2a2a;
-  border-radius: 10px;
-  margin: 16px auto;
+  overflow-x: auto;
+  padding: 12px;
+  background: var(--ink-900);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  margin: 18px auto;
   max-width: 900px;
+  scrollbar-width: thin;
+}
+
+.calendar-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.calendar-strip::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 4px;
 }
 
 .date-nav-btn {
   flex: 0 0 auto;
-  padding: 8px 14px;
-  background: #bb86fc;
-  color: #000;
-  border: none;
-  border-radius: 8px;
+  padding: 9px 16px;
+  background: var(--ink-850);
+  color: var(--ink-text);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  transition: var(--transition);
+  direction: ltr;
+}
+
+.date-nav-btn:hover {
+  border-color: var(--safelight-soft);
+  color: var(--safelight);
 }
 
 .date-nav-btn.active {
-  background: #4a86e8;
-  color: #fff;
+  background: var(--safelight);
+  color: #1a1206;
+  border-color: var(--safelight);
+  font-weight: 700;
 }
 
+/* ---------- toast notification ---------- */
 .notification {
   position: fixed;
-  top: 0;
+  top: 18px;
   left: 50%;
-  transform: translateX(-50%) translateY(-40px);
-  background: linear-gradient(90deg, #43a047 60%, #388e3c 100%);
-  color: #fff;
-  padding: 14px 40px;
-  border-radius: 24px;
-  box-shadow: 0 8px 32px rgba(67, 160, 71, 0.18);
-  font-size: 1.05em;
+  transform: translateX(-50%) translateY(-50px);
+  background: linear-gradient(135deg, var(--develop-green), #4f9d6d);
+  color: #08160d;
+  padding: 13px 32px;
+  border-radius: 999px;
+  box-shadow: 0 14px 36px rgba(111, 191, 139, 0.25);
+  font-size: 0.95rem;
+  font-weight: 600;
   opacity: 0;
   z-index: 9999;
   pointer-events: none;
-  transition: opacity 0.45s, transform 0.45s;
+  transition: opacity 0.4s, transform 0.4s;
 }
 
 .notification.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(32px);
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 768px) {
+  .download-section,
+  .bulk-actions {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
 }

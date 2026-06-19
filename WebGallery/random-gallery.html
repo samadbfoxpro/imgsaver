@@ -3,31 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Random Gallery</title>
+  <title>گالری تصادفی | Imgsaver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/gallery/assets/css/random-gallery.css">
 </head>
 <body>
-  <div class="notification" id="notif">Done</div>
+  <div class="notification" id="notif">انجام شد</div>
   <div class="container">
     <div class="top-menu">
-      <a href="/gallery">Gallery View</a>
-      <a href="/">File Share</a>
+      <a href="/gallery">گالری ویو</a>
+      <a href="/">اشتراک فایل</a>
     </div>
-    <h1>Random Gallery</h1>
+    <h1>گالری تصادفی</h1>
     <div class="controls">
-      <button class="refresh-btn" onclick="loadRandomImages()">Load random images</button>
+      <label class="count-control" for="randomCount">
+        تعداد
+        <input id="randomCount" type="number" min="1" max="100" value="5">
+      </label>
+      <button class="refresh-btn" onclick="loadRandomImages()">بارگذاری تصاویر تصادفی</button>
     </div>
     <div id="randomGrid" class="random-grid">
-      <div class="loading">Loading...</div>
+      <div class="loading">در حال بارگذاری...</div>
     </div>
   </div>
 
   <div id="imageModal">
     <span class="close-modal" onclick="closeModal()">&times;</span>
+    <button class="modal-nav modal-prev" type="button" onclick="event.stopPropagation(); showPreviousImage()" aria-label="تصویر قبلی">&#10094;</button>
     <div class="modal-content">
-      <img class="modal-img" id="modalImg" src="" alt="image">
+      <img class="modal-img" id="modalImg" src="" alt="تصویر">
       <div id="modalPrompts"></div>
     </div>
+    <button class="modal-nav modal-next" type="button" onclick="event.stopPropagation(); showNextImage()" aria-label="تصویر بعدی">&#10095;</button>
+    <div id="modalCounter" class="modal-counter"></div>
   </div>
 
   <script src="/gallery/assets/js/random-gallery.js"></script>

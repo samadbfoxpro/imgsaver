@@ -2,6 +2,7 @@ let days = [];
 let currentPage = 1;
 let currentImages = [];
 let visibleCount = 10;
+let modalImageIndex = -1;
 
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, ch => ({
@@ -16,7 +17,7 @@ function escapeHtml(value) {
 function showNotification(msg, isError = false) {
   const notif = document.getElementById("notif");
   notif.textContent = msg;
-  notif.style.background = isError ? "#cf6679" : "linear-gradient(90deg,#43a047 60%,#388e3c 100%)";
+  notif.style.background = isError ? "linear-gradient(135deg,#d1685f,#b94d44)" : "linear-gradient(135deg,#6fbf8b,#4f9d6d)";
   notif.classList.add("show");
   setTimeout(() => notif.classList.remove("show"), 1700);
 }
@@ -28,7 +29,7 @@ async function reloadAll() {
   renderCalendar();
 
   if (!days.length) {
-    document.getElementById("content").innerHTML = "<p class=\"no-data\">No gallery images found. Set the desktop gallery path first.</p>";
+    document.getElementById("content").innerHTML = "<p class=\"no-data\">هیچ تصویری در گالری یافت نشد. ابتدا مسیر گالری دسکتاپ را تنظیم کنید.</p>";
     return;
   }
 
@@ -49,7 +50,7 @@ async function loadPage(page) {
   if (!day) return;
 
   renderCalendar();
-  document.getElementById("content").innerHTML = "<div class=\"loading\">Loading...</div>";
+  document.getElementById("content").innerHTML = "<div class=\"loading\">در حال بارگذاری...</div>";
   const res = await fetch("/api/gallery/images?date=" + encodeURIComponent(day.date) + "&limit=500");
   const data = await res.json();
   currentImages = data.images || [];
@@ -63,37 +64,37 @@ async function searchGallery() {
     return;
   }
 
-  document.getElementById("content").innerHTML = "<div class=\"loading\">Searching...</div>";
+  document.getElementById("content").innerHTML = "<div class=\"loading\">در حال جستجو...</div>";
   const res = await fetch("/api/gallery/images?q=" + encodeURIComponent(q) + "&limit=500");
   const data = await res.json();
   currentImages = data.images || [];
   visibleCount = currentImages.length;
   document.getElementById("content").innerHTML =
-    `<div class="day-header">Search results for "${escapeHtml(q)}" - ${currentImages.length} result</div><div class="gallery-grid">${currentImages.map(renderCard).join("")}</div>`;
+    `<div class="day-header">نتایج جستجو برای «${escapeHtml(q)}» - ${currentImages.length} نتیجه</div><div class="gallery-grid">${currentImages.map(renderCard).join("")}</div>`;
 }
 
 function renderDay(day) {
   const shown = currentImages.slice(0, visibleCount);
   document.getElementById("content").innerHTML = `
-    <div class="day-header">${escapeHtml(day.date)} - ${currentImages.length} file</div>
+    <div class="day-header">${escapeHtml(day.date)} - ${currentImages.length} فایل</div>
     <div class="download-section">
-      <strong>Download items for this day</strong>
-      <span style="color:#ffcc00">Text files are available on each card when present.</span>
+      <strong>دانلود آیتم‌های این روز</strong>
+      <span>در صورت وجود فایل متنی، روی هر کارت در دسترس است.</span>
     </div>
     <div class="bulk-actions">
-      <label><input type="checkbox" class="select-all" onchange="toggleSelectAll(this)"> Select all visible</label>
-      <button class="delete-btn" onclick="deleteSelected()">Delete selected</button>
+      <label><input type="checkbox" class="select-all" onchange="toggleSelectAll(this)"> انتخاب همه موارد نمایان</label>
+      <button class="delete-btn" onclick="deleteSelected()">حذف انتخاب‌شده‌ها</button>
     </div>
     <div class="gallery-grid" id="galleryGrid">${shown.map(renderCard).join("")}</div>
-    ${visibleCount < currentImages.length ? "<button class=\"load-more-btn\" onclick=\"loadMore()\">Load more</button>" : ""}
+    ${visibleCount < currentImages.length ? "<button class=\"load-more-btn\" onclick=\"loadMore()\">نمایش بیشتر</button>" : ""}
     ${renderPagination()}
-    <div style="text-align:center;margin-top:20px;color:#aaa;font-size:.9rem">Page ${currentPage} of ${days.length} - ${escapeHtml(day.date)}</div>
+    <div style="text-align:center;margin-top:20px;color:var(--mist);font-size:.9rem">صفحه ${currentPage} از ${days.length} - ${escapeHtml(day.date)}</div>
   `;
 }
 
 function renderPagination() {
-  const prev = currentPage > 1 ? `<button onclick="loadPage(${currentPage - 1})">Previous day</button>` : "<span class=\"disabled\">Previous day</span>";
-  const next = currentPage < days.length ? `<button onclick="loadPage(${currentPage + 1})">Next day</button>` : "<span class=\"disabled\">Next day</span>";
+  const prev = currentPage > 1 ? `<button onclick="loadPage(${currentPage - 1})">روز قبل</button>` : "<span class=\"disabled\">روز قبل</span>";
+  const next = currentPage < days.length ? `<button onclick="loadPage(${currentPage + 1})">روز بعد</button>` : "<span class=\"disabled\">روز بعد</span>";
   const start = Math.max(1, currentPage - 3);
   const end = Math.min(days.length, start + 6);
   let nums = "";
@@ -106,24 +107,24 @@ function renderPagination() {
 function renderCard(img) {
   return `
     <div class="card" data-id="${img.id}" data-filename="${escapeHtml(img.fileName)}" data-positive="${escapeHtml(img.positive)}" data-negative="${escapeHtml(img.negative)}" data-description="${escapeHtml(img.description)}">
-      <button class="delete-single-btn" onclick="deleteImages(['${img.id}'])">x</button>
+      <button class="delete-single-btn" onclick="deleteImages(['${img.id}'])">&times;</button>
       <input type="checkbox" class="select-checkbox" name="selected_files[]" value="${img.id}">
       <div class="image-wrapper">
-        <img src="${img.url}" alt="${escapeHtml(img.fileName)}" onclick="openModal('${img.url}')" style="cursor:zoom-in" loading="lazy" class="lazy" onload="this.classList.add('lazy-loaded')">
+        <img src="${img.url}" alt="${escapeHtml(img.fileName)}" onclick="openModal('${img.id}')" style="cursor:zoom-in" loading="lazy" class="lazy" onload="this.classList.add('lazy-loaded')">
       </div>
       <div class="filename-display">${escapeHtml(img.fileName)}</div>
-      ${renderPrompt("Positive Prompt", img.positive)}
-      ${renderPrompt("Negative Prompt", img.negative)}
-      ${img.description ? `<div class="prompt-box"><h4>Description:</h4><pre>${escapeHtml(img.description)}</pre></div>` : ""}
+      ${renderPrompt("پرامپت مثبت", img.positive, false)}
+      ${renderPrompt("پرامپت منفی", img.negative, true)}
+      ${img.description ? `<div class="prompt-box"><h4>توضیحات:</h4><pre>${escapeHtml(img.description)}</pre></div>` : ""}
       <div class="card-actions">
-        <a class="download-btn" href="${img.url}" download>Download image</a>
-        ${img.textUrl ? `<a class="download-btn" href="${img.textUrl}" download>Download text file</a>` : ""}
+        <a class="download-btn" href="${img.url}" download>دانلود تصویر</a>
+        ${img.textUrl ? `<a class="download-btn" href="${img.textUrl}" download>دانلود فایل متنی</a>` : ""}
       </div>
     </div>`;
 }
 
-function renderPrompt(label, value) {
-  return `<div class="prompt-box"><h4>${label}:</h4><div class="copy-box" data-copy="${escapeHtml(value)}"><pre>${escapeHtml(value)}</pre><button class="copy-btn" onclick="copyToClipboard(this)">Copy</button></div></div>`;
+function renderPrompt(label, value, isNegative) {
+  return `<div class="prompt-box${isNegative ? " is-negative" : ""}"><h4>${label}:</h4><div class="copy-box" data-copy="${escapeHtml(value)}"><pre>${escapeHtml(value)}</pre><button class="copy-btn" onclick="copyToClipboard(this)">کپی</button></div></div>`;
 }
 
 function loadMore() {
@@ -140,14 +141,14 @@ function toggleSelectAll(source) {
 function deleteSelected() {
   const ids = Array.from(document.querySelectorAll("input[name=\"selected_files[]\"]:checked")).map(cb => cb.value);
   if (!ids.length) {
-    alert("Nothing selected.");
+    alert("هیچ موردی انتخاب نشده است.");
     return;
   }
   deleteImages(ids);
 }
 
 async function deleteImages(ids) {
-  if (!confirm(`Delete ${ids.length} item(s)?`)) return;
+  if (!confirm(`حذف ${ids.length} مورد؟`)) return;
   const res = await fetch("/api/gallery/delete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -155,10 +156,10 @@ async function deleteImages(ids) {
   });
   const data = await res.json();
   if (!data.success) {
-    showNotification(data.error || "Delete failed", true);
+    showNotification(data.error || "حذف ناموفق بود", true);
     return;
   }
-  showNotification("Deleted");
+  showNotification("حذف شد");
   await reloadAll();
 }
 
@@ -166,25 +167,62 @@ function copyToClipboard(btn) {
   const text = btn.closest(".copy-box").dataset.copy || "";
   navigator.clipboard.writeText(text).then(() => {
     const old = btn.innerText;
-    btn.innerText = "Copied";
-    btn.style.background = "#28a745";
-    showNotification("Copied");
+    btn.innerText = "کپی شد";
+    showNotification("کپی شد");
     setTimeout(() => {
       btn.innerText = old;
-      btn.style.background = "";
     }, 1500);
   });
 }
 
-function openModal(src) {
-  document.getElementById("modalImg").src = src;
+function openModal(idOrUrl) {
+  const index = currentImages.findIndex(img => img.id === idOrUrl || img.url === idOrUrl);
+  modalImageIndex = index >= 0 ? index : -1;
+  showModalImage(index >= 0 ? currentImages[index] : { url: idOrUrl, fileName: "پیش‌نمایش" });
   document.getElementById("imageModal").style.display = "flex";
   document.body.style.overflow = "hidden";
+}
+
+function showModalImage(img) {
+  const modalImg = document.getElementById("modalImg");
+  modalImg.src = img.url;
+  modalImg.alt = img.fileName || "پیش‌نمایش";
+  updateModalControls();
+}
+
+function updateModalControls() {
+  const hasImages = currentImages.length > 1 && modalImageIndex >= 0;
+  document.querySelectorAll(".modal-nav").forEach(btn => {
+    btn.style.display = hasImages ? "flex" : "none";
+  });
+  const counter = document.getElementById("modalCounter");
+  if (modalImageIndex >= 0 && currentImages.length) {
+    counter.textContent = `${modalImageIndex + 1} / ${currentImages.length}`;
+    counter.style.display = "block";
+  } else {
+    counter.textContent = "";
+    counter.style.display = "none";
+  }
+}
+
+function moveModalImage(delta) {
+  if (modalImageIndex < 0 || !currentImages.length) return;
+  modalImageIndex = (modalImageIndex + delta + currentImages.length) % currentImages.length;
+  showModalImage(currentImages[modalImageIndex]);
+}
+
+function showPreviousImage() {
+  moveModalImage(-1);
+}
+
+function showNextImage() {
+  moveModalImage(1);
 }
 
 function closeModal() {
   document.getElementById("imageModal").style.display = "none";
   document.body.style.overflow = "";
+  modalImageIndex = -1;
 }
 
 let searchTimer = null;
@@ -198,7 +236,10 @@ window.onclick = event => {
 };
 
 document.addEventListener("keydown", event => {
+  if (document.getElementById("imageModal").style.display !== "flex") return;
   if (event.key === "Escape") closeModal();
+  if (event.key === "ArrowLeft") showNextImage();
+  if (event.key === "ArrowRight") showPreviousImage();
 });
 
 reloadAll();

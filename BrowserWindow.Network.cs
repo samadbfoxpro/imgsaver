@@ -977,9 +977,14 @@ namespace imgsaver
                     var browser = GetCurrentBrowser();
                     if (browser?.CoreWebView2 != null)
                     {
-                        await browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
+                        if (settingsWin.RequestDeleteLoginData)
+                            await browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
+
                         DeleteDirectoryContents(_permanentCacheFolder);
-                        CustomMessageBox.Show("All browsing data has been cleared.", "Success");
+                        CustomMessageBox.Show(settingsWin.RequestDeleteLoginData
+                            ? "Browser cache, cookies, and login data have been cleared."
+                            : "Browser cache has been cleared.",
+                            "Success");
                         browser.Reload();
                     }
                 }

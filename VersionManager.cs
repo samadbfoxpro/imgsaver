@@ -6,12 +6,12 @@ namespace imgsaver
 {
     public class VersionData
     {
-        public string Version { get; set; } = "1.7.4";
+        public string Version { get; set; } = "1.7.5";
     }
 
     public static class VersionManager
     {
-        public static string CurrentVersion => "1.7.4";
+        public static string CurrentVersion => "1.7.5";
 
         public static void Load() { /* No longer needed */ }
         public static void Save() { /* No longer needed */ }

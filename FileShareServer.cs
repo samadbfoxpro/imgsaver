@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace imgsaver
 {
@@ -129,8 +130,8 @@ namespace imgsaver
                         await ServeGalleryDays(response);
                     else if (path.StartsWith("api/gallery/images", StringComparison.OrdinalIgnoreCase))
                         await ServeGalleryImages(request, response);
-                    else if (path == "api/gallery/random")
-                        await ServeGalleryRandom(response);
+                    else if (path.StartsWith("api/gallery/random", StringComparison.OrdinalIgnoreCase))
+                        await ServeGalleryRandom(request, response);
                     else if (path.StartsWith("api/gallery/metadata/", StringComparison.OrdinalIgnoreCase))
                         await ServeGalleryMetadata(path["api/gallery/metadata/".Length..], response);
                     else if (path.StartsWith("gallery/text/", StringComparison.OrdinalIgnoreCase))
@@ -380,15 +381,22 @@ namespace imgsaver
             });
         }
 
-        private async Task ServeGalleryRandom(HttpListenerResponse response)
+        private async Task ServeGalleryRandom(HttpListenerRequest request, HttpListenerResponse response)
         {
+            int count = 5;
+            string? rawCount = HttpUtility.ParseQueryString(request.Url?.Query ?? "").Get("count");
+            if (int.TryParse(rawCount, out int requestedCount))
+            {
+                count = Math.Clamp(requestedCount, 1, 100);
+            }
+
             var random = new Random();
             var images = ScanGalleryImages()
                 .OrderBy(_ => random.Next())
-                .Take(5)
+                .Take(count)
                 .Select(ToGalleryImageDto);
 
-            await WriteJson(response, new { success = true, images });
+            await WriteJson(response, new { success = true, count, images });
         }
 
         private async Task ServeGalleryMetadata(string id, HttpListenerResponse response)

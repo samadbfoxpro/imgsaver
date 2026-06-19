@@ -3,28 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Imgsaver Gallery View</title>
+  <title>گالری ویو | Imgsaver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/gallery/assets/css/gallery-base-style.css">
   <link rel="stylesheet" href="/gallery/assets/css/gallery-components-style.css">
 </head>
 <body>
-  <div id="notif" class="notification">Done</div>
+  <div id="notif" class="notification">انجام شد</div>
   <div class="container">
     <div class="top-menu">
-      <a href="/">File Share</a>
-      <a href="/gallery">Gallery View</a>
-      <a href="/gallery/random">Random Gallery</a>
-      <button onclick="reloadAll()">Refresh</button>
+      <a href="/">اشتراک فایل</a>
+      <a href="/gallery">گالری ویو</a>
+      <a href="/gallery/random">گالری تصادفی</a>
+      <button onclick="reloadAll()">بروزرسانی</button>
     </div>
-    <h1>Gallery View</h1>
-    <input id="searchInput" class="search-box" placeholder="Search filename, positive prompt, negative prompt, description">
+    <h1>گالری ویو</h1>
+    <input id="searchInput" class="search-box" placeholder="جستجو در نام فایل، پرامپت مثبت، پرامپت منفی، توضیحات">
     <div id="calendarStrip" class="calendar-strip"></div>
     <div id="content"></div>
   </div>
 
   <div id="imageModal" class="modal">
     <span class="close-btn" onclick="closeModal()">&times;</span>
-    <img class="modal-img" id="modalImg" src="" alt="preview">
+    <button class="modal-nav modal-prev" type="button" onclick="event.stopPropagation(); showPreviousImage()" aria-label="تصویر قبلی">&#10094;</button>
+    <img class="modal-img" id="modalImg" src="" alt="پیش‌نمایش">
+    <button class="modal-nav modal-next" type="button" onclick="event.stopPropagation(); showNextImage()" aria-label="تصویر بعدی">&#10095;</button>
+    <div id="modalCounter" class="modal-counter"></div>
   </div>
 
   <script src="/gallery/assets/js/gallery-view.js"></script>

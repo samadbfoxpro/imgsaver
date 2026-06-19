@@ -4,4 +4,6 @@ data/
 .vs/
 *.user
 *.suo
+*.bat
 webhost/
+logs/

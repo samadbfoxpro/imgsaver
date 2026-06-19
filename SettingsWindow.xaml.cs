@@ -10,6 +10,7 @@ namespace imgsaver
     public partial class SettingsWindow : Window
     {
         private const string ConfigFileName = "data\\config.txt";
+        private const string GalleryConfigFileName = "gallery_config.txt";
 
         public SettingsWindow()
         {
@@ -32,6 +33,12 @@ namespace imgsaver
                     if (lines.Length > 4) ChkAutoSaveEnabled.IsChecked = lines[4].Trim().ToLower() == "true";
                     if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
                     if (lines.Length > 6) ChkAutoCaptureExtraTemplate.IsChecked = lines[6].Trim().ToLower() == "true";
+                }
+
+                string galleryConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);
+                if (File.Exists(galleryConfigPath))
+                {
+                    TxtGalleryPath.Text = File.ReadAllText(galleryConfigPath).Trim();
                 }
 
                 // Load minimum image dimensions from BrowserSettings
@@ -62,6 +69,7 @@ namespace imgsaver
                 string autoSaveEnabled = (ChkAutoSaveEnabled.IsChecked == true).ToString().ToLower();
                 string autoSaveCount = TxtAutoSaveCount.Text.Trim();
                 string autoCaptureExtraTemplate = (ChkAutoCaptureExtraTemplate.IsChecked == true).ToString().ToLower();
+                string galleryPath = TxtGalleryPath.Text.Trim();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
 
                 File.WriteAllLines(configPath, new string[] {
@@ -73,6 +81,9 @@ namespace imgsaver
                     autoSaveCount,
                     autoCaptureExtraTemplate
                 });
+
+                string galleryConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);
+                File.WriteAllText(galleryConfigPath, galleryPath);
 
                 // Save minimum image dimensions to BrowserSettings
                 var settings = BrowserSettings.Load();
@@ -126,6 +137,20 @@ namespace imgsaver
             if (dialog.ShowDialog() == WinForms.DialogResult.OK)
             {
                 TxtAutoImportPath.Text = dialog.SelectedPath;
+            }
+        }
+
+        private void BtnBrowseGallery_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new WinForms.FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(TxtGalleryPath.Text) && Directory.Exists(TxtGalleryPath.Text))
+            {
+                dialog.SelectedPath = TxtGalleryPath.Text;
+            }
+
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+            {
+                TxtGalleryPath.Text = dialog.SelectedPath;
             }
         }
 
