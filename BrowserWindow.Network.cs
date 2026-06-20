@@ -346,6 +346,12 @@ namespace imgsaver
 
         private async Task ImportImageToMiniClipAsync(CoreWebView2? coreWebView2, string uri, string cachePath, bool force = false)
         {
+            if (!force)
+            {
+                var settings = _currentSettings ?? BrowserSettings.Load();
+                if (!settings.AutoImportImagesToMiniClip) return;
+            }
+
             if (IsAiWorkflowImageContext(coreWebView2, uri))
                 await TryImportDomConfirmedImageToMiniClipAsync(coreWebView2, uri, cachePath, force);
             else

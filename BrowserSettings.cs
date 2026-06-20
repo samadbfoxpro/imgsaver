@@ -25,6 +25,7 @@ namespace imgsaver
         public string ProxyPort { get; set; } = "";
 
         // Minimum image dimensions for import to Mini Clipboard
+        public bool AutoImportImagesToMiniClip { get; set; } = true;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
 

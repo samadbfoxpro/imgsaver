@@ -94,6 +94,7 @@
                                         <CheckBox x:Name="ChkLoadMedia" Content="Load Video and Audio Media" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkEnableJS" Content="Enable JavaScript" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkMuteAudio" Content="Mute Browser Audio" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkAutoImportImagesToMiniClip" Content="Automatically import browser images to Mini Clip" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoHideStatus" Content="Auto-hide Status Bar" Margin="0,0,0,0"/>
                                     </StackPanel>
                                 </Border>

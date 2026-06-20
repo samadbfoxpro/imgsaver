@@ -45,6 +45,7 @@ namespace imgsaver
             ChkLoadMedia.IsChecked = settings.LoadMedia;
             ChkEnableJS.IsChecked = settings.EnableJavaScript;
             ChkMuteAudio.IsChecked = settings.MuteAudio;
+            ChkAutoImportImagesToMiniClip.IsChecked = settings.AutoImportImagesToMiniClip;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
 
             ChkEnableProxy.IsChecked = settings.ProxyEnabled;
@@ -252,6 +253,7 @@ namespace imgsaver
             settings.LoadMedia = ChkLoadMedia.IsChecked == true;
             settings.EnableJavaScript = ChkEnableJS.IsChecked == true;
             settings.MuteAudio = ChkMuteAudio.IsChecked == true;
+            settings.AutoImportImagesToMiniClip = ChkAutoImportImagesToMiniClip.IsChecked == true;
             settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
 
             settings.ProxyEnabled = ChkEnableProxy.IsChecked == true;
