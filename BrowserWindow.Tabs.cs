@@ -426,6 +426,8 @@ namespace imgsaver
             var settings = _currentSettings ?? BrowserSettings.Load();
             webView.CoreWebView2.Settings.IsScriptEnabled = settings.EnableJavaScript;
             try { webView.CoreWebView2.IsMuted = settings.MuteAudio; } catch { }
+            if (settings.EnableJavaScript)
+                InjectSnippetHelperScript(webView);
         }
 
         private void UpdateTabHeader(TabItem tabItem, string icon, string title)

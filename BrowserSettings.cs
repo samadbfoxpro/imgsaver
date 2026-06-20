@@ -26,6 +26,7 @@ namespace imgsaver
 
         // Minimum image dimensions for import to Mini Clipboard
         public bool AutoImportImagesToMiniClip { get; set; } = true;
+        public bool ShowMiniClipImageImportButtons { get; set; } = false;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
 
