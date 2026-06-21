@@ -33,6 +33,8 @@ namespace imgsaver
                     if (lines.Length > 4) ChkAutoSaveEnabled.IsChecked = lines[4].Trim().ToLower() == "true";
                     if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
                     if (lines.Length > 6) ChkAutoCaptureExtraTemplate.IsChecked = lines[6].Trim().ToLower() == "true";
+                    if (lines.Length > 7) ChkAutoCopyExtraTemplateOutput.IsChecked = lines[7].Trim().ToLower() == "true";
+                    ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
                 }
 
                 string galleryConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);
@@ -69,6 +71,8 @@ namespace imgsaver
                 string autoSaveEnabled = (ChkAutoSaveEnabled.IsChecked == true).ToString().ToLower();
                 string autoSaveCount = TxtAutoSaveCount.Text.Trim();
                 string autoCaptureExtraTemplate = (ChkAutoCaptureExtraTemplate.IsChecked == true).ToString().ToLower();
+                string autoCopyExtraTemplateOutput = (ChkAutoCopyExtraTemplateOutput.IsChecked == true).ToString().ToLower();
+                string replacePositivePromptOnClipboardText = (ChkReplacePositivePromptOnClipboardText.IsChecked == true).ToString().ToLower();
                 string galleryPath = TxtGalleryPath.Text.Trim();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
 
@@ -79,7 +83,9 @@ namespace imgsaver
                     autoImportPath,
                     autoSaveEnabled,
                     autoSaveCount,
-                    autoCaptureExtraTemplate
+                    autoCaptureExtraTemplate,
+                    autoCopyExtraTemplateOutput,
+                    replacePositivePromptOnClipboardText
                 });
 
                 string galleryConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);

@@ -54,6 +54,12 @@
                     <CheckBox x:Name="ChkAutoCaptureExtraTemplate" Content="Auto Get Text for Extra templates with [extra]" 
                               Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
                               ToolTip="When Mini-Clip sees copied text containing [extra], it replaces the previous extra template automatically."/>
+                    <CheckBox x:Name="ChkAutoCopyExtraTemplateOutput" Content="Auto Copy EX output after receiving an Extra template" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
+                              ToolTip="When Mini-Clip receives a copied [extra] template, it automatically combines it with the selected Extra and copies the final text back to Windows clipboard."/>
+                    <CheckBox x:Name="ChkReplacePositivePromptOnClipboardText" Content="Replace POS when new clipboard text arrives" IsChecked="True"
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
+                              ToolTip="When disabled, Mini-Clip keeps the first POS text until POS is cleared manually or after saving."/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="Images to collect before saving:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
                         <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="50" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 

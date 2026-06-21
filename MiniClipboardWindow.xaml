@@ -529,17 +529,12 @@
                         </Grid.Style>
 
                         <UniformGrid Columns="3" Rows="2">
-                            <Button x:Name="BtnCaptureExtraTemplate" Click="BtnCaptureExtraTemplate_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Capture clipboard template with [extra]">
+                            <Button x:Name="BtnAutoExtraCopyStatus" Height="28" Margin="2" Cursor="Arrow" IsHitTestVisible="False" ToolTip="Auto Copy EX status">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="GET TXT" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="txt" Text="AUTO EX" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
@@ -599,28 +594,6 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <Button x:Name="BtnPlayBrowserRec" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="3"
-                                    Click="BtnPlayBrowserRec_Click" Margin="2" Cursor="Hand" ToolTip="Play recorded input in browser">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" Background="#050505" CornerRadius="6" BorderBrush="#FFD700" BorderThickness="1.5">
-                                            <TextBlock x:Name="txt" Text="RC BRWS" FontSize="16" FontWeight="Bold" Foreground="#FFD700" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#111111"/>
-                                                <Setter TargetName="bd" Property="BorderBrush" Value="#FFE680"/>
-                                                <Setter TargetName="txt" Property="Foreground" Value="#FFE680"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#000000"/>
-                                                <Setter TargetName="bd" Property="BorderBrush" Value="#D9A900"/>
-                                                <Setter TargetName="txt" Property="Foreground" Value="#D9A900"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
                         </Grid>
                     </Grid>
 

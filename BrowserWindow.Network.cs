@@ -442,7 +442,7 @@ namespace imgsaver
                     var miniClip = GetOpenMiniClipboardWindow();
                     if (miniClip == null) return;
 
-                    miniClip.ImportBrowserImage(cachePath, settings.MinImageWidth, settings.MinImageHeight);
+                    miniClip.ImportBrowserImage(cachePath, settings.MinImageWidth, settings.MinImageHeight, settings.ReplaceMiniClipImageOnImport);
                 });
             }
             catch { }
