@@ -18,6 +18,8 @@ namespace imgsaver
             EventManager.RegisterClassHandler(typeof(System.Windows.Controls.TextBox),
                 System.Windows.Controls.Control.PreviewMouseDoubleClickEvent,
                 new RoutedEventHandler(TextBox_PreviewMouseDoubleClick));
+
+            BrowserRecordingFloatingWindowManager.SyncWithSettings(BrowserSettings.Load());
         }
 
         private void TextBox_PreviewMouseDoubleClick(object sender, RoutedEventArgs e)

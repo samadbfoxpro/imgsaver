@@ -13,7 +13,7 @@ namespace imgsaver
     {
         private InputRecorder _recorder = new InputRecorder();
         private InputPlayer _player = new InputPlayer();
-        private string _recordingsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "recordings");
+        private string _recordingsDir = DataPathManager.GetDataSubfolderPath("recordings");
         private bool _isInternalPlaying = false;
         private bool _isUpdatingUiInternally = false;
 

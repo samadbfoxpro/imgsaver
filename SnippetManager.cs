@@ -14,7 +14,6 @@ namespace imgsaver
 
     public static class SnippetManager
     {
-        private const string FileName = "data\\snippets.json";
         public static List<Snippet> Snippets { get; private set; } = new List<Snippet>();
 
         static SnippetManager()
@@ -26,9 +25,9 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-                string path = Path.Combine(dataDir, "snippets.json");
-                string oldPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "snippets.json");
+                string dataDir = DataPathManager.ActiveDataDirectory;
+                string path = DataPathManager.GetDataFilePath("snippets.json");
+                string oldPath = DataPathManager.GetLegacyRootFilePath("snippets.json");
 
                 if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
 
@@ -54,10 +53,10 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                string dataDir = DataPathManager.ActiveDataDirectory;
                 if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
 
-                string path = Path.Combine(dataDir, "snippets.json");
+                string path = DataPathManager.GetDataFilePath("snippets.json");
                 string json = JsonSerializer.Serialize(Snippets, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(path, json);
             }

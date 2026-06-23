@@ -180,7 +180,7 @@ namespace imgsaver
         {
             try
             {
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.txt");
+                string configPath = DataPathManager.GetDataFilePath("config.txt");
                 if (File.Exists(configPath))
                 {
                     string[] lines = File.ReadAllLines(configPath);
@@ -496,8 +496,8 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-                string shareDir = Path.Combine(dataDir, "share");
+                string dataDir = DataPathManager.ActiveDataDirectory;
+                string shareDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "share");
                 if (!Directory.Exists(dataDir)) return;
                 if (!Directory.Exists(shareDir)) Directory.CreateDirectory(shareDir);
                 var jsonFiles = Directory.GetFiles(dataDir, "*.json");

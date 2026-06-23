@@ -23,7 +23,7 @@ namespace imgsaver
         private BitmapSource? _previewImage;
         private string? _sourceFilePath = null;
         private string _detectedExtension = ".png";
-        private const string ConfigFileName = "data\\config.txt";
+        private const string ConfigFileName = "config.txt";
 
         private GlobalHook? _globalHook;
         private StringBuilder _typedBuffer = new StringBuilder();
@@ -32,7 +32,7 @@ namespace imgsaver
         private InputRecorder? _inputRecorder;
         private InputPlayer? _inputPlayer;
 
-        private readonly string _recordingsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "recordings");
+        private string RecordingsDir => DataPathManager.GetDataSubfolderPath("recordings");
 
         private SnippetWindow? _snippetWindow;
         private ClipboardSaverWindow? _clipboardSaverWindow;
@@ -270,9 +270,7 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-                if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                string configPath = DataPathManager.GetDataFilePath(ConfigFileName);
                 if (File.Exists(configPath))
                 {
                     string[] lines = File.ReadAllLines(configPath);
@@ -628,11 +626,11 @@ namespace imgsaver
 
         private void ResetAll() { ResetImageOnly(); TxtImageName.Clear(); TxtPositive.Clear(); TxtNegative.Clear(); TxtDescription.Clear(); TxtImageName.Focus(); }
         private void ChkDescription_CheckedChanged(object sender, RoutedEventArgs e) { if (DescriptionPanel != null) DescriptionPanel.Visibility = ChkDescription.IsChecked == true ? Visibility.Visible : Visibility.Collapsed; }
-        private void InitInputRecorderPlayer() { try { if (!Directory.Exists(_recordingsDir)) Directory.CreateDirectory(_recordingsDir); _inputRecorder = new InputRecorder(); _inputPlayer = new InputPlayer(); } catch { } }
+        private void InitInputRecorderPlayer() { try { _ = RecordingsDir; _inputRecorder = new InputRecorder(); _inputPlayer = new InputPlayer(); } catch { } }
         private void BtnStartRecording_Click(object sender, RoutedEventArgs e) { if (_inputRecorder == null) InitInputRecorderPlayer(); _inputRecorder?.Start(); }
         private void BtnStopRecording_Click(object sender, RoutedEventArgs e) { _inputRecorder?.Stop(); }
-        private async void BtnSaveRecording_Click(object sender, RoutedEventArgs e) { if (_inputRecorder == null) return; string fileName = Path.Combine(_recordingsDir, $"rec_{DateTime.Now:yyyyMMdd_HHmmss}.json"); await _inputRecorder.SaveAsync(fileName); System.Windows.MessageBox.Show($"Saved recording to {fileName}"); }
-        private async void BtnLoadRecording_Click(object sender, RoutedEventArgs e) { var ofd = new System.Windows.Forms.OpenFileDialog { InitialDirectory = _recordingsDir, Filter = "JSON files|*.json|All files|*.*" }; if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK) { if (_inputRecorder == null) InitInputRecorderPlayer(); if (await _inputRecorder.LoadAsync(ofd.FileName)) { _inputPlayer.SetEvents(_inputRecorder.GetEvents()); System.Windows.MessageBox.Show("Loaded recording."); } else System.Windows.MessageBox.Show("Failed to load recording."); } }
+        private async void BtnSaveRecording_Click(object sender, RoutedEventArgs e) { if (_inputRecorder == null) return; string fileName = Path.Combine(RecordingsDir, $"rec_{DateTime.Now:yyyyMMdd_HHmmss}.json"); await _inputRecorder.SaveAsync(fileName); System.Windows.MessageBox.Show($"Saved recording to {fileName}"); }
+        private async void BtnLoadRecording_Click(object sender, RoutedEventArgs e) { var ofd = new System.Windows.Forms.OpenFileDialog { InitialDirectory = RecordingsDir, Filter = "JSON files|*.json|All files|*.*" }; if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK) { if (_inputRecorder == null) InitInputRecorderPlayer(); if (await _inputRecorder.LoadAsync(ofd.FileName)) { _inputPlayer.SetEvents(_inputRecorder.GetEvents()); System.Windows.MessageBox.Show("Loaded recording."); } else System.Windows.MessageBox.Show("Failed to load recording."); } }
         private async void BtnPlayRecording_Click(object sender, RoutedEventArgs e) { if (_inputPlayer == null) InitInputRecorderPlayer(); _inputPlayer.SetEvents(_inputRecorder?.GetEvents() ?? new List<InputEvent>()); await _inputPlayer.PlayAsync(loop: false); }
         private void BtnStopPlayback_Click(object sender, RoutedEventArgs e) { _inputPlayer?.Stop(); }
         private void BtnOpenRecorder_Click(object sender, RoutedEventArgs e)

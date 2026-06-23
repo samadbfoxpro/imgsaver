@@ -197,7 +197,7 @@ namespace imgsaver
         {
             try
             {
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ClipboardConfigFileName);
+                string configPath = DataPathManager.GetDataFilePath(ClipboardConfigFileName);
                 if (File.Exists(configPath))
                 {
                     string savedPath = File.ReadAllText(configPath).Trim();
@@ -215,7 +215,7 @@ namespace imgsaver
         {
             try
             {
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ClipboardConfigFileName);
+                string configPath = DataPathManager.GetDataFilePath(ClipboardConfigFileName);
                 File.WriteAllText(configPath, path);
             }
             catch { }

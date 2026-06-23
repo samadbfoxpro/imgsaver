@@ -42,8 +42,7 @@ namespace imgsaver
     /// </summary>
     public static class CharacterManager
     {
-        private static readonly string PersonasFilePath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "data", "personas.json");
+        private static string PersonasFilePath => DataPathManager.GetDataFilePath("personas.json");
 
         private static List<CharacterPersona> _characters = new List<CharacterPersona>();
 
@@ -70,7 +69,7 @@ namespace imgsaver
             try
             {
                 // Migration logic
-                string oldPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "personas.json");
+                string oldPath = DataPathManager.GetLegacyRootFilePath("personas.json");
                 if (File.Exists(oldPath) && !File.Exists(PersonasFilePath))
                 {
                     try

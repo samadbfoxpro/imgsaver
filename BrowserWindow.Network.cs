@@ -1101,6 +1101,7 @@ namespace imgsaver
                               oldSettings.ProxyType != newSettings.ProxyType;
 
                 RefreshSettings();
+                BrowserRecordingFloatingWindowManager.SyncWithSettings(newSettings);
 
                 if (proxyChanged)
                 {

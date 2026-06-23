@@ -15,7 +15,7 @@ namespace imgsaver
 
     public static class LastExtraSelectionStore
     {
-        private static readonly string FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "last_extra_selection.json");
+        private static string FilePath => DataPathManager.GetDataFilePath("last_extra_selection.json");
 
         public static void Save(ExtraItem extra, bool textOnly)
         {

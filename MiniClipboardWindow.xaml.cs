@@ -215,7 +215,7 @@ namespace imgsaver
                     _autoImportWatcher = null;
                 }
 
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data\\config.txt");
+                string configPath = DataPathManager.GetDataFilePath("config.txt");
                 if (!File.Exists(configPath)) return;
 
                 string[] lines = File.ReadAllLines(configPath);

@@ -9,7 +9,7 @@ namespace imgsaver
 {
     public partial class SettingsWindow : Window
     {
-        private const string ConfigFileName = "data\\config.txt";
+        private const string ConfigFileName = "config.txt";
         private const string GalleryConfigFileName = "gallery_config.txt";
 
         public SettingsWindow()
@@ -22,7 +22,11 @@ namespace imgsaver
         {
             try
             {
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                DataPathManager.Reload();
+                ChkUseCustomDataFolder.IsChecked = DataPathManager.UseCustomDataFolder;
+                TxtCustomDataFolder.Text = DataPathManager.CustomDataFolder;
+
+                string configPath = DataPathManager.GetDataFilePath(ConfigFileName);
                 if (File.Exists(configPath))
                 {
                     string[] lines = File.ReadAllLines(configPath);
@@ -37,7 +41,7 @@ namespace imgsaver
                     ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
                 }
 
-                string galleryConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);
+                string galleryConfigPath = DataPathManager.GetDataFilePath(GalleryConfigFileName);
                 if (File.Exists(galleryConfigPath))
                 {
                     TxtGalleryPath.Text = File.ReadAllText(galleryConfigPath).Trim();
@@ -59,10 +63,26 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-                if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
+                string oldActiveDataDirectory = DataPathManager.ActiveDataDirectory;
 
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                DataPathManager.SaveLocation(ChkUseCustomDataFolder.IsChecked == true, TxtCustomDataFolder.Text.Trim());
+                string newActiveDataDirectory = DataPathManager.ActiveDataDirectory;
+                bool dataFolderChanged = !string.Equals(
+                    Path.GetFullPath(oldActiveDataDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    Path.GetFullPath(newActiveDataDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase);
+
+                ReloadSharedDataStores();
+
+                string configPath = DataPathManager.GetDataFilePath(ConfigFileName);
+                string galleryConfigPath = DataPathManager.GetDataFilePath(GalleryConfigFileName);
+                bool selectedFolderAlreadyHasSettings = dataFolderChanged && File.Exists(configPath);
+
+                if (selectedFolderAlreadyHasSettings)
+                {
+                    BrowserRecordingFloatingWindowManager.SyncWithSettings(BrowserSettings.Load());
+                    return;
+                }
 
                 string path = TxtSavePath.Text.Trim();
                 string onlyFavs = (ChkRandomOnlyFavorites.IsChecked == true).ToString().ToLower();
@@ -88,7 +108,6 @@ namespace imgsaver
                     replacePositivePromptOnClipboardText
                 });
 
-                string galleryConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);
                 File.WriteAllText(galleryConfigPath, galleryPath);
 
                 // Save minimum image dimensions to BrowserSettings
@@ -146,6 +165,21 @@ namespace imgsaver
             }
         }
 
+        private void BtnBrowseCustomDataFolder_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new WinForms.FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(TxtCustomDataFolder.Text) && Directory.Exists(TxtCustomDataFolder.Text))
+            {
+                dialog.SelectedPath = TxtCustomDataFolder.Text;
+            }
+
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+            {
+                TxtCustomDataFolder.Text = dialog.SelectedPath;
+                ChkUseCustomDataFolder.IsChecked = true;
+            }
+        }
+
         private void BtnBrowseGallery_Click(object sender, RoutedEventArgs e)
         {
             using var dialog = new WinForms.FolderBrowserDialog();
@@ -179,6 +213,20 @@ namespace imgsaver
             SaveSettings();
             this.DialogResult = true;
             this.Close();
+        }
+
+        private void ReloadSharedDataStores()
+        {
+            BasePromptManager.Unload();
+            CharacterManager.Unload();
+            ExtraManager.Unload();
+            ExtraPromptManager.Unload();
+            BasePromptManager.Load();
+            CharacterManager.Load();
+            ExtraManager.Load();
+            ExtraPromptManager.Load();
+            SnippetManager.Load();
+            RecordingManager.LoadState();
         }
     }
 }

@@ -37,7 +37,7 @@ namespace imgsaver
 
     public static class BasePromptManager
     {
-        private static readonly string FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "base_prompts.json");
+        private static string FilePath => DataPathManager.GetDataFilePath("base_prompts.json");
         private static List<BasePrompt> _prompts = new List<BasePrompt>();
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace imgsaver
             try
             {
                 // Migration logic
-                string oldPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "base_prompts.json");
+                string oldPath = DataPathManager.GetLegacyRootFilePath("base_prompts.json");
                 if (File.Exists(oldPath) && !File.Exists(FilePath))
                 {
                     try

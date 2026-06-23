@@ -28,13 +28,14 @@ namespace imgsaver
         public bool AutoImportImagesToMiniClip { get; set; } = true;
         public bool ShowMiniClipImageImportButtons { get; set; } = false;
         public bool ReplaceMiniClipImageOnImport { get; set; } = false;
+        public bool ShowFloatingRecordPlayer { get; set; } = false;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
 
         // List of hosts that should not use page cache (only cookies/login cache)
         public List<string> NoCacheHosts { get; set; } = new List<string>();
 
-        private static string FilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_settings.json");
+        private static string FilePath => DataPathManager.GetDataFilePath("browser_settings.json");
 
         public static BrowserSettings Load()
         {

@@ -97,6 +97,7 @@
                                         <CheckBox x:Name="ChkAutoImportImagesToMiniClip" Content="Automatically import browser images to Mini Clip" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowMiniClipImageImportButtons" Content="Show Mini Clip import button on large images" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkReplaceMiniClipImageOnImport" Content="Replace current Mini Clip image when importing from browser" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkShowFloatingRecordPlayer" Content="Show floating browser recording player" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoHideStatus" Content="Auto-hide Status Bar" Margin="0,0,0,0"/>
                                     </StackPanel>
                                 </Border>

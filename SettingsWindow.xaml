@@ -1,7 +1,7 @@
 <Window x:Class="imgsaver.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Settings" Width="450" Height="660"
+        Title="Settings" Width="450" Height="760"
         Background="Transparent" WindowStyle="None" AllowsTransparency="True"
         WindowStartupLocation="CenterScreen">
     <WindowChrome.WindowChrome>
@@ -30,6 +30,22 @@
                         <TextBox x:Name="TxtSavePath" IsReadOnly="True" VerticalContentAlignment="Center" Height="32" Padding="8,0" 
                                  Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
                         <Button Grid.Column="1" Content="Browse..." Click="BtnBrowse_Click" Width="80" Margin="8,0,0,0" Height="32" Style="{StaticResource SecondaryButtonStyle}"/>
+                    </Grid>
+
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Shared Data Folder" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <CheckBox x:Name="ChkUseCustomDataFolder" Content="Use custom folder for settings and prompt JSON files"
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
+                              ToolTip="When enabled, prompt/settings JSON files are read from and saved to the selected folder."/>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TxtCustomDataFolder" IsReadOnly="True" VerticalContentAlignment="Center" Height="32" Padding="8,0"
+                                 Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        <Button Grid.Column="1" Content="Browse..." Click="BtnBrowseCustomDataFolder_Click" Width="80" Margin="8,0,0,0" Height="32" Style="{StaticResource SecondaryButtonStyle}"/>
                     </Grid>
 
                     <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>

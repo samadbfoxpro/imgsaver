@@ -36,7 +36,7 @@ namespace imgsaver
 
     public static class ExtraManager
     {
-        private static readonly string FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "extras.json");
+        private static string FilePath => DataPathManager.GetDataFilePath("extras.json");
         private static List<ExtraItem> _extras = new List<ExtraItem>();
 
         public static List<ExtraItem> GetAll() => _extras;

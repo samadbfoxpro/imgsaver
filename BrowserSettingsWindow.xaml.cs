@@ -48,6 +48,7 @@ namespace imgsaver
             ChkAutoImportImagesToMiniClip.IsChecked = settings.AutoImportImagesToMiniClip;
             ChkShowMiniClipImageImportButtons.IsChecked = settings.ShowMiniClipImageImportButtons;
             ChkReplaceMiniClipImageOnImport.IsChecked = settings.ReplaceMiniClipImageOnImport;
+            ChkShowFloatingRecordPlayer.IsChecked = settings.ShowFloatingRecordPlayer;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
 
             ChkEnableProxy.IsChecked = settings.ProxyEnabled;
@@ -258,6 +259,7 @@ namespace imgsaver
             settings.AutoImportImagesToMiniClip = ChkAutoImportImagesToMiniClip.IsChecked == true;
             settings.ShowMiniClipImageImportButtons = ChkShowMiniClipImageImportButtons.IsChecked == true;
             settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
+            settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
             settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
 
             settings.ProxyEnabled = ChkEnableProxy.IsChecked == true;

@@ -37,7 +37,7 @@ namespace imgsaver
 
     public static class ExtraPromptManager
     {
-        private static readonly string FilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "extra_prompts.json");
+        private static string FilePath => DataPathManager.GetDataFilePath("extra_prompts.json");
         private static List<ExtraPrompt> _prompts = new List<ExtraPrompt>();
 
         public static void Load()

@@ -799,7 +799,7 @@ namespace imgsaver
         {
             try
             {
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, GalleryConfigFileName);
+                string configPath = DataPathManager.GetDataFilePath(GalleryConfigFileName);
                 if (!File.Exists(configPath))
                     return "";
 
