@@ -37,7 +37,7 @@ namespace imgsaver
 
     public static class BasePromptManager
     {
-        private static string FilePath => DataPathManager.GetDataFilePath("base_prompts.json");
+        private static string FilePath => DataPathManager.GetPromptDataFilePath("base_prompts.json");
         private static List<BasePrompt> _prompts = new List<BasePrompt>();
 
         /// <summary>

@@ -25,8 +25,8 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = DataPathManager.ActiveDataDirectory;
-                string path = DataPathManager.GetDataFilePath("snippets.json");
+                string dataDir = DataPathManager.LocalDataDirectory;
+                string path = DataPathManager.GetSettingsFilePath("snippets.json");
                 string oldPath = DataPathManager.GetLegacyRootFilePath("snippets.json");
 
                 if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
@@ -53,10 +53,10 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = DataPathManager.ActiveDataDirectory;
+                string dataDir = DataPathManager.LocalDataDirectory;
                 if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
 
-                string path = DataPathManager.GetDataFilePath("snippets.json");
+                string path = DataPathManager.GetSettingsFilePath("snippets.json");
                 string json = JsonSerializer.Serialize(Snippets, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(path, json);
             }

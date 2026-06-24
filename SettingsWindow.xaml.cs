@@ -26,7 +26,7 @@ namespace imgsaver
                 ChkUseCustomDataFolder.IsChecked = DataPathManager.UseCustomDataFolder;
                 TxtCustomDataFolder.Text = DataPathManager.CustomDataFolder;
 
-                string configPath = DataPathManager.GetDataFilePath(ConfigFileName);
+                string configPath = DataPathManager.GetSettingsFilePath(ConfigFileName);
                 if (File.Exists(configPath))
                 {
                     string[] lines = File.ReadAllLines(configPath);
@@ -39,9 +39,10 @@ namespace imgsaver
                     if (lines.Length > 6) ChkAutoCaptureExtraTemplate.IsChecked = lines[6].Trim().ToLower() == "true";
                     if (lines.Length > 7) ChkAutoCopyExtraTemplateOutput.IsChecked = lines[7].Trim().ToLower() == "true";
                     ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
+                    ChkSpiSyncPreserveBasePrompt.IsChecked = lines.Length > 9 && lines[9].Trim().ToLower() == "true";
                 }
 
-                string galleryConfigPath = DataPathManager.GetDataFilePath(GalleryConfigFileName);
+                string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
                 if (File.Exists(galleryConfigPath))
                 {
                     TxtGalleryPath.Text = File.ReadAllText(galleryConfigPath).Trim();
@@ -63,26 +64,12 @@ namespace imgsaver
         {
             try
             {
-                string oldActiveDataDirectory = DataPathManager.ActiveDataDirectory;
-
                 DataPathManager.SaveLocation(ChkUseCustomDataFolder.IsChecked == true, TxtCustomDataFolder.Text.Trim());
-                string newActiveDataDirectory = DataPathManager.ActiveDataDirectory;
-                bool dataFolderChanged = !string.Equals(
-                    Path.GetFullPath(oldActiveDataDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                    Path.GetFullPath(newActiveDataDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                    StringComparison.OrdinalIgnoreCase);
 
                 ReloadSharedDataStores();
 
-                string configPath = DataPathManager.GetDataFilePath(ConfigFileName);
-                string galleryConfigPath = DataPathManager.GetDataFilePath(GalleryConfigFileName);
-                bool selectedFolderAlreadyHasSettings = dataFolderChanged && File.Exists(configPath);
-
-                if (selectedFolderAlreadyHasSettings)
-                {
-                    BrowserRecordingFloatingWindowManager.SyncWithSettings(BrowserSettings.Load());
-                    return;
-                }
+                string configPath = DataPathManager.GetSettingsFilePath(ConfigFileName);
+                string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
 
                 string path = TxtSavePath.Text.Trim();
                 string onlyFavs = (ChkRandomOnlyFavorites.IsChecked == true).ToString().ToLower();
@@ -93,6 +80,7 @@ namespace imgsaver
                 string autoCaptureExtraTemplate = (ChkAutoCaptureExtraTemplate.IsChecked == true).ToString().ToLower();
                 string autoCopyExtraTemplateOutput = (ChkAutoCopyExtraTemplateOutput.IsChecked == true).ToString().ToLower();
                 string replacePositivePromptOnClipboardText = (ChkReplacePositivePromptOnClipboardText.IsChecked == true).ToString().ToLower();
+                string spiSyncPreserveBasePrompt = (ChkSpiSyncPreserveBasePrompt.IsChecked == true).ToString().ToLower();
                 string galleryPath = TxtGalleryPath.Text.Trim();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
 
@@ -105,7 +93,8 @@ namespace imgsaver
                     autoSaveCount,
                     autoCaptureExtraTemplate,
                     autoCopyExtraTemplateOutput,
-                    replacePositivePromptOnClipboardText
+                    replacePositivePromptOnClipboardText,
+                    spiSyncPreserveBasePrompt
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);
@@ -225,8 +214,6 @@ namespace imgsaver
             CharacterManager.Load();
             ExtraManager.Load();
             ExtraPromptManager.Load();
-            SnippetManager.Load();
-            RecordingManager.LoadState();
         }
     }
 }

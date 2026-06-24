@@ -35,7 +35,7 @@ namespace imgsaver
         // List of hosts that should not use page cache (only cookies/login cache)
         public List<string> NoCacheHosts { get; set; } = new List<string>();
 
-        private static string FilePath => DataPathManager.GetDataFilePath("browser_settings.json");
+        private static string FilePath => DataPathManager.GetSettingsFilePath("browser_settings.json");
 
         public static BrowserSettings Load()
         {

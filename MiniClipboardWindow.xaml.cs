@@ -35,6 +35,7 @@ namespace imgsaver
         private bool _hasPositivePrompt = false;
         private bool _hasNegativePrompt = false;
         private bool _ignoreNextClipboardChange = true;
+        private bool _ignoreNextSpiSyncClipboardText = false;
         private DateTime _lastClipboardTime = DateTime.MinValue;
         private bool _isSaving = false;
         private int _nextMiniSlot = 1;
@@ -215,7 +216,7 @@ namespace imgsaver
                     _autoImportWatcher = null;
                 }
 
-                string configPath = DataPathManager.GetDataFilePath("config.txt");
+                string configPath = DataPathManager.GetSettingsFilePath("config.txt");
                 if (!File.Exists(configPath)) return;
 
                 string[] lines = File.ReadAllLines(configPath);
@@ -444,8 +445,15 @@ namespace imgsaver
 
                 if (IsAutoFillEnabled && ClipboardMetadata.IsValid())
                 {
-                    if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
-                    if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
+                    if (ClipboardMetadata.PreserveMiniClipTitle)
+                    {
+                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.CharacterName; }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
+                        if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
+                    }
                     ClipboardMetadata.Clear();
                 }
 
@@ -471,6 +479,12 @@ namespace imgsaver
                 else if (System.Windows.Clipboard.ContainsText())
                 {
                     string rawText = System.Windows.Clipboard.GetText();
+                    if (_ignoreNextSpiSyncClipboardText)
+                    {
+                        _ignoreNextSpiSyncClipboardText = false;
+                        return;
+                    }
+
                     if (_autoCaptureExtraTemplate && TrySetMiniExtraTemplate(rawText))
                     {
                         if (_autoCopyExtraTemplateOutput)
@@ -915,16 +929,38 @@ namespace imgsaver
             PersonaInjectorWindow injector = null;
             foreach (Window w in System.Windows.Application.Current.Windows) if (w is PersonaInjectorWindow piw) injector = piw;
             if (injector == null) return;
+            bool preserveMiniClipTitle = IsSpiSyncPreserveBasePromptEnabled();
+            if (preserveMiniClipTitle) _ignoreNextSpiSyncClipboardText = true;
             injector.PerformRandomForCurrentTab();
             System.Threading.Tasks.Task.Delay(150).ContinueWith(_ => Dispatcher.Invoke(() => {
                 if (ClipboardMetadata.IsValid())
                 {
-                    if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
-                    if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
+                    if (ClipboardMetadata.PreserveMiniClipTitle)
+                    {
+                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.CharacterName; }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
+                        if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
+                    }
                     ClipboardMetadata.Clear(); this.Activate(); if (!IsCompactMode) TxtTitle.Focus();
                     CheckAutoSaveTrigger();
                 }
             }));
+        }
+
+        private bool IsSpiSyncPreserveBasePromptEnabled()
+        {
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath("config.txt");
+                if (!File.Exists(configPath)) return false;
+                string[] lines = File.ReadAllLines(configPath);
+                return lines.Length > 9 && lines[9].Trim().ToLower() == "true";
+            }
+            catch { }
+            return false;
         }
 
         private string FilterEnglishOnly(string input) => string.IsNullOrEmpty(input) ? "" : Regex.Replace(input, @"[^\u0000-\u007F]+", "");

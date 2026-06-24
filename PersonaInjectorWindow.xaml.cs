@@ -27,6 +27,7 @@ namespace imgsaver
         private ICollectionView _extraView;
         private ICollectionView _extraPromptView;
         private Random _random = new Random();
+        private readonly Dictionary<string, HashSet<string>> _randomHistoryByPool = new();
 
         private bool _isPromptLocked = false;
         private bool _isCharacterLocked = false;
@@ -180,7 +181,7 @@ namespace imgsaver
         {
             try
             {
-                string configPath = DataPathManager.GetDataFilePath("config.txt");
+                string configPath = DataPathManager.GetSettingsFilePath("config.txt");
                 if (File.Exists(configPath))
                 {
                     string[] lines = File.ReadAllLines(configPath);
@@ -189,6 +190,39 @@ namespace imgsaver
             }
             catch { }
             return false;
+        }
+
+        private List<T> ApplyFavoriteRandomPool<T>(IEnumerable<T> source, Func<T, bool> isFavorite)
+        {
+            var pool = source?.ToList() ?? new List<T>();
+            if (!ShouldOnlyRandomizeFavorites()) return pool;
+
+            var favorites = pool.Where(isFavorite).ToList();
+            return favorites.Count > 0 ? favorites : pool;
+        }
+
+        private T PickRandomNonRepeating<T>(IList<T> pool, string poolKey, Func<T, string> getId)
+        {
+            if (!_randomHistoryByPool.TryGetValue(poolKey, out var history))
+            {
+                history = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                _randomHistoryByPool[poolKey] = history;
+            }
+
+            var available = pool
+                .Where(item => !history.Contains(getId(item) ?? ""))
+                .ToList();
+
+            if (available.Count == 0)
+            {
+                history.Clear();
+                available = pool.ToList();
+            }
+
+            var selected = available[_random.Next(available.Count)];
+            string id = getId(selected) ?? "";
+            if (!string.IsNullOrWhiteSpace(id)) history.Add(id);
+            return selected;
         }
 
         private bool CharacterFilter(object item)
@@ -496,7 +530,7 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = DataPathManager.ActiveDataDirectory;
+                string dataDir = DataPathManager.SharedPromptDataDirectory;
                 string shareDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "share");
                 if (!Directory.Exists(dataDir)) return;
                 if (!Directory.Exists(shareDir)) Directory.CreateDirectory(shareDir);
@@ -687,15 +721,9 @@ namespace imgsaver
 
         private void BtnRandomPrompt_Click(object sender, RoutedEventArgs e)
         {
-            var pool = BasePromptManager.GetAll();
-            if (ShouldOnlyRandomizeFavorites())
-            {
-                var favorites = pool.Where(p => p.IsFavorite).ToList();
-                if (favorites.Count == 0) return;
-                pool = favorites;
-            }
+            var pool = ApplyFavoriteRandomPool(BasePromptManager.GetAll(), p => p.IsFavorite);
             if (pool.Count == 0) return;
-            var randomPrompt = pool[_random.Next(pool.Count)];
+            var randomPrompt = PickRandomNonRepeating(pool, "basePrompt", p => p.Id);
             _currentPrompt = randomPrompt;
             _isSettingPrompt = true;
             TxtRawPrompt.Text = randomPrompt.PromptText;
@@ -705,15 +733,9 @@ namespace imgsaver
 
         private void BtnExtraRandomPrompt_Click(object sender, RoutedEventArgs e)
         {
-            var pool = ExtraPromptManager.GetAll();
-            if (ShouldOnlyRandomizeFavorites())
-            {
-                var favorites = pool.Where(p => p.IsFavorite).ToList();
-                if (favorites.Count == 0) return;
-                pool = favorites;
-            }
+            var pool = ApplyFavoriteRandomPool(ExtraPromptManager.GetAll(), p => p.IsFavorite);
             if (pool.Count == 0) return;
-            var randomPrompt = pool[_random.Next(pool.Count)];
+            var randomPrompt = PickRandomNonRepeating(pool, "extraPrompt", p => p.Id);
             _currentExtraPrompt = randomPrompt;
             _isSettingExtraPrompt = true;
             TxtExtraRawPrompt.Text = randomPrompt.PromptText;
@@ -723,15 +745,9 @@ namespace imgsaver
 
         private void BtnRandomCharacter_Click(object sender, RoutedEventArgs e)
         {
-            var pool = CharacterManager.GetAll();
-            if (ShouldOnlyRandomizeFavorites())
-            {
-                var favorites = pool.Where(c => c.IsFavorite).ToList();
-                if (favorites.Count == 0) return;
-                pool = favorites;
-            }
+            var pool = ApplyFavoriteRandomPool(CharacterManager.GetAll(), c => c.IsFavorite);
             if (pool.Count == 0) return;
-            var randomCharacter = pool[_random.Next(pool.Count)];
+            var randomCharacter = PickRandomNonRepeating(pool, "character", c => c.Id);
             _currentPersona = randomCharacter;
             PerformInjection(randomCharacter);
             if (TxtCurrentCharacterName != null) TxtCurrentCharacterName.Text = randomCharacter.ShortName ?? "Unknown";
@@ -739,15 +755,9 @@ namespace imgsaver
 
         private void BtnRandomExtra_Click(object sender, RoutedEventArgs e)
         {
-            var pool = ExtraManager.GetAll();
-            if (ShouldOnlyRandomizeFavorites())
-            {
-                var favorites = pool.Where(c => c.IsFavorite).ToList();
-                if (favorites.Count == 0) return;
-                pool = favorites;
-            }
+            var pool = ApplyFavoriteRandomPool(ExtraManager.GetAll(), c => c.IsFavorite);
             if (pool.Count == 0) return;
-            var randomExtra = pool[_random.Next(pool.Count)];
+            var randomExtra = PickRandomNonRepeating(pool, "extra", c => c.Id);
             _currentExtra = randomExtra;
             PerformExtraInjection(randomExtra);
             SaveCurrentExtraSelection();
@@ -760,34 +770,31 @@ namespace imgsaver
 
         public void PerformRandomForCurrentTab()
         {
-            if (MainTabControl?.SelectedIndex == 1) PerformRandomExtraBoth();
-            else PerformRandomBoth();
+            bool preserveMiniClipTitle = ShouldPreserveMiniClipTitleOnSpiSync();
+            if (MainTabControl?.SelectedIndex == 1) PerformRandomExtraBoth(preserveMiniClipTitle);
+            else PerformRandomBoth(preserveMiniClipTitle);
         }
 
-        public void PerformRandomBoth()
+        public void PerformRandomBoth(bool preserveMiniClipTitle = false)
         {
-            var promptPool = BasePromptManager.GetAll();
-            var charPool = CharacterManager.GetAll();
-            if (ShouldOnlyRandomizeFavorites())
-            {
-                var favPrompts = promptPool.Where(p => p.IsFavorite).ToList();
-                var favChars = charPool.Where(c => c.IsFavorite).ToList();
-                if (favPrompts.Count == 0 || favChars.Count == 0) return;
-                promptPool = favPrompts; charPool = favChars;
-            }
+            var promptPool = ApplyFavoriteRandomPool(BasePromptManager.GetAll(), p => p.IsFavorite);
+            var charPool = ApplyFavoriteRandomPool(CharacterManager.GetAll(), c => c.IsFavorite);
             if (promptPool.Count == 0 || charPool.Count == 0) return;
             if (!_isPromptLocked)
             {
-                var randomPrompt = promptPool[_random.Next(promptPool.Count)];
-                _currentPrompt = randomPrompt;
-                _isSettingPrompt = true;
-                TxtRawPrompt.Text = randomPrompt.PromptText;
-                _isSettingPrompt = false;
-                TxtCurrentPromptName.Text = $"Source: {randomPrompt.Name}";
+                if (!preserveMiniClipTitle)
+                {
+                    var randomPrompt = PickRandomNonRepeating(promptPool, "basePrompt", p => p.Id);
+                    _currentPrompt = randomPrompt;
+                    _isSettingPrompt = true;
+                    TxtRawPrompt.Text = randomPrompt.PromptText;
+                    _isSettingPrompt = false;
+                    TxtCurrentPromptName.Text = $"Source: {randomPrompt.Name}";
+                }
             }
             if (!_isCharacterLocked)
             {
-                var randomCharacter = charPool[_random.Next(charPool.Count)];
+                var randomCharacter = PickRandomNonRepeating(charPool, "character", c => c.Id);
                 _currentPersona = randomCharacter;
                 if (TxtCurrentCharacterName != null) TxtCurrentCharacterName.Text = randomCharacter.ShortName ?? "Unknown";
             }
@@ -800,37 +807,33 @@ namespace imgsaver
                     System.Windows.Clipboard.SetText(outputText);
                     string characterName = _currentPersona?.ShortName ?? "Unknown";
                     string promptName = _currentPrompt?.Name ?? "Unknown";
-                    ClipboardMetadata.Set(characterName, promptName);
+                    ClipboardMetadata.Set(characterName, promptName, preserveMiniClipTitle);
                     ShowCopyFeedback();
                 }
                 catch { }
             }
         }
 
-        public void PerformRandomExtraBoth()
+        public void PerformRandomExtraBoth(bool preserveMiniClipTitle = false)
         {
-            var promptPool = ExtraPromptManager.GetAll();
-            var extraPool = ExtraManager.GetAll();
-            if (ShouldOnlyRandomizeFavorites())
-            {
-                var favPrompts = promptPool.Where(p => p.IsFavorite).ToList();
-                var favExtras = extraPool.Where(c => c.IsFavorite).ToList();
-                if (favPrompts.Count == 0 || favExtras.Count == 0) return;
-                promptPool = favPrompts; extraPool = favExtras;
-            }
+            var promptPool = ApplyFavoriteRandomPool(ExtraPromptManager.GetAll(), p => p.IsFavorite);
+            var extraPool = ApplyFavoriteRandomPool(ExtraManager.GetAll(), c => c.IsFavorite);
             if (promptPool.Count == 0 || extraPool.Count == 0) return;
             if (!_isExtraPromptLocked)
             {
-                var randomPrompt = promptPool[_random.Next(promptPool.Count)];
-                _currentExtraPrompt = randomPrompt;
-                _isSettingExtraPrompt = true;
-                TxtExtraRawPrompt.Text = randomPrompt.PromptText;
-                _isSettingExtraPrompt = false;
-                TxtCurrentExtraPromptName.Text = $"Source: {randomPrompt.Name}";
+                if (!preserveMiniClipTitle)
+                {
+                    var randomPrompt = PickRandomNonRepeating(promptPool, "extraPrompt", p => p.Id);
+                    _currentExtraPrompt = randomPrompt;
+                    _isSettingExtraPrompt = true;
+                    TxtExtraRawPrompt.Text = randomPrompt.PromptText;
+                    _isSettingExtraPrompt = false;
+                    TxtCurrentExtraPromptName.Text = $"Source: {randomPrompt.Name}";
+                }
             }
             if (!_isExtraLocked)
             {
-                var randomExtra = extraPool[_random.Next(extraPool.Count)];
+                var randomExtra = PickRandomNonRepeating(extraPool, "extra", c => c.Id);
                 _isUsingCustomExtra = false;
                 _currentCustomExtraText = "";
                 _currentExtra = randomExtra;
@@ -849,11 +852,24 @@ namespace imgsaver
                     System.Windows.Clipboard.SetText(outputText);
                     string extraName = _currentExtra?.ShortName ?? "Unknown";
                     string promptName = _currentExtraPrompt?.Name ?? "Unknown";
-                    ClipboardMetadata.Set(extraName, promptName);
+                    ClipboardMetadata.Set(extraName, promptName, preserveMiniClipTitle);
                     ShowExtraCopyFeedback();
                 }
                 catch { }
             }
+        }
+
+        private bool ShouldPreserveMiniClipTitleOnSpiSync()
+        {
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath("config.txt");
+                if (!File.Exists(configPath)) return false;
+                string[] lines = File.ReadAllLines(configPath);
+                return lines.Length > 9 && lines[9].Trim().ToLower() == "true";
+            }
+            catch { }
+            return false;
         }
 
         public bool TryGetCurrentExtraText(out string extraText, out string errorMessage)

@@ -34,10 +34,10 @@
 
                     <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
 
-                    <TextBlock Text="Shared Data Folder" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
-                    <CheckBox x:Name="ChkUseCustomDataFolder" Content="Use custom folder for settings and prompt JSON files"
+                    <TextBlock Text="Shared Prompt Content Folder" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
+                    <CheckBox x:Name="ChkUseCustomDataFolder" Content="Use custom folder for Persona, Base Prompt, and Extra content"
                               Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
-                              ToolTip="When enabled, prompt/settings JSON files are read from and saved to the selected folder."/>
+                              ToolTip="When enabled, prompt library JSON files are read from and saved to the selected folder. Program settings stay local to this app copy."/>
                     <Grid Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -76,6 +76,9 @@
                     <CheckBox x:Name="ChkReplacePositivePromptOnClipboardText" Content="Replace POS when new clipboard text arrives" IsChecked="True"
                               Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
                               ToolTip="When disabled, Mini-Clip keeps the first POS text until POS is cleared manually or after saving."/>
+                    <CheckBox x:Name="ChkSpiSyncPreserveBasePrompt" Content="Do not use saved base list when running SPI Sync"
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
+                              ToolTip="When enabled, SPI Sync keeps the current Mini-Clip POS/base text and only randomizes the Persona/Extra item. The selected item title is stored as Additional Title."/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="Images to collect before saving:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
                         <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="50" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
@@ -125,7 +128,7 @@
                     <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
 
                     <TextBlock Text="Injector Settings" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
-                    <CheckBox x:Name="ChkRandomOnlyFavorites" Content="Only randomize from favorites (Starred items)" 
+                    <CheckBox x:Name="ChkRandomOnlyFavorites" Content="Random buttons use favorites only when favorites exist" 
                               Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,20" VerticalContentAlignment="Center"/>
 
                     <Button Content="Save &amp; Close" Click="BtnSave_Click" HorizontalAlignment="Right" Width="120" Height="36" Margin="0,0,0,20"/>

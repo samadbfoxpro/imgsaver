@@ -9,12 +9,14 @@ namespace imgsaver
     {
         public static string CharacterName { get; set; }
         public static string BasePromptName { get; set; }
+        public static bool PreserveMiniClipTitle { get; set; }
         public static DateTime LastUpdated { get; set; }
 
-        public static void Set(string characterName, string basePromptName)
+        public static void Set(string characterName, string basePromptName, bool preserveMiniClipTitle = false)
         {
             CharacterName = characterName;
             BasePromptName = basePromptName;
+            PreserveMiniClipTitle = preserveMiniClipTitle;
             LastUpdated = DateTime.Now;
         }
 
@@ -22,6 +24,7 @@ namespace imgsaver
         {
             CharacterName = null;
             BasePromptName = null;
+            PreserveMiniClipTitle = false;
             LastUpdated = DateTime.MinValue;
         }
 

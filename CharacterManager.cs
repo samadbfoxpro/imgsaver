@@ -42,7 +42,7 @@ namespace imgsaver
     /// </summary>
     public static class CharacterManager
     {
-        private static string PersonasFilePath => DataPathManager.GetDataFilePath("personas.json");
+        private static string PersonasFilePath => DataPathManager.GetPromptDataFilePath("personas.json");
 
         private static List<CharacterPersona> _characters = new List<CharacterPersona>();
 

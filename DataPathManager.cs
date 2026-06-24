@@ -21,7 +21,7 @@ namespace imgsaver
 
         public static string CustomDataFolder => _settings.CustomDataFolder ?? "";
 
-        public static string ActiveDataDirectory
+        public static string SharedPromptDataDirectory
         {
             get
             {
@@ -34,13 +34,23 @@ namespace imgsaver
 
         public static string GetDataFilePath(string fileName)
         {
-            EnsureActiveDataDirectory();
-            return Path.Combine(ActiveDataDirectory, fileName);
+            return GetSettingsFilePath(fileName);
+        }
+
+        public static string GetPromptDataFilePath(string fileName)
+        {
+            EnsureSharedPromptDataDirectory();
+            return Path.Combine(SharedPromptDataDirectory, fileName);
+        }
+
+        public static string GetSettingsFilePath(string fileName)
+        {
+            return GetLocalDataFilePath(fileName);
         }
 
         public static string GetDataSubfolderPath(string folderName)
         {
-            string path = Path.Combine(ActiveDataDirectory, folderName);
+            string path = Path.Combine(LocalDataDirectory, folderName);
             if (!Directory.Exists(path)) Directory.CreateDirectory(path);
             return path;
         }
@@ -56,7 +66,7 @@ namespace imgsaver
         public static void Reload()
         {
             _settings = LoadBootstrapSettings();
-            EnsureActiveDataDirectory();
+            EnsureSharedPromptDataDirectory();
         }
 
         public static void SaveLocation(bool useCustomDataFolder, string customDataFolder)
@@ -79,12 +89,12 @@ namespace imgsaver
 
             string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(BootstrapFilePath, json);
-            EnsureActiveDataDirectory();
+            EnsureSharedPromptDataDirectory();
         }
 
-        public static void EnsureActiveDataDirectory()
+        public static void EnsureSharedPromptDataDirectory()
         {
-            string dir = ActiveDataDirectory;
+            string dir = SharedPromptDataDirectory;
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
         }
 

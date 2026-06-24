@@ -10,10 +10,10 @@ namespace imgsaver
     {
         private static List<InputEvent> _slot1 = new List<InputEvent>();
         private static List<InputEvent> _slot2 = new List<InputEvent>();
-        private static string DataDir => DataPathManager.ActiveDataDirectory;
-        private static string Slot1Path => DataPathManager.GetDataFilePath("rec_slot1.json");
-        private static string Slot2Path => DataPathManager.GetDataFilePath("rec_slot2.json");
-        private static string SettingsPath => DataPathManager.GetDataFilePath("rec_settings.json");
+        private static string DataDir => DataPathManager.LocalDataDirectory;
+        private static string Slot1Path => DataPathManager.GetSettingsFilePath("rec_slot1.json");
+        private static string Slot2Path => DataPathManager.GetSettingsFilePath("rec_slot2.json");
+        private static string SettingsPath => DataPathManager.GetSettingsFilePath("rec_settings.json");
 
         public static double PlaybackSpeed { get; set; } = 1.0;
         public static bool SequentialMode { get; set; } = false;
