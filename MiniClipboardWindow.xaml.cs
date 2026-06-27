@@ -632,6 +632,13 @@ namespace imgsaver
             if (IsAdditionalTitleEnabled && !string.IsNullOrWhiteSpace(AdditionalTitle)) title += " " + AdditionalTitle.Trim();
             if (string.IsNullOrEmpty(title)) { if (!IsCompactMode) TxtTitle.Focus(); return; }
 
+            string safeTitle = SanitizeFileName(title);
+            if (string.IsNullOrWhiteSpace(safeTitle))
+            {
+                System.Windows.MessageBox.Show("Title contains only invalid filename characters.");
+                return;
+            }
+
             _isSaving = true;
             try
             {
@@ -639,7 +646,7 @@ namespace imgsaver
                 {
                     var item = _capturedImages[i];
                     string ext = item.OriginalPath != null ? Path.GetExtension(item.OriginalPath) : ".png";
-                    string currentTitle = _capturedImages.Count > 1 ? $"{title} ({i + 1})" : title;
+                    string currentTitle = _capturedImages.Count > 1 ? $"{safeTitle} ({i + 1})" : safeTitle;
                     string imgPath = Path.Combine(savePath, currentTitle + ext);
                     string txtPath = Path.Combine(savePath, currentTitle + ".txt");
                     int counter = 1;
@@ -667,6 +674,17 @@ namespace imgsaver
             }
             catch (Exception ex) { System.Windows.MessageBox.Show(ex.Message); }
             finally { _isSaving = false; }
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "";
+
+            string invalid = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
+            var cleaned = new string(value.Where(ch => !invalid.Contains(ch)).ToArray());
+            cleaned = cleaned.Trim().TrimEnd('.');
+            cleaned = Regex.Replace(cleaned, @"\s+", " ").Trim();
+            return cleaned;
         }
 
         private void FlashSuccess()
