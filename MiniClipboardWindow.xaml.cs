@@ -54,6 +54,7 @@ namespace imgsaver
         private long _lastBytesSent = 0;
         private bool _isBrowserQuickPasteEnabled = false;
         private bool _isBrowserQuickPasteRunning = false;
+        private bool _isManualExtraCopyRunning = false;
 
         public static readonly DependencyProperty IsDisabledProperty =
             DependencyProperty.Register("IsDisabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
@@ -742,6 +743,43 @@ namespace imgsaver
             }
         }
 
+        private async void BtnManualExtraCopy_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isManualExtraCopyRunning) return;
+
+            _isManualExtraCopyRunning = true;
+            BtnManualExtraCopy.IsEnabled = false;
+            SetManualExtraCopyStatus(true);
+
+            try
+            {
+                await Task.Delay(80);
+                if (System.Windows.Clipboard.ContainsText())
+                    TrySetMiniExtraTemplate(System.Windows.Clipboard.GetText());
+
+                if (!TryBuildExtraTemplateOutput(out var output, out var errorMessage))
+                {
+                    CustomMessageBox.Show(errorMessage, "Manual EX", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                SetClipboardTextIgnoringNextChange(output);
+                TryApplyAutoExtraOutputToPositivePrompt(output);
+                SetMiniExtraButtonState(true);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(ex.Message, "Manual EX", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                await Task.Delay(180);
+                SetManualExtraCopyStatus(false);
+                BtnManualExtraCopy.IsEnabled = true;
+                _isManualExtraCopyRunning = false;
+            }
+        }
+
         private bool TryBuildExtraTemplateOutput(out string output, out string errorMessage)
         {
             output = "";
@@ -837,11 +875,17 @@ namespace imgsaver
             if (BtnCopyExtraTemplateOutput?.Template.FindName("txt", BtnCopyExtraTemplateOutput) is TextBlock copyText)
                 copyText.Foreground = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
 
+            if (BtnManualExtraCopy?.Template.FindName("txt", BtnManualExtraCopy) is TextBlock manualText)
+                manualText.Foreground = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
+
             if (BtnAutoExtraCopyStatus?.Template.FindName("bd", BtnAutoExtraCopyStatus) is Border captureBorder)
                 captureBorder.BorderBrush = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush");
 
             if (BtnCopyExtraTemplateOutput?.Template.FindName("bd", BtnCopyExtraTemplateOutput) is Border copyBorder)
                 copyBorder.BorderBrush = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush");
+
+            if (BtnManualExtraCopy?.Template.FindName("bd", BtnManualExtraCopy) is Border manualBorder)
+                manualBorder.BorderBrush = hasTemplate ? (System.Windows.Media.Brush)FindResource("SuccessBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush");
         }
 
         private void SetAutoExtraCopyStatus(bool isRunning)
@@ -852,6 +896,19 @@ namespace imgsaver
                     : (System.Windows.Media.Brush)FindResource("BorderBrush");
 
             if (BtnAutoExtraCopyStatus?.Template.FindName("txt", BtnAutoExtraCopyStatus) is TextBlock text)
+                text.Foreground = isRunning
+                    ? new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFD700"))
+                    : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
+        }
+
+        private void SetManualExtraCopyStatus(bool isRunning)
+        {
+            if (BtnManualExtraCopy?.Template.FindName("bd", BtnManualExtraCopy) is Border border)
+                border.BorderBrush = isRunning
+                    ? new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFD700"))
+                    : (System.Windows.Media.Brush)FindResource("BorderBrush");
+
+            if (BtnManualExtraCopy?.Template.FindName("txt", BtnManualExtraCopy) is TextBlock text)
                 text.Foreground = isRunning
                     ? new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFD700"))
                     : (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
