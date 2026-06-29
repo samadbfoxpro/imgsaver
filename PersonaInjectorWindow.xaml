@@ -175,11 +175,11 @@
                                         <!-- Header -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Base Prompt Section Header -->
-                                        <RowDefinition Height="100"/>
+                                        <RowDefinition Height="130"/>
                                         <!-- Base Prompt List (Compact) -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Raw Prompt Label + Insert Button -->
-                                        <RowDefinition Height="120"/>
+                                        <RowDefinition Height="90"/>
                                         <!-- Raw Prompt -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Character Section Buttons -->
@@ -526,23 +526,23 @@
                                         <!-- Header -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Base Prompt Section Header -->
-                                        <RowDefinition Height="100"/>
+                                        <RowDefinition Height="86"/>
                                         <!-- Base Prompt List (Compact) -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Raw Prompt Label + Insert Button -->
-                                        <RowDefinition Height="120"/>
+                                        <RowDefinition Height="88"/>
                                         <!-- Raw Prompt -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Character Section Buttons -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Character Search Header -->
-                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="132"/>
                                         <!-- Character List -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Custom Extra Entry -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Output Label -->
-                                        <RowDefinition Height="120"/>
+                                        <RowDefinition Height="96"/>
                                         <!-- Output Field -->
                                     </Grid.RowDefinitions>
                     
@@ -831,7 +831,7 @@
                                     <Grid Grid.Row="8" Margin="0,12,0,0">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="72"/>
+                                            <RowDefinition Height="58"/>
                                         </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
