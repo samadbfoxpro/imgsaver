@@ -139,7 +139,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Template Name:" Foreground="{StaticResource ForegroundMutedBrush}" 
                                        VerticalAlignment="Center" FontSize="14"/>
-                            <TextBox x:Name="TxtPromptName" Grid.Column="1" Height="34" FontSize="14" Padding="8,4"/>
+                            <TextBox x:Name="TxtPromptName" Grid.Column="1" FontSize="14" Padding="8,4" VerticalContentAlignment="Center"/>
                         </Grid>
 
                         <Grid Grid.Row="2" Margin="0,0,0,8">

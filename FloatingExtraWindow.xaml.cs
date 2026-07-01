@@ -65,7 +65,7 @@ namespace imgsaver
             _extras.Clear();
             foreach (var extra in ExtraManager.GetSortedAll())
                 _extras.Add(new SelectableExtra(extra));
-            LstExtras.ItemsSource = _extras;
+            ApplySearchFilter();
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -80,11 +80,83 @@ namespace imgsaver
             bool useCustom = ChkUseCustomText.IsChecked == true;
             PanelCustomText.Visibility = useCustom ? Visibility.Visible : Visibility.Collapsed;
             BorderExtraList.Visibility = useCustom ? Visibility.Collapsed : Visibility.Visible;
+            GridSearch.Visibility = useCustom ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void ExtraCheck_Changed(object sender, RoutedEventArgs e)
         {
             // No-op: selection state is bound directly via SelectableExtra.IsSelected.
+        }
+
+        private void TxtSearch_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            ApplySearchFilter();
+        }
+
+        private void BtnClearSearch_Click(object sender, RoutedEventArgs e)
+        {
+            TxtSearch.Text = "";
+        }
+
+        private void ApplySearchFilter()
+        {
+            string query = TxtSearch?.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(query))
+            {
+                LstExtras.ItemsSource = _extras;
+            }
+            else
+            {
+                var filtered = _extras.Where(x => 
+                    x.ShortName.Contains(query, StringComparison.OrdinalIgnoreCase) || 
+                    x.Text.Contains(query, StringComparison.OrdinalIgnoreCase)
+                ).ToList();
+                LstExtras.ItemsSource = filtered;
+            }
+        }
+
+        private void BtnSaveToLibrary_Click(object sender, RoutedEventArgs e)
+        {
+            string text = TxtCustomText.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                ShowValidationMessage("Enter custom Extra text first.");
+                return;
+            }
+
+            string title = TxtCustomTitle.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                ShowValidationMessage("Enter a title for the Extra first.");
+                return;
+            }
+
+            try
+            {
+                var newExtra = new ExtraItem { ShortName = title, Text = text };
+                ExtraManager.Add(newExtra);
+                
+                // Reload and refresh the list
+                RefreshExtraList();
+
+                // Switch back to list mode so they can see the new item
+                ChkUseCustomText.IsChecked = false;
+
+                // Select the newly added item in the UI list
+                var addedSelectable = _extras.FirstOrDefault(x => x.Extra.ShortName == title && x.Extra.Text == text);
+                if (addedSelectable != null)
+                {
+                    addedSelectable.IsSelected = true;
+                }
+
+                // Clear input fields
+                TxtCustomText.Text = "";
+                TxtCustomTitle.Text = "";
+            }
+            catch (Exception ex)
+            {
+                ShowValidationMessage("Error saving Extra: " + ex.Message);
+            }
         }
 
         private void BtnConfirm_Click(object sender, RoutedEventArgs e)
