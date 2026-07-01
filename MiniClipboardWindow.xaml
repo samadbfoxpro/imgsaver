@@ -166,6 +166,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Image Preview Area -->
@@ -289,8 +290,44 @@
                     </TextBox>
                 </Grid>
 
+                <!-- Description Row -->
+                <Grid Grid.Row="4" Margin="0,8,0,0">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCompactMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox IsChecked="{Binding IsDescriptionEnabled, RelativeSource={RelativeSource AncestorType=Window}}"
+                              VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Enable Description / Notes"/>
+                    <TextBox Grid.Column="1" x:Name="TxtDescription" 
+                             Text="{Binding DescriptionText, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="11" Height="26" Padding="6,0"
+                             VerticalContentAlignment="Center"
+                             ToolTip="Description / Notes (saved to text file)"
+                             KeyDown="AdditionalTitle_KeyDown">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Setter Property="IsEnabled" Value="{Binding IsDescriptionEnabled, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.4"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                </Grid>
+
                 <!-- Action Buttons -->
-                <Grid Grid.Row="4" Margin="0,12,0,0">
+                <Grid Grid.Row="5" Margin="0,12,0,0">
                     <Grid.Style>
                         <Style TargetType="Grid">
                             <Style.Triggers>
@@ -304,7 +341,7 @@
                         <ColumnDefinition Width="40"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-
+ 
                     <Button x:Name="BtnReset" Grid.Column="0" Content="✕"
                             Click="BtnReset_Click" Height="34" FontSize="16"
                             ToolTip="Clear All" Cursor="Hand">
@@ -322,7 +359,7 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-
+ 
                     <Button x:Name="BtnSEO" Grid.Column="1" Content="SAVE TO DISK"
                             Click="BtnSEO_Click" Height="34" FontSize="11" FontWeight="Bold"
                             Margin="8,0,0,0" IsEnabled="False"
@@ -344,9 +381,9 @@
                         </Button.Template>
                     </Button>
                 </Grid>
-
+ 
                 <!-- Menu Toggle -->
-                <Button x:Name="BtnToggleMenu" Grid.Row="5" Click="BtnToggleMenu_Click"
+                <Button x:Name="BtnToggleMenu" Grid.Row="6" Click="BtnToggleMenu_Click"
                         Height="16" Width="50" Margin="0,6,0,0" HorizontalAlignment="Center" Cursor="Hand"
                         ToolTip="Extra Options">
                     <Button.Template>
@@ -374,9 +411,9 @@
                         </Style>
                     </Button.Style>
                 </Button>
-
+ 
                 <!-- Extra Menu Grid -->
-                <StackPanel Grid.Row="6" Margin="0,8,0,0">
+                <StackPanel Grid.Row="7" Margin="0,8,0,0">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -461,19 +498,19 @@
                             </Button.Template>
                         </Button>
 
-                        <Button x:Name="BtnSaveBasePrompt" Click="BtnSaveBasePrompt_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Save as Base Prompt">
+                        <Button x:Name="BtnLockDescription" Click="BtnLockDescription_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Lock Description">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                        <TextBlock x:Name="txt" Text="BASE PR" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="txt" Text="LOCK DSC" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
                                             <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
                                         </Trigger>
-                                        <DataTrigger Binding="{Binding IsSaveBasePromptEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                                            <Setter TargetName="txt" Property="Foreground" Value="#89D185"/>
-                                            <Setter TargetName="bd" Property="BorderBrush" Value="#89D185"/>
+                                        <DataTrigger Binding="{Binding IsDescriptionLocked, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                            <Setter TargetName="txt" Property="Foreground" Value="#F1C40F"/>
+                                            <Setter TargetName="bd" Property="BorderBrush" Value="#F1C40F"/>
                                         </DataTrigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -579,6 +616,25 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
                                             </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnSaveBasePrompt" Click="BtnSaveBasePrompt_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Save as Base Prompt">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                            <TextBlock x:Name="txt" Text="BASE PR" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsSaveBasePromptEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter TargetName="txt" Property="Foreground" Value="#89D185"/>
+                                                <Setter TargetName="bd" Property="BorderBrush" Value="#89D185"/>
+                                            </DataTrigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>

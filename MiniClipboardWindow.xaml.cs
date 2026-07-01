@@ -163,6 +163,41 @@ namespace imgsaver
             set { SetValue(IsSaveBasePromptEnabledProperty, value); }
         }
 
+        public static readonly DependencyProperty IsDescriptionEnabledProperty =
+            DependencyProperty.Register("IsDescriptionEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false, OnIsDescriptionEnabledChanged));
+
+        private static void OnIsDescriptionEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
+            {
+                window.DescriptionText = "";
+            }
+        }
+
+        public bool IsDescriptionEnabled
+        {
+            get { return (bool)GetValue(IsDescriptionEnabledProperty); }
+            set { SetValue(IsDescriptionEnabledProperty, value); }
+        }
+
+        public static readonly DependencyProperty DescriptionTextProperty =
+            DependencyProperty.Register("DescriptionText", typeof(string), typeof(MiniClipboardWindow), new PropertyMetadata(""));
+
+        public string DescriptionText
+        {
+            get { return (string)GetValue(DescriptionTextProperty); }
+            set { SetValue(DescriptionTextProperty, value); }
+        }
+
+        public static readonly DependencyProperty IsDescriptionLockedProperty =
+            DependencyProperty.Register("IsDescriptionLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+
+        public bool IsDescriptionLocked
+        {
+            get { return (bool)GetValue(IsDescriptionLockedProperty); }
+            set { SetValue(IsDescriptionLockedProperty, value); }
+        }
+
         private List<CapturedImageInfo> _capturedImages = new List<CapturedImageInfo>();
         private string _positivePrompt = "";
         private string _negativePrompt = "";
@@ -681,7 +716,12 @@ namespace imgsaver
                             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(item.Bitmap)); encoder.Save(fs);
                         }
                     }
-                    File.WriteAllText(txtPath, $"Positive Prompt:\n{_positivePrompt}\n\nNegative Prompt:\n{_negativePrompt}");
+                    string txtContent = $"Positive Prompt:\n{_positivePrompt}\n\nNegative Prompt:\n{_negativePrompt}";
+                    if (IsDescriptionEnabled && !string.IsNullOrWhiteSpace(DescriptionText))
+                    {
+                        txtContent += $"\n\nDescription:\n{DescriptionText.Trim()}";
+                    }
+                    File.WriteAllText(txtPath, txtContent);
                 }
                 FlashSuccess();
                 if (IsSaveBasePromptEnabled && !string.IsNullOrWhiteSpace(_positivePrompt))
@@ -719,6 +759,7 @@ namespace imgsaver
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
             if (!IsTitleLocked) TxtTitle.Text = "";
             if (!IsAdditionalTitleLocked) AdditionalTitle = "";
+            if (!IsDescriptionLocked) DescriptionText = "";
             BtnSEO.IsEnabled = false;
         }
 
@@ -728,6 +769,7 @@ namespace imgsaver
         private void BtnLockAdditionalTitle_Click(object sender, RoutedEventArgs e) => IsAdditionalTitleLocked = !IsAdditionalTitleLocked;
         private void BtnLockTitle_Click(object sender, RoutedEventArgs e) => IsTitleLocked = !IsTitleLocked;
         private void BtnToggleMenu_Click(object sender, RoutedEventArgs e) => IsExtraMenuOpen = !IsExtraMenuOpen;
+        private void BtnLockDescription_Click(object sender, RoutedEventArgs e) => IsDescriptionLocked = !IsDescriptionLocked;
         private void BtnExtraMenuPageOne_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 0;
         private void BtnExtraMenuPageTwo_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 1;
         private void BtnExtraMenuPageThree_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 2;
