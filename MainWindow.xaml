@@ -160,9 +160,11 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Button Grid.Column="0" Content="MINI CLIP" Tag="📋" Click="BtnMiniClipboard_Click" Style="{StaticResource NavButtonStyle}" Background="#1B5E20" Foreground="White"/>
-                        <Button Grid.Column="1" Content="PERSONA" Tag="🎭" Click="BtnPersona_Click" Style="{StaticResource NavButtonStyle}" Background="#4A148C" Foreground="White"/>
+                        <Button Grid.Column="1" Content="EXTRA FLOAT" Tag="🧩" Click="BtnExtraFloat_Click" Style="{StaticResource NavButtonStyle}" Background="#0E7A6E" Foreground="White"/>
+                        <Button Grid.Column="2" Content="PERSONA" Tag="🎭" Click="BtnPersona_Click" Style="{StaticResource NavButtonStyle}" Background="#4A148C" Foreground="White"/>
                     </Grid>
 
                     <Button Grid.Row="1" Content="GALLERY" Tag="🖼️" Click="BtnGallery_Click" Style="{StaticResource NavButtonStyle}" Margin="0,4"/>

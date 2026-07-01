@@ -184,6 +184,22 @@ namespace imgsaver
             InitializeComponent();
             Loaded += MiniClipboardWindow_Loaded;
             Closed += MiniClipboardWindow_Closed;
+
+            if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
+            {
+                IsAdditionalTitleEnabled = true;
+                AdditionalTitle = ExtraFloatBridge.LastConfirmedTitle;
+            }
+            ExtraFloatBridge.ExtraTitleConfirmed += OnExtraTitleConfirmed;
+        }
+
+        private void OnExtraTitleConfirmed(string title)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                IsAdditionalTitleEnabled = true;
+                AdditionalTitle = title;
+            });
         }
 
         private void MiniClipboardWindow_Loaded(object sender, RoutedEventArgs e)
@@ -408,6 +424,7 @@ namespace imgsaver
 
         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
         {
+            ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
             _netTimer?.Stop();
             _globalHook?.Dispose();
             if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }

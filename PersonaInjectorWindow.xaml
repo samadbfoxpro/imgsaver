@@ -537,9 +537,7 @@
                                         <RowDefinition Height="Auto"/>
                                         <!-- Character Search Header -->
                                         <RowDefinition Height="132"/>
-                                        <!-- Character List -->
-                                        <RowDefinition Height="Auto"/>
-                                        <!-- Custom Extra Entry -->
+                                        <!-- Character List + Custom Extra (side by side) -->
                                         <RowDefinition Height="Auto"/>
                                         <!-- Output Label -->
                                         <RowDefinition Height="96"/>
@@ -752,8 +750,16 @@
                                         </Button>
                                     </Grid>
                     
-                                    <!-- 8. Character List (2-Column) -->
-                                    <Border Grid.Row="7" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
+                                    <!-- 8. Character List + Custom Extra (Side by Side) -->
+                                    <Grid Grid.Row="7">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.6*"/>
+                                            <ColumnDefinition Width="12"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                    <!-- 8a. Character List (2-Column) -->
+                                    <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" CornerRadius="4" 
                                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                         <ListBox x:Name="ExtraList" SelectionChanged="ExtraList_SelectionChanged"
                                                  Background="Transparent" BorderThickness="0"
@@ -827,30 +833,28 @@
                                         </ListBox>
                                     </Border>
 
-                                    <!-- Custom Extra Entry -->
-                                    <Grid Grid.Row="8" Margin="0,12,0,0">
+                                    <!-- 8b. Custom Extra Entry -->
+                                    <Grid Grid.Column="2">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="58"/>
+                                            <RowDefinition Height="*"/>
                                         </Grid.RowDefinitions>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
 
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CUSTOM EXTRA" Foreground="{StaticResource AccentBrush}" 
-                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-                                        <Button x:Name="BtnUseCustomExtra" Grid.Row="0" Grid.Column="1" Content="Use Text" 
-                                                Click="BtnUseCustomExtra_Click" Padding="12,4" FontSize="13" Margin="12,0,0,4"
+                                        <TextBlock Grid.Row="0" Text="CUSTOM EXTRA" Foreground="{StaticResource AccentBrush}" 
+                                                   FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Margin="0,0,0,4"/>
+                                        <Button x:Name="BtnUseCustomExtra" Grid.Row="0" Content="Use Text" 
+                                                Click="BtnUseCustomExtra_Click" Padding="12,4" FontSize="13" Margin="0,0,0,4"
+                                                HorizontalAlignment="Right"
                                                 Background="{StaticResource PrimaryBrush}"
                                                 ToolTip="Use this text without saving it to the Extra library"/>
-                                        <TextBox x:Name="TxtCustomExtraText" Grid.Row="1" Grid.ColumnSpan="2" AcceptsReturn="True" TextWrapping="Wrap"
+                                        <TextBox x:Name="TxtCustomExtraText" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto" Padding="10" VerticalContentAlignment="Top" FontSize="14"
                                                  TextChanged="TxtCustomExtraText_TextChanged"/>
                                     </Grid>
+                                    </Grid>
                     
                                     <!-- 9. Output Label -->
-                                    <Grid Grid.Row="9" Margin="0,12,0,4">
+                                    <Grid Grid.Row="8" Margin="0,12,0,4">
                                         <TextBlock x:Name="TxtExtraOutputLabel" Text="FINAL OUTPUT (Click to Copy)" Foreground="{StaticResource SuccessBrush}" 
                                                    FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
                                         <TextBlock x:Name="TxtExtraCopiedFeedback" Text="✓ Copied to Clipboard" Foreground="{StaticResource SuccessBrush}" 
@@ -858,7 +862,7 @@
                                     </Grid>
                     
                                     <!-- 10. Final Output Field -->
-                                    <Border x:Name="ExtraOutputBorder" Grid.Row="10" 
+                                    <Border x:Name="ExtraOutputBorder" Grid.Row="9" 
                                             Background="{StaticResource InputBrush}" 
                                             BorderBrush="{StaticResource BorderBrush}" 
                                             BorderThickness="1" CornerRadius="4"

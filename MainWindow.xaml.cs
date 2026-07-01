@@ -44,6 +44,7 @@ namespace imgsaver
         private FileShareWindow? _fileShareWindow;
         private InputRecorderWindow? _inputRecorderWindow;
         private BrowserWindow? _browserWindow;
+        private FloatingExtraWindow? _floatingExtraWindow;
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -310,6 +311,13 @@ namespace imgsaver
             if (_miniClipboardWindow == null || !_miniClipboardWindow.IsLoaded) _miniClipboardWindow = new MiniClipboardWindow();
             _miniClipboardWindow.Show();
             _miniClipboardWindow.Activate();
+        }
+
+        private void BtnExtraFloat_Click(object sender, RoutedEventArgs e)
+        {
+            if (_floatingExtraWindow == null || !_floatingExtraWindow.IsLoaded) _floatingExtraWindow = new FloatingExtraWindow();
+            _floatingExtraWindow.Show();
+            _floatingExtraWindow.Activate();
         }
 
         private void BtnMiniQuickSave_Click(object sender, RoutedEventArgs e)
