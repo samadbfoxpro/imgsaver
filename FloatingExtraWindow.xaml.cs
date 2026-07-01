@@ -16,6 +16,7 @@ namespace imgsaver
         public ExtraItem Extra { get; }
         public string ShortName => Extra.ShortName;
         public string Text => Extra.Text;
+        public int OriginalIndex { get; set; }
 
         private bool _isSelected;
         public bool IsSelected
@@ -27,6 +28,20 @@ namespace imgsaver
                 {
                     _isSelected = value;
                     OnPropertyChanged(nameof(IsSelected));
+                }
+            }
+        }
+
+        private bool _isConfirmedSelected;
+        public bool IsConfirmedSelected
+        {
+            get => _isConfirmedSelected;
+            set
+            {
+                if (_isConfirmedSelected != value)
+                {
+                    _isConfirmedSelected = value;
+                    OnPropertyChanged(nameof(IsConfirmedSelected));
                 }
             }
         }
@@ -62,9 +77,22 @@ namespace imgsaver
 
         private void RefreshExtraList()
         {
+            var selectedIds = _extras.Where(x => x.IsSelected).Select(x => x.Extra.Id).ToHashSet();
+            var confirmedIds = _extras.Where(x => x.IsConfirmedSelected).Select(x => x.Extra.Id).ToHashSet();
+
             _extras.Clear();
-            foreach (var extra in ExtraManager.GetSortedAll())
-                _extras.Add(new SelectableExtra(extra));
+            var sortedAll = ExtraManager.GetSortedAll();
+            for (int i = 0; i < sortedAll.Count; i++)
+            {
+                var extra = sortedAll[i];
+                var selectable = new SelectableExtra(extra)
+                {
+                    OriginalIndex = i,
+                    IsSelected = selectedIds.Contains(extra.Id),
+                    IsConfirmedSelected = confirmedIds.Contains(extra.Id)
+                };
+                _extras.Add(selectable);
+            }
             ApplySearchFilter();
         }
 
@@ -85,7 +113,14 @@ namespace imgsaver
 
         private void ExtraCheck_Changed(object sender, RoutedEventArgs e)
         {
-            // No-op: selection state is bound directly via SelectableExtra.IsSelected.
+            if (sender is System.Windows.Controls.CheckBox cb && cb.DataContext is SelectableExtra selectable)
+            {
+                if (cb.IsChecked == false)
+                {
+                    selectable.IsConfirmedSelected = false;
+                    ApplySearchFilter();
+                }
+            }
         }
 
         private void TxtSearch_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -101,18 +136,18 @@ namespace imgsaver
         private void ApplySearchFilter()
         {
             string query = TxtSearch?.Text?.Trim() ?? "";
-            if (string.IsNullOrEmpty(query))
-            {
-                LstExtras.ItemsSource = _extras;
-            }
-            else
-            {
-                var filtered = _extras.Where(x => 
+            var listToDisplay = string.IsNullOrEmpty(query)
+                ? _extras.ToList()
+                : _extras.Where(x => 
                     x.ShortName.Contains(query, StringComparison.OrdinalIgnoreCase) || 
                     x.Text.Contains(query, StringComparison.OrdinalIgnoreCase)
                 ).ToList();
-                LstExtras.ItemsSource = filtered;
-            }
+
+            var sorted = listToDisplay.OrderByDescending(x => x.IsConfirmedSelected)
+                                      .ThenBy(x => x.OriginalIndex)
+                                      .ToList();
+
+            LstExtras.ItemsSource = sorted;
         }
 
         private void BtnSaveToLibrary_Click(object sender, RoutedEventArgs e)
@@ -200,6 +235,13 @@ namespace imgsaver
                 ShowValidationMessage("The resulting Extra text is empty.");
                 return;
             }
+
+            // Update confirmed selections to bubble them to the top
+            foreach (var extra in _extras)
+            {
+                extra.IsConfirmedSelected = extra.IsSelected;
+            }
+            ApplySearchFilter();
 
             // Reuse the exact same store the rest of the app already relies on for
             // "the last confirmed Extra" (e.g. Persona Injector / Mini Clip consumers).
