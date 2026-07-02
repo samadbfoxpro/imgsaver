@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -152,6 +152,9 @@ namespace imgsaver
         {
             byte[] buffer = Encoding.UTF8.GetBytes(html);
             response.ContentType = "text/html; charset=utf-8";
+            response.Headers.Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+            response.Headers.Add("Pragma", "no-cache");
+            response.Headers.Add("Expires", "0");
             response.ContentLength64 = buffer.Length;
             response.OutputStream.Write(buffer, 0, buffer.Length);
         }
@@ -202,10 +205,23 @@ namespace imgsaver
                 }
             }
 
-            if (formData.TryGetValue("action", out string? action) &&
-                formData.TryGetValue("value", out string? actionValue))
+            if (formData.TryGetValue("action", out string? action))
             {
-                string result = await ExecuteActionAsync(action, actionValue);
+                string result;
+                if (action == "sync")
+                {
+                    formData.TryGetValue("backspaces", out string? bsStr);
+                    formData.TryGetValue("text", out string? text);
+                    int.TryParse(bsStr, out int backspaces);
+                    text ??= "";
+                    result = await ExecuteSyncActionAsync(backspaces, text);
+                }
+                else
+                {
+                    formData.TryGetValue("value", out string? actionValue);
+                    result = await ExecuteActionAsync(action, actionValue ?? "");
+                }
+
                 response.StatusCode = result == "OK" ? 200 : 409;
                 ServeText(response, result);
                 return;
@@ -213,6 +229,30 @@ namespace imgsaver
 
             response.StatusCode = 200;
             ServeText(response, "OK");
+        }
+
+        // ✅ اجرای همگام‌سازی کیبورد
+        private async Task<string> ExecuteSyncActionAsync(int backspaces, string text)
+        {
+            try
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (backspaces > 0)
+                    {
+                        InputSimulator.SimulateBackspace(backspaces);
+                    }
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        InputSimulator.SimulateTextEntry(text);
+                    }
+                });
+                return "OK";
+            }
+            catch (Exception ex)
+            {
+                return $"Error: {ex.Message}";
+            }
         }
 
         // ✅ اجرای دستورها بر اساس action
@@ -415,8 +455,8 @@ textarea{width:100%;min-height:150px;padding:12px;border-radius:12px;border:1px 
 <p class='subtitle'>Type or paste text to send to your Windows PC</p>
 <textarea id='txt' placeholder='Type here...'></textarea>
 <div class='mode-row'>
-<label class='mode-item active'><input type='radio' name='mode' value='live' checked>⚡ Live</label>
-<label class='mode-item'><input type='radio' name='mode' value='paste'>📋 Paste Mode</label>
+<label class='mode-item active'><input type='radio' name='mode' value='live' checked>⚡ Fast Type (تایپ سریع)</label>
+<label class='mode-item'><input type='radio' name='mode' value='paste'>📋 Paste Mode (چسباندن)</label>
 </div>
 <div class='btn-row'>
 <button class='btn btn-accent' onclick='getClip()'>📥 Get Clipboard</button>
@@ -439,23 +479,154 @@ textarea{width:100%;min-height:150px;padding:12px;border-radius:12px;border:1px 
 </div>
 <div id='toast' class='toast'></div>
 <script>
-const txt=document.getElementById('txt'),toast=document.getElementById('toast');
-let mode='live',debounce;
+const txt = document.getElementById('txt');
+const toast = document.getElementById('toast');
+let mode = 'live';
 
-document.querySelectorAll('input[name=mode]').forEach(r=>{
-r.onchange=()=>{mode=r.value;toastMsg(mode==='live'?'⚡ Live mode':'📋 Paste mode');r.closest('.mode-item').classList.toggle('active',r.checked);};
+let virtualText = txt.value;
+let pendingText = null;
+let isSending = false;
+
+document.querySelectorAll('input[name=mode]').forEach(r => {
+    r.onchange = () => {
+        mode = r.value;
+        toastMsg(mode === 'live' ? '⚡ Fast Type mode' : '📋 Paste mode');
+        r.closest('.mode-item').classList.toggle('active', r.checked);
+        if (mode === 'live') {
+            virtualText = txt.value;
+            pendingText = null;
+        }
+    };
 });
 
-txt.addEventListener('input',e=>{if(mode!=='live')return;clearTimeout(debounce);debounce=setTimeout(()=>sendAction('type',e.data||''),100);});
-txt.addEventListener('keydown',e=>{if(mode!=='live')return;if(e.key==='Enter'){e.preventDefault();sendAction('key','enter');}});
+function syncText() {
+    if (mode !== 'live') return;
+    if (isSending) {
+        pendingText = txt.value;
+        return;
+    }
+    const newVal = txt.value;
+    if (newVal === virtualText) {
+        if (pendingText !== null) {
+            const nextText = pendingText;
+            pendingText = null;
+            if (nextText !== newVal) {
+                syncText();
+            }
+        }
+        return;
+    }
+    
+    let L = 0;
+    const minLen = Math.min(virtualText.length, newVal.length);
+    while (L < minLen && virtualText[L] === newVal[L]) {
+        L++;
+    }
+    
+    const backspaces = virtualText.length - L;
+    const typeText = newVal.substring(L);
+    
+    const prevVirtual = virtualText;
+    virtualText = newVal;
+    isSending = true;
+    
+    sendSync(backspaces, typeText)
+        .then(success => {
+            isSending = false;
+            if (success) {
+                if (pendingText !== null) {
+                    const nextText = pendingText;
+                    pendingText = null;
+                    syncText();
+                }
+            } else {
+                virtualText = prevVirtual;
+                if (pendingText === null) {
+                    pendingText = txt.value;
+                }
+                setTimeout(syncText, 1000);
+            }
+        });
+}
 
-function send(){if(mode==='paste'){if(!txt.value)return toastMsg('⚠ Text is empty');sendAction('pasteText',txt.value);toastMsg('📤 Sent via clipboard');}else{toastMsg('⚡ Live mode: just type!');}}
-function getClip(){fetch('/clipboard').then(r=>r.json()).then(d=>{txt.value=d.text||'';toastMsg(d.text?'📥 Clipboard received':'⚠ Empty clipboard');}).catch(()=>toastMsg('❌ Connection failed'));}
-function clearTxt(){txt.value='';toastMsg('🗑 Cleared');}
-function key(k){sendAction('key',k);}
-function playMini(btn){btn.disabled=true;sendAction('key','playmini').then(ok=>toastMsg(ok?'▶ Playing':'⚠ Mini Clip not ready')).finally(()=>setTimeout(()=>btn.disabled=false,600));}
-function sendAction(action,value){return fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`action=${action}&value=${encodeURIComponent(value)}`}).then(r=>r.ok).catch(()=>{toastMsg('❌ Send failed');return false;});}
-function toastMsg(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(window.tid);window.tid=setTimeout(()=>toast.classList.remove('show'),2500);}
+txt.addEventListener('input', () => {
+    syncText();
+});
+
+
+
+function send() {
+    if (mode === 'paste') {
+        if (!txt.value) return toastMsg('⚠ Text is empty');
+        sendAction('pasteText', txt.value);
+        toastMsg('📤 Sent via clipboard');
+    } else {
+        toastMsg('⚡ Live mode: just type!');
+    }
+}
+
+function getClip() {
+    fetch('/clipboard')
+        .then(r => r.json())
+        .then(d => {
+            txt.value = d.text || '';
+            virtualText = txt.value;
+            pendingText = null;
+            toastMsg(d.text ? '📥 Clipboard received' : '⚠ Empty clipboard');
+        })
+        .catch(() => toastMsg('❌ Connection failed'));
+}
+
+function clearTxt() {
+    txt.value = '';
+    virtualText = '';
+    pendingText = null;
+    toastMsg('🗑 Cleared');
+}
+
+function key(k) {
+    sendAction('key', k);
+}
+
+function playMini(btn) {
+    btn.disabled = true;
+    sendAction('key', 'playmini')
+        .then(ok => toastMsg(ok ? '▶ Playing' : '⚠ Mini Clip not ready'))
+        .finally(() => setTimeout(() => btn.disabled = false, 600));
+}
+
+function sendAction(action, value) {
+    return fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=' + action + '&value=' + encodeURIComponent(value)
+    })
+    .then(r => r.ok)
+    .catch(() => {
+        toastMsg('❌ Send failed');
+        return false;
+    });
+}
+
+function sendSync(backspaces, text) {
+    return fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'action=sync&backspaces=' + backspaces + '&text=' + encodeURIComponent(text)
+    })
+    .then(r => r.ok)
+    .catch(() => {
+        toastMsg('❌ Send failed');
+        return false;
+    });
+}
+
+function toastMsg(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(window.tid);
+    window.tid = setTimeout(() => toast.classList.remove('show'), 2500);
+}
 </script></body></html>";
 
         // ✅ پیاده‌سازی IDisposable برای پاکسازی منابع

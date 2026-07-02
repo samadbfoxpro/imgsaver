@@ -72,8 +72,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Attractive Header Section -->
@@ -187,107 +185,7 @@
                     </UniformGrid>
                 </Grid>
 
-                <Button Grid.Row="2" x:Name="BtnToggleInput" Click="BtnToggleInput_Click" 
-                        Background="Transparent" BorderThickness="0" Margin="0,0,0,16" Cursor="Hand"
-                        HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="TxtToggleArrow" Text="▼" FontSize="10" Foreground="{StaticResource AccentBrush}" Margin="0,1,6,0"/>
-                        <TextBlock Text="Show New Image Panel" FontSize="11" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold"/>
-                    </StackPanel>
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border Background="Transparent">
-                                <ContentPresenter/>
-                            </Border>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-
-                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
-                    <StackPanel x:Name="InputPanel" Visibility="Collapsed">
-                        <StackPanel Margin="0,0,0,16">
-                            <Grid Margin="0,0,0,6">
-                                <TextBlock Text="IMAGE NAME (Ctrl+V to Paste)" Foreground="{StaticResource AccentBrush}" 
-                                           FontWeight="SemiBold" VerticalAlignment="Center" FontSize="11"/>
-                                <CheckBox x:Name="ChkDescription" Content="📝 Add Description" 
-                                          Checked="ChkDescription_CheckedChanged" Unchecked="ChkDescription_CheckedChanged"
-                                          HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Hand"
-                                          Foreground="{StaticResource ForegroundMutedBrush}" FontSize="11"/>
-                            </Grid>
-                            <TextBox x:Name="TxtImageName" Height="40" FontSize="14" VerticalContentAlignment="Center" 
-                                     PreviewKeyDown="TxtImageName_PreviewKeyDown" Padding="10"/>
-                        </StackPanel>
-
-                        <Grid Margin="0,0,0,16" Height="200">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="16"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <Grid Grid.Column="0">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <TextBlock Text="POSITIVE PROMPT" Foreground="{StaticResource SuccessBrush}" 
-                                           FontWeight="SemiBold" Margin="0,0,0,6" FontSize="11"/>
-                                <TextBox x:Name="TxtPositive" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" 
-                                         VerticalScrollBarVisibility="Auto"
-                                         PreviewKeyDown="PromptBox_PreviewKeyDown" Padding="10" VerticalContentAlignment="Top"/>
-                            </Grid>
-
-                            <Grid Grid.Column="2">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <TextBlock Text="NEGATIVE PROMPT" Foreground="{StaticResource ErrorBrush}" 
-                                           FontWeight="SemiBold" Margin="0,0,0,6" FontSize="11"/>
-                                <TextBox x:Name="TxtNegative" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" 
-                                         VerticalScrollBarVisibility="Auto"
-                                         PreviewKeyDown="PromptBox_PreviewKeyDown" Padding="10" VerticalContentAlignment="Top"/>
-                            </Grid>
-                        </Grid>
-
-                        <Grid x:Name="DescriptionPanel" Margin="0,0,0,16" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="DESCRIPTION (Optional)" Foreground="{StaticResource ForegroundMutedBrush}" 
-                                       FontWeight="SemiBold" Margin="0,0,0,6" FontSize="11"/>
-                            <TextBox x:Name="TxtDescription" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" 
-                                     VerticalScrollBarVisibility="Auto" Height="60"
-                                     PreviewKeyDown="PromptBox_PreviewKeyDown" Padding="10" VerticalContentAlignment="Top"/>
-                        </Grid>
-
-                        <Border x:Name="PreviewBorder" Margin="0,0,0,16" 
-                                Background="#000000" CornerRadius="4" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                Visibility="Collapsed" Height="140">
-                            <Grid>
-                                <Image x:Name="ImgPreview" Stretch="Uniform" Margin="4"/>
-                                <Button Click="BtnDeleteImage_Click" Background="#AA000000" Foreground="White" BorderThickness="0"
-                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="4"
-                                        Width="24" Height="24" Padding="0" Cursor="Hand" ToolTip="Remove Image">
-                                    <TextBlock Text="✕" FontSize="12"/>
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="12">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                            </Grid>
-                        </Border>
-
-                        <Button x:Name="BtnSave" Content="SAVE IMAGE &amp; PROMPTS" Click="BtnSave_Click" 
-                                Height="44" FontSize="14" FontWeight="SemiBold" />
-                    </StackPanel>
-                </ScrollViewer>
-
-                <StatusBar Grid.Row="4" Background="Transparent" BorderThickness="0" Margin="0,10,0,0">
+                <StatusBar Grid.Row="2" Background="Transparent" BorderThickness="0" Margin="0,10,0,0">
                     <StatusBarItem>
                         <StackPanel Orientation="Horizontal">
                             <Ellipse x:Name="ServerStatusDot" Width="8" Height="8" Fill="#444" Margin="0,0,8,0"/>

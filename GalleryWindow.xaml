@@ -115,7 +115,7 @@
                             <TextBlock Text="🔍" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" Opacity="0.5"/>
                             <TextBox x:Name="TxtSearch" Grid.Column="1" Background="Transparent" BorderThickness="0"
                                      Foreground="{StaticResource ForegroundBrush}" FontSize="13" VerticalAlignment="Center"
-                                     TextChanged="TxtSearch_TextChanged">
+                                     TextChanged="TxtSearch_TextChanged" KeyDown="TxtSearch_KeyDown">
                                 <TextBox.Style>
                                     <Style TargetType="TextBox">
                                         <Setter Property="CaretBrush" Value="{StaticResource ForegroundBrush}"/>
@@ -265,6 +265,16 @@
                     <StackPanel>
                         <!-- Image Grid -->
                         <UniformGrid x:Name="ImageGrid" Columns="4"/>
+
+                        <!-- Pagination UI -->
+                        <StackPanel x:Name="PaginationPanel" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,10" Visibility="Collapsed">
+                            <Button x:Name="BtnPrevPage" Content="◄ Prev Page" Click="BtnPrevPage_Click" 
+                                    Style="{StaticResource SecondaryButtonStyle}" Padding="10,5" Margin="0,0,10,0"/>
+                            <TextBlock x:Name="TxtPageInfo" Text="Page 1 of 1" Foreground="{StaticResource ForegroundBrush}" 
+                                       VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                            <Button x:Name="BtnNextPage" Content="Next Page ►" Click="BtnNextPage_Click" 
+                                    Style="{StaticResource SecondaryButtonStyle}" Padding="10,5"/>
+                        </StackPanel>
 
                         <!-- Empty State -->
                         <Border x:Name="EmptyState" Visibility="Collapsed" Padding="40" HorizontalAlignment="Center">

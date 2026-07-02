@@ -60,9 +60,25 @@ namespace imgsaver
 
         public static void SimulateTextEntry(string text)
         {
-            foreach (char c in text)
+            for (int i = 0; i < text.Length; i++)
             {
-                SendChar(c);
+                char c = text[i];
+                if (c == '\r')
+                {
+                    if (i + 1 < text.Length && text[i + 1] == '\n')
+                    {
+                        i++; // Skip \n
+                    }
+                    SimulateEnter();
+                }
+                else if (c == '\n')
+                {
+                    SimulateEnter();
+                }
+                else
+                {
+                    SendChar(c);
+                }
             }
         }
 

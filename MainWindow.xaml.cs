@@ -28,6 +28,9 @@ namespace imgsaver
         private GlobalHook? _globalHook;
         private StringBuilder _typedBuffer = new StringBuilder();
         private RemoteServer? _remoteServer;
+        private FileShareServer? _fileShareServer;
+        private bool _isShuttingDown = false;
+        private const string ServerStateFileName = "server_state.txt";
 
         private InputRecorder? _inputRecorder;
         private InputPlayer? _inputPlayer;
@@ -112,14 +115,17 @@ namespace imgsaver
                 CustomMessageBox.Show("Error (Please run as Administrator):\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
-            Loaded += (_, _) => TxtImageName.Focus();
+
             Closed += (_, _) => {
+                _isShuttingDown = true;
                 _globalHook?.Dispose();
                 _remoteServer?.Stop();
+                _fileShareServer?.Stop();
                 System.Windows.Application.Current.Shutdown();
             };
             Closing += MainWindow_Closing;
             InitInputRecorderPlayer();
+            LoadAndApplyServerStates();
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -348,7 +354,15 @@ namespace imgsaver
 
         private void BtnCloudLink_Click(object sender, RoutedEventArgs e)
         {
-            if (_fileShareWindow == null || !_fileShareWindow.IsLoaded) _fileShareWindow = new FileShareWindow();
+            if (_fileShareServer == null)
+            {
+                _fileShareServer = new FileShareServer();
+                _fileShareServer.StatusChanged += FileShareServer_StatusChanged;
+            }
+            if (_fileShareWindow == null || !_fileShareWindow.IsLoaded)
+            {
+                _fileShareWindow = new FileShareWindow(_fileShareServer);
+            }
             _fileShareWindow.Show();
             _fileShareWindow.Activate();
         }
@@ -368,19 +382,7 @@ namespace imgsaver
             _browserWindow.Activate();
         }
 
-        private void BtnToggleInput_Click(object sender, RoutedEventArgs e)
-        {
-            if (InputPanel.Visibility == Visibility.Visible)
-            {
-                InputPanel.Visibility = Visibility.Collapsed;
-                TxtToggleArrow.Text = "▼";
-            }
-            else
-            {
-                InputPanel.Visibility = Visibility.Visible;
-                TxtToggleArrow.Text = "▲";
-            }
-        }
+
 
         private void BtnRemote_Click(object sender, RoutedEventArgs e)
         {
@@ -411,6 +413,56 @@ namespace imgsaver
                     BtnRemote.ClearValue(BorderBrushProperty);
                 }
             });
+            SaveServerStates();
+        }
+
+        private void FileShareServer_StatusChanged(string status)
+        {
+            SaveServerStates();
+        }
+
+        private void SaveServerStates()
+        {
+            if (_isShuttingDown) return;
+            try
+            {
+                string statePath = DataPathManager.GetSettingsFilePath(ServerStateFileName);
+                string remoteRunning = (_remoteServer?.IsRunning == true).ToString().ToLower();
+                string cloudLinkRunning = (_fileShareServer?.IsRunning == true).ToString().ToLower();
+                File.WriteAllLines(statePath, new string[] { remoteRunning, cloudLinkRunning });
+            }
+            catch { }
+        }
+
+        private void LoadAndApplyServerStates()
+        {
+            try
+            {
+                string statePath = DataPathManager.GetSettingsFilePath(ServerStateFileName);
+                if (File.Exists(statePath))
+                {
+                    string[] lines = File.ReadAllLines(statePath);
+                    if (lines.Length > 0 && lines[0].Trim().ToLower() == "true")
+                    {
+                        if (_remoteServer == null)
+                        {
+                            _remoteServer = new RemoteServer();
+                            _remoteServer.StatusChanged += RemoteServer_StatusChanged;
+                        }
+                        _remoteServer.Start();
+                    }
+                    if (lines.Length > 1 && lines[1].Trim().ToLower() == "true")
+                    {
+                        if (_fileShareServer == null)
+                        {
+                            _fileShareServer = new FileShareServer();
+                            _fileShareServer.StatusChanged += FileShareServer_StatusChanged;
+                        }
+                        _fileShareServer.Start();
+                    }
+                }
+            }
+            catch { }
         }
 
         private void TxtImageName_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -462,8 +514,6 @@ namespace imgsaver
                     var finalPreview = new WriteableBitmap(convertedBitmap);
                     finalPreview.Freeze();
                     _previewImage = finalPreview;
-                    ImgPreview.Source = _previewImage;
-                    PreviewBorder.Visibility = Visibility.Visible;
                 }
             }
             catch (Exception ex) { CustomMessageBox.Show("Error loading image:\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
@@ -476,8 +526,8 @@ namespace imgsaver
             return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" || ext == ".bmp" || ext == ".tiff";
         }
 
-        private void BtnDeleteImage_Click(object sender, RoutedEventArgs e) { ResetImageOnly(); TxtImageName.Focus(); }
-        private void ResetImageOnly() { _previewImage = null; _sourceFilePath = null; ImgPreview.Source = null; PreviewBorder.Visibility = Visibility.Collapsed; }
+        private void BtnDeleteImage_Click(object sender, RoutedEventArgs e) { ResetImageOnly(); }
+        private void ResetImageOnly() { _previewImage = null; _sourceFilePath = null; }
 
         private void BtnArchive_Click(object sender, RoutedEventArgs e)
         {
@@ -609,31 +659,7 @@ namespace imgsaver
         private string FormatBytes(long bytes) { string[] sizes = { "B", "KB", "MB", "GB" }; double len = bytes; int order = 0; while (len >= 1024 && order < sizes.Length - 1) { order++; len = len / 1024; } return $"{len:0.##} {sizes[order]}"; }
         private class ZipCompressionState { public long ProcessedBytes { get; set; } public int FileCount { get; set; } }
 
-        private void BtnSave_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrEmpty(_savePath) || !Directory.Exists(_savePath)) { CustomMessageBox.Show("Please select a save directory in Settings first.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            if (_previewImage == null) return;
-            string name = TxtImageName.Text.Trim();
-            if (string.IsNullOrEmpty(name)) { TxtImageName.Focus(); return; }
-            try
-            {
-                string baseName = name;
-                string imgPath = Path.Combine(_savePath, baseName + _detectedExtension);
-                string txtPath = Path.Combine(_savePath, baseName + ".txt");
-                int i = 1;
-                while (File.Exists(imgPath) || File.Exists(txtPath)) { baseName = $"{name} ({i})"; imgPath = Path.Combine(_savePath, baseName + _detectedExtension); txtPath = Path.Combine(_savePath, baseName + ".txt"); i++; }
-                if (_sourceFilePath != null && File.Exists(_sourceFilePath)) File.Copy(_sourceFilePath, imgPath, true);
-                else using (var fs = new FileStream(imgPath, FileMode.Create)) { var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(_previewImage)); encoder.Save(fs); }
-                string content = $"Positive Prompt:\n{TxtPositive.Text.Trim()}\n\nNegative Prompt:\n{TxtNegative.Text.Trim()}";
-                if (!string.IsNullOrEmpty(TxtDescription.Text.Trim())) content += $"\n\nDescription:\n{TxtDescription.Text.Trim()}";
-                File.WriteAllText(txtPath, content);
-                ResetAll();
-            }
-            catch (Exception ex) { CustomMessageBox.Show($"Error saving: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
-        }
 
-        private void ResetAll() { ResetImageOnly(); TxtImageName.Clear(); TxtPositive.Clear(); TxtNegative.Clear(); TxtDescription.Clear(); TxtImageName.Focus(); }
-        private void ChkDescription_CheckedChanged(object sender, RoutedEventArgs e) { if (DescriptionPanel != null) DescriptionPanel.Visibility = ChkDescription.IsChecked == true ? Visibility.Visible : Visibility.Collapsed; }
         private void InitInputRecorderPlayer() { try { _ = RecordingsDir; _inputRecorder = new InputRecorder(); _inputPlayer = new InputPlayer(); } catch { } }
         private void BtnStartRecording_Click(object sender, RoutedEventArgs e) { if (_inputRecorder == null) InitInputRecorderPlayer(); _inputRecorder?.Start(); }
         private void BtnStopRecording_Click(object sender, RoutedEventArgs e) { _inputRecorder?.Stop(); }

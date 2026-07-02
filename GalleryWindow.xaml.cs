@@ -35,9 +35,14 @@ namespace imgsaver
         private bool _isSelectionMode = false;
         private HashSet<string> _selectedImages = new HashSet<string>();
         
+        // Paging fields
+        private List<string> _currentImagesList = new List<string>();
+        private int _currentPage = 1;
+        private const int PageSize = 24;
+        
         // Optimizations
         private static SemaphoreSlim _thumbnailSemaphore = new SemaphoreSlim(6); // Max 6 parallel loads
-        private System.Threading.Timer? _searchDebounceTimer;
+
 
         public GalleryWindow(string defaultPath)
         {
@@ -264,24 +269,27 @@ namespace imgsaver
             SearchPlaceholder.Visibility = string.IsNullOrEmpty(query) ? Visibility.Visible : Visibility.Collapsed;
             BtnClearSearch.Visibility = string.IsNullOrEmpty(query) ? Visibility.Collapsed : Visibility.Visible;
 
-            if (string.IsNullOrEmpty(query))
+            if (string.IsNullOrEmpty(query) && _isSearchMode)
             {
                 _isSearchMode = false;
-                _searchDebounceTimer?.Change(System.Threading.Timeout.Infinite, 0); // Cancel timer
                 TxtSearchResults.Text = "";
                 if (_availableDates.Count > 0)
                     ShowDate(_availableDates[_currentDateIndex]);
-                return;
             }
+        }
 
-            _isSearchMode = true;
-            
-            // Debounce: Wait 300ms before searching
-            _searchDebounceTimer?.Dispose();
-            _searchDebounceTimer = new System.Threading.Timer(_ =>
+        private void TxtSearch_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
             {
-                Dispatcher.Invoke(() => PerformSearchAsync(query));
-            }, null, 300, System.Threading.Timeout.Infinite);
+                string query = TxtSearch.Text.Trim();
+                if (!string.IsNullOrEmpty(query))
+                {
+                    _isSearchMode = true;
+                    PerformSearchAsync(query);
+                }
+                e.Handled = true;
+            }
         }
 
         private async void PerformSearchAsync(string query)
@@ -289,6 +297,7 @@ namespace imgsaver
             LoadingIndicator.Visibility = Visibility.Visible;
             ImageGrid.Children.Clear();
             EmptyState.Visibility = Visibility.Collapsed;
+            PaginationPanel.Visibility = Visibility.Collapsed;
 
             await Task.Run(async () =>
             {
@@ -316,20 +325,10 @@ namespace imgsaver
                 {
                     TxtSearchResults.Text = $"{results.Count} results";
 
-                    if (results.Count == 0)
-                    {
-                        EmptyState.Visibility = Visibility.Visible;
-                        TxtEmptyMessage.Text = "No results found";
-                        LoadingIndicator.Visibility = Visibility.Collapsed;
-                        return;
-                    }
+                    _currentImagesList = results;
+                    _currentPage = 1;
+                    DisplayCurrentPage();
 
-                    // Load first batch immediately
-                    foreach (var imagePath in results.Take(100)) 
-                    {
-                        var card = CreateImageCard(imagePath);
-                        ImageGrid.Children.Add(card);
-                    }
                     LoadingIndicator.Visibility = Visibility.Collapsed;
                 });
             });
@@ -465,9 +464,11 @@ namespace imgsaver
             if (_isSearchMode) return;
 
             ImageGrid.Children.Clear();
+            PaginationPanel.Visibility = Visibility.Collapsed;
             
             if (!_imagesByDate.ContainsKey(date))
             {
+                _currentImagesList = new List<string>();
                 EmptyState.Visibility = Visibility.Visible;
                 TxtEmptyMessage.Text = "No images found for this day";
                 return;
@@ -482,11 +483,9 @@ namespace imgsaver
             BtnPrevDate.IsEnabled = _currentDateIndex < _availableDates.Count - 1;
             BtnNextDate.IsEnabled = _currentDateIndex > 0;
 
-            foreach (var imagePath in images)
-            {
-                var imageCard = CreateImageCard(imagePath);
-                ImageGrid.Children.Add(imageCard);
-            }
+            _currentImagesList = images.ToList();
+            _currentPage = 1;
+            DisplayCurrentPage();
         }
 
         private void BtnPrevDate_Click(object sender, RoutedEventArgs e)
@@ -551,9 +550,11 @@ namespace imgsaver
         {
             ImageGrid.Children.Clear();
             EmptyState.Visibility = Visibility.Collapsed;
+            PaginationPanel.Visibility = Visibility.Collapsed;
             
             if (_allImages.Count == 0)
             {
+                _currentImagesList = new List<string>();
                 EmptyState.Visibility = Visibility.Visible;
                 TxtEmptyMessage.Text = "No images found in gallery";
                 return;
@@ -567,11 +568,9 @@ namespace imgsaver
             
             TxtDateInfo.Text = $"{randomImages.Count} Random Images";
 
-            foreach (var imagePath in randomImages)
-            {
-                var card = CreateImageCard(imagePath);
-                ImageGrid.Children.Add(card);
-            }
+            _currentImagesList = randomImages;
+            _currentPage = 1;
+            DisplayCurrentPage();
         }
 
         #endregion
@@ -894,6 +893,63 @@ namespace imgsaver
         {
         await LoadGalleryAsync();
         }
+
+        #region Paging implementation
+
+        private void DisplayCurrentPage()
+        {
+            ImageGrid.Children.Clear();
+            EmptyState.Visibility = Visibility.Collapsed;
+
+            if (_currentImagesList.Count == 0)
+            {
+                EmptyState.Visibility = Visibility.Visible;
+                TxtEmptyMessage.Text = "No images found";
+                PaginationPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            int totalItems = _currentImagesList.Count;
+            int totalPages = (int)Math.Ceiling((double)totalItems / PageSize);
+
+            if (_currentPage < 1) _currentPage = 1;
+            if (_currentPage > totalPages) _currentPage = totalPages;
+
+            PaginationPanel.Visibility = totalPages > 1 ? Visibility.Visible : Visibility.Collapsed;
+            TxtPageInfo.Text = $"Page {_currentPage} of {totalPages}";
+            BtnPrevPage.IsEnabled = _currentPage > 1;
+            BtnNextPage.IsEnabled = _currentPage < totalPages;
+
+            int startIndex = (_currentPage - 1) * PageSize;
+            var pageImages = _currentImagesList.Skip(startIndex).Take(PageSize).ToList();
+
+            foreach (var imagePath in pageImages)
+            {
+                var card = CreateImageCard(imagePath);
+                ImageGrid.Children.Add(card);
+            }
+        }
+
+        private void BtnPrevPage_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentPage > 1)
+            {
+                _currentPage--;
+                DisplayCurrentPage();
+            }
+        }
+
+        private void BtnNextPage_Click(object sender, RoutedEventArgs e)
+        {
+            int totalPages = (int)Math.Ceiling((double)_currentImagesList.Count / PageSize);
+            if (_currentPage < totalPages)
+            {
+                _currentPage++;
+                DisplayCurrentPage();
+            }
+        }
+
+        #endregion
 
         private sealed class GalleryImageInfo
         {

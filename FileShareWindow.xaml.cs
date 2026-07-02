@@ -10,12 +10,23 @@ namespace imgsaver
     {
         private readonly FileShareServer _server;
 
-        public FileShareWindow()
+        public FileShareWindow(FileShareServer server)
         {
             InitializeComponent();
-            _server = new FileShareServer();
+            _server = server;
             _server.StatusChanged += Server_StatusChanged;
             _server.FileReceived += Server_FileReceived;
+            
+            ToggleServer.IsChecked = _server.IsRunning;
+            Server_StatusChanged("");
+            
+            Closing += FileShareWindow_Closing;
+        }
+
+        private void FileShareWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _server.StatusChanged -= Server_StatusChanged;
+            _server.FileReceived -= Server_FileReceived;
         }
 
         private void Server_StatusChanged(string status)
@@ -95,7 +106,6 @@ namespace imgsaver
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-            _server.Stop();
             Close();
         }
     }
