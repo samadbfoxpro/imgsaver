@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -195,17 +195,8 @@ namespace imgsaver
                             "--disable-features=BackForwardCacheMemoryControls"
                         };
 
-                        if (_currentSettings.ProxyEnabled && !string.IsNullOrEmpty(_currentSettings.ProxyAddress))
-                        {
-                            string proxyAddr = _currentSettings.ProxyAddress;
-                            if (proxyAddr.Contains("://")) proxyAddr = proxyAddr.Split(new[] { "://" }, StringSplitOptions.None)[1];
-
-                            string scheme = (_currentSettings.ProxyType?.ToLower() == "socks5") ? "socks5://" : "http://";
-                            string proxyServer = $"{scheme}{proxyAddr}";
-                            if (!string.IsNullOrEmpty(_currentSettings.ProxyPort)) proxyServer += ":" + _currentSettings.ProxyPort;
-
-                            browserArguments.Add($"--proxy-server=\"{proxyServer}\"");
-                        }
+                        // Always route through our local proxy bridge to support dynamic runtime configuration
+                        browserArguments.Add($"--proxy-server=\"http://127.0.0.1:{ProxyBridge.Port}\"");
                         options.AdditionalBrowserArguments = string.Join(" ", browserArguments);
                         _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
                     }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -1105,9 +1105,8 @@ namespace imgsaver
 
                 if (proxyChanged)
                 {
-                    await ResetEnvironmentAndReloadTabs();
                     SyncDownloadProxySettings();
-                    CustomMessageBox.Show("Proxy settings updated. Tabs and new downloads will use the new proxy configuration.", "Proxy Updated");
+                    CustomMessageBox.Show("Proxy settings updated instantly. Active tabs do not need to be reloaded.", "Proxy Updated");
                 }
                 else
                 {

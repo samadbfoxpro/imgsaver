@@ -351,5 +351,13 @@ namespace imgsaver
         {
             if (e.LeftButton == MouseButtonState.Pressed) DragMove();
         }
+
+        private void TextBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is System.Windows.Controls.TextBox textBox)
+            {
+                textBox.Focus();
+            }
+        }
     }
 }

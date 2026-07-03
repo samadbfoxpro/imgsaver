@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -72,8 +72,11 @@ namespace imgsaver
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
+        public static LocalProxyBridge ProxyBridge { get; } = new LocalProxyBridge();
+
         public BrowserWindow()
         {
+            ProxyBridge.Start();
             InitializeComponent();
 
             this.MaxHeight = SystemParameters.WorkArea.Height + 16;

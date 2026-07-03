@@ -758,7 +758,7 @@ namespace imgsaver
             UpdateImagePreviews();
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
             if (!IsTitleLocked) TxtTitle.Text = "";
-            if (!IsAdditionalTitleLocked) AdditionalTitle = "";
+            if (!IsAdditionalTitleLocked && !IsAdditionalTitleEnabled) AdditionalTitle = "";
             if (!IsDescriptionLocked) DescriptionText = "";
             BtnSEO.IsEnabled = false;
         }
