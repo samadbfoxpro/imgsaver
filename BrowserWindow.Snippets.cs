@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -7,6 +7,7 @@ using Microsoft.Web.WebView2.Wpf;
 using Microsoft.Web.WebView2.Core;
 using Newtonsoft.Json.Linq;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace imgsaver
 {
@@ -53,6 +54,7 @@ namespace imgsaver
                         }, true);
                         window.imgsaver_hooked = true;
                     }
+
                     window.imgsaver_miniClipEnabled = imgsaverShowMiniClipImageImportButtons;
                     if (!imgsaverShowMiniClipImageImportButtons) {
                         document.querySelectorAll('[data-imgsaver-mini-clip-import-button=""true""]').forEach(btn => btn.remove());
@@ -316,8 +318,10 @@ namespace imgsaver
                             }
                         }, true);
                     }
+
                 })();";
             script = script.Replace("__SHOW_MINI_CLIP_IMAGE_IMPORT_BUTTONS__", showMiniClipImageImportButtons ? "true" : "false");
+            webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
             webView.CoreWebView2.ExecuteScriptAsync(script);
         }
 
@@ -362,7 +366,7 @@ namespace imgsaver
         {
             if (_downloadService == null || _currentSettings == null) return;
             _downloadService.UpdateProxySettings(
-                _currentSettings.ProxyEnabled,
+                _currentSettings.ProxyMode ?? "system",
                 _currentSettings.ProxyType ?? "http",
                 _currentSettings.ProxyAddress ?? "",
                 _currentSettings.ProxyPort ?? "");
@@ -388,8 +392,48 @@ namespace imgsaver
                     if (!string.IsNullOrWhiteSpace(uri))
                         await ManualImportImageToMiniClipAsync(sender as CoreWebView2, uri);
                 }
+
+                if (type == "debug_log")
+                {
+                    DebugLog("[JS] " + (data["message"]?.ToString() ?? ""));
+                }
             }
             catch { }
+        }
+
+        private static readonly string _debugLogPath = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "imgsaver_paste_debug.log");
+
+        /// <summary>
+        /// Temporary diagnostic logging for the BR Paste feature. Writes timestamped
+        /// lines to a log file on the Desktop so we can see exactly which step fails
+        /// on tricky sites (like seaart.ai's iframe-hosted, canvas-based node editor)
+        /// without needing a debugger attached. Safe to remove once the feature is
+        /// confirmed working everywhere.
+        /// </summary>
+        private void DebugLog(string message)
+        {
+            try
+            {
+                System.IO.File.AppendAllText(_debugLogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {message}\r\n");
+            }
+            catch { }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        /// <summary>
+        /// Simulates a real, OS-level Ctrl+V keystroke via the project's existing
+        /// InputSimulator helper (SendInput-based). This is delivered through the
+        /// normal Windows input queue, so it's indistinguishable from the user
+        /// actually pressing Ctrl+V — which is what makes it work with editors
+        /// (e.g. seaart.ai's workflow canvas) that ignore synthetic JS/DOM events and
+        /// only react to trusted native input.
+        /// </summary>
+        private void SendNativeCtrlV()
+        {
+            InputSimulator.SimulatePaste();
         }
 
         private void HandleKeyUp(string? key)

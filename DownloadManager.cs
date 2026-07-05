@@ -36,18 +36,23 @@ namespace imgsaver
         public string Type { get; set; } = "http";
         public string Address { get; set; } = "";
         public string Port { get; set; } = "";
+        public string Mode { get; set; } = "system"; // "system", "off", "custom"
 
         public DownloadProxySettings Clone() => new()
         {
             Enabled = Enabled,
             Type = Type,
             Address = Address,
-            Port = Port
+            Port = Port,
+            Mode = Mode
         };
 
-        public string DisplayText => Enabled && !string.IsNullOrWhiteSpace(Address)
-            ? $"{Type}://{Address}{(string.IsNullOrWhiteSpace(Port) ? "" : ":" + Port)}"
-            : "Direct";
+        public string DisplayText => Mode switch
+        {
+            "off" => "Direct",
+            "custom" => $"{Type}://{Address}{(string.IsNullOrWhiteSpace(Port) ? "" : ":" + Port)}",
+            _ => "System Proxy"
+        };
     }
 
     internal class DownloadPersistedTask
@@ -276,8 +281,8 @@ namespace imgsaver
             {
                 MaxConnectionsPerServer = Math.Max(32, partCount + 4),
                 PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-                UseProxy = ProxySettings.Enabled && !string.IsNullOrWhiteSpace(ProxySettings.Address),
-                Proxy = CreateProxy(ProxySettings)
+                UseProxy = ProxySettings.Mode != "off",
+                Proxy = ProxySettings.Mode == "custom" ? CreateProxy(ProxySettings) : null
             };
             _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(5) };
             AddDefaultHeaders(_httpClient);
@@ -903,11 +908,12 @@ namespace imgsaver
             SaveSettings();
         }
 
-        public void UpdateProxySettings(bool enabled, string type, string address, string port)
+        public void UpdateProxySettings(string mode, string type, string address, string port)
         {
             _proxySettings = new DownloadProxySettings
             {
-                Enabled = enabled && !string.IsNullOrWhiteSpace(address),
+                Mode = mode,
+                Enabled = (mode == "custom") && !string.IsNullOrWhiteSpace(address),
                 Type = string.Equals(type, "socks5", StringComparison.OrdinalIgnoreCase) ? "socks5" : "http",
                 Address = address.Trim(),
                 Port = port.Trim()

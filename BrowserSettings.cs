@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 
@@ -23,6 +23,7 @@ namespace imgsaver
         public string ProxyType { get; set; } = "http";
         public string ProxyAddress { get; set; } = "";
         public string ProxyPort { get; set; } = "";
+        public string ProxyMode { get; set; } = "system"; // "off", "custom", "system"
 
         // Minimum image dimensions for import to Mini Clipboard
         public bool AutoImportImagesToMiniClip { get; set; } = true;
@@ -44,7 +45,12 @@ namespace imgsaver
                 if (File.Exists(FilePath))
                 {
                     string json = File.ReadAllText(FilePath);
-                    return System.Text.Json.JsonSerializer.Deserialize<BrowserSettings>(json) ?? new BrowserSettings();
+                    var settings = System.Text.Json.JsonSerializer.Deserialize<BrowserSettings>(json) ?? new BrowserSettings();
+                    if (string.IsNullOrEmpty(settings.ProxyMode))
+                    {
+                        settings.ProxyMode = settings.ProxyEnabled ? "custom" : "system";
+                    }
+                    return settings;
                 }
             }
             catch { }

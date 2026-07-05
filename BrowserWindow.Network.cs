@@ -133,6 +133,18 @@ namespace imgsaver
 
             string uri = e.Request.Uri;
             string lowerUri = uri.ToLowerInvariant();
+            _lastRequestUrl = uri;
+
+            // Check dynamically skipped/blocked hosts
+            if (_skippedHosts.Any(sh => lowerUri.Contains(sh.ToLowerInvariant())))
+            {
+                if (sender is CoreWebView2 wv)
+                {
+                    e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                }
+                return;
+            }
+
             UpdateStatus($"Requesting: {uri}", "Queued");
 
             // Allow Google APIs and essential scripts for Colab
@@ -176,6 +188,17 @@ namespace imgsaver
             string lowerUri = uri.ToLowerInvariant();
             long size = 0;
             if (e.Response.Headers.Contains("Content-Length")) { long.TryParse(e.Response.Headers.GetHeader("Content-Length"), out size); }
+            if (size <= 0)
+            {
+                try
+                {
+                    using (var content = await e.Response.GetContentAsync())
+                    {
+                        if (content != null) size = content.Length;
+                    }
+                }
+                catch { }
+            }
             bool servedFromDiskCache = HasImgSaverCacheHit(e.Response);
             if (size > 0)
             {
@@ -770,6 +793,32 @@ namespace imgsaver
             StatusOverlay.BeginAnimation(UIElement.OpacityProperty, fadeOut);
         }
 
+        private void BtnSkipRequest_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(_lastRequestUrl)) return;
+
+            try
+            {
+                var uriObj = new Uri(_lastRequestUrl);
+                string host = uriObj.Host;
+                if (!string.IsNullOrEmpty(host))
+                {
+                    _skippedHosts.Add(host);
+                    UpdateStatus($"Skipped/Blocked: {host}", "Bypassed");
+
+                    var browser = GetCurrentBrowser();
+                    if (browser != null)
+                    {
+                        browser.CoreWebView2.Stop();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Skip failed: {ex.Message}", "Error");
+            }
+        }
+
         private string FormatBytes(long bytes)
         {
             string[] Suffix = { "B", "KB", "MB", "GB" };
@@ -1095,7 +1144,7 @@ namespace imgsaver
                 bool proxyChanged = false;
                 var oldSettings = _currentSettings;
                 var newSettings = BrowserSettings.Load();
-                proxyChanged = oldSettings.ProxyEnabled != newSettings.ProxyEnabled ||
+                proxyChanged = (oldSettings.ProxyMode ?? "system") != (newSettings.ProxyMode ?? "system") ||
                               oldSettings.ProxyAddress != newSettings.ProxyAddress ||
                               oldSettings.ProxyPort != newSettings.ProxyPort ||
                               oldSettings.ProxyType != newSettings.ProxyType;

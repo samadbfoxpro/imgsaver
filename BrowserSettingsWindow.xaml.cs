@@ -51,12 +51,16 @@ namespace imgsaver
             ChkShowFloatingRecordPlayer.IsChecked = settings.ShowFloatingRecordPlayer;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
 
-            ChkEnableProxy.IsChecked = settings.ProxyEnabled;
+            if (settings.ProxyMode == "off") CmbProxyMode.SelectedIndex = 1;
+            else if (settings.ProxyMode == "custom") CmbProxyMode.SelectedIndex = 2;
+            else CmbProxyMode.SelectedIndex = 0; // Default to "system"
+
             TxtProxyAddress.Text = settings.ProxyAddress;
             TxtProxyPort.Text = settings.ProxyPort;
 
             CmbProxyType.SelectedIndex = settings.ProxyType == "socks5" ? 1 : 0;
             LstNoCacheSites.ItemsSource = new List<string>(settings.NoCacheHosts ?? new List<string>());
+            UpdateProxyFieldsState();
         }
 
         private void LoadCachedSites()
@@ -262,7 +266,8 @@ namespace imgsaver
             settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
             settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
 
-            settings.ProxyEnabled = ChkEnableProxy.IsChecked == true;
+            settings.ProxyMode = (CmbProxyMode.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "system";
+            settings.ProxyEnabled = (settings.ProxyMode == "custom");
             settings.ProxyAddress = TxtProxyAddress.Text.Trim();
             settings.ProxyPort = TxtProxyPort.Text.Trim();
             settings.ProxyType = (CmbProxyType.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "http";
@@ -358,6 +363,18 @@ namespace imgsaver
             {
                 textBox.Focus();
             }
+        }
+
+        private void CmbProxyMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateProxyFieldsState();
+        }
+
+        private void UpdateProxyFieldsState()
+        {
+            if (GridCustomProxySettings == null) return;
+            string mode = (CmbProxyMode.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "system";
+            GridCustomProxySettings.IsEnabled = (mode == "custom");
         }
     }
 }

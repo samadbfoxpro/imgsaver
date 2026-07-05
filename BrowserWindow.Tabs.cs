@@ -222,6 +222,7 @@ namespace imgsaver
                 webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                 webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
                 webView.CoreWebView2.ContextMenuRequested += CoreWebView2_ContextMenuRequested;
+                InjectSnippetHelperScript(webView);
 
                 webView.NavigationStarting += (s, e) =>
                 {

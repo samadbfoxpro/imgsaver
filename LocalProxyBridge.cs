@@ -103,15 +103,42 @@ namespace imgsaver
                     var settings = BrowserSettings.Load();
                     TcpClient targetClient = new TcpClient();
 
-                    if (settings.ProxyEnabled && !string.IsNullOrWhiteSpace(settings.ProxyAddress))
+                    bool useUpstream = false;
+                    string upstreamHost = "";
+                    int upstreamPort = 8080;
+                    string upstreamType = "http";
+
+                    if (settings.ProxyMode == "custom" && !string.IsNullOrWhiteSpace(settings.ProxyAddress))
                     {
-                        string upstreamHost = settings.ProxyAddress;
-                        int upstreamPort = int.TryParse(settings.ProxyPort, out int p) ? p : 8080;
-                        
+                        useUpstream = true;
+                        upstreamHost = settings.ProxyAddress;
+                        upstreamPort = int.TryParse(settings.ProxyPort, out int p) ? p : 8080;
+                        upstreamType = settings.ProxyType?.ToLower() ?? "http";
+                    }
+                    else if (settings.ProxyMode == "system")
+                    {
+                        try
+                        {
+                            Uri targetUri = new Uri(method.Equals("CONNECT", StringComparison.OrdinalIgnoreCase) ? $"https://{host}:{port}" : target);
+                            IWebProxy systemProxy = System.Net.Http.HttpClient.DefaultProxy;
+                            Uri proxyUri = systemProxy.GetProxy(targetUri);
+                            if (proxyUri != null && proxyUri != targetUri)
+                            {
+                                useUpstream = true;
+                                upstreamHost = proxyUri.Host;
+                                upstreamPort = proxyUri.Port;
+                                upstreamType = "http";
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (useUpstream)
+                    {
                         await targetClient.ConnectAsync(upstreamHost, upstreamPort);
                         var targetStream = targetClient.GetStream();
 
-                        if (settings.ProxyType?.ToLower() == "socks5")
+                        if (upstreamType == "socks5")
                         {
                             // SOCKS5 Handshake
                             byte[] greeting = new byte[] { 0x05, 0x01, 0x00 };

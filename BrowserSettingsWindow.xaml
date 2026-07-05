@@ -192,8 +192,15 @@
 
                                 <Border Style="{StaticResource SettingsPanelStyle}">
                                     <StackPanel>
-                                        <CheckBox x:Name="ChkEnableProxy" Content="Enable Proxy Server" Margin="0,0,0,18"/>
-                                        <Grid>
+                                        <StackPanel Margin="0,0,0,18">
+                                            <TextBlock Text="Proxy Mode" FontSize="12" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                            <ComboBox x:Name="CmbProxyMode" Height="34" Style="{StaticResource DarkComboBoxStyle}" SelectionChanged="CmbProxyMode_SelectionChanged">
+                                                <ComboBoxItem Content="Use Windows System Proxy (Default)" Tag="system" Background="#252526" Foreground="#F1F1F1"/>
+                                                <ComboBoxItem Content="No Proxy (Direct Connection)" Tag="off" Background="#252526" Foreground="#F1F1F1"/>
+                                                <ComboBoxItem Content="Use Custom Proxy Server" Tag="custom" Background="#252526" Foreground="#F1F1F1"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <Grid x:Name="GridCustomProxySettings">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="130"/>
                                                 <ColumnDefinition Width="*"/>

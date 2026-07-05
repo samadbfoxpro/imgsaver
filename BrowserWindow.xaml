@@ -166,7 +166,10 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="TxtStatusUrl" Foreground="{StaticResource ForegroundBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Opacity="0.75"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtStatusUrl" Foreground="{StaticResource ForegroundBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Opacity="0.75" MaxWidth="500"/>
+                        <Button x:Name="BtnSkipRequest" Content="✕ Skip" Style="{StaticResource SecondaryButtonStyle}" Height="22" Padding="8,0" FontSize="10" Margin="10,0,0,0" Click="BtnSkipRequest_Click" ToolTip="Skip and block this request address" Cursor="Hand"/>
+                    </StackPanel>
                     <TextBlock x:Name="TxtCacheUsage" Grid.Column="1" Foreground="#FF4CAF50" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
                     <TextBlock x:Name="TxtDownloadUsage" Grid.Column="2" Foreground="#FFF44336" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
                     <TextBlock x:Name="TxtTotalUsage" Grid.Column="3" Foreground="#FF64B5F6" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>

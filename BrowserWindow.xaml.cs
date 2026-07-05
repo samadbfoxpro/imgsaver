@@ -54,6 +54,8 @@ namespace imgsaver
         private readonly string _miniClipImportFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_mini_clip_imports");
         private readonly InputPlayer _browserRecordingPlayer = new InputPlayer();
         private readonly InputRecorder _browserInputRecorder = new InputRecorder();
+        private readonly HashSet<string> _skippedHosts = new(StringComparer.OrdinalIgnoreCase);
+        private string _lastRequestUrl = "";
 
         // Download Manager
         private DownloadManagerService _downloadService = null!;
@@ -66,7 +68,7 @@ namespace imgsaver
         // Track previous proxy settings to detect changes
         private string _previousProxyAddress = "";
         private string _previousProxyPort = "";
-        private bool _previousProxyEnabled = false;
+        private string _previousProxyMode = "system";
         private string _previousProxyType = "http";
 
         [DllImport("user32.dll")]
@@ -92,6 +94,7 @@ namespace imgsaver
             _browserInputRecorder.OnStopRequested += StopBrowserRecordingAndSave;
 
             InitializeTabs();
+            this.PreviewKeyDown += BrowserWindow_PreviewKeyDown;
         }
 
         private void InitializeDownloadService()
@@ -127,7 +130,7 @@ namespace imgsaver
 
         private bool ProxySettingsChanged()
         {
-            return _currentSettings.ProxyEnabled != _previousProxyEnabled ||
+            return (_currentSettings.ProxyMode ?? "system") != _previousProxyMode ||
                    _currentSettings.ProxyAddress != _previousProxyAddress ||
                    _currentSettings.ProxyPort != _previousProxyPort ||
                    _currentSettings.ProxyType != _previousProxyType;
@@ -135,7 +138,7 @@ namespace imgsaver
 
         private void SaveCurrentProxySettings()
         {
-            _previousProxyEnabled = _currentSettings.ProxyEnabled;
+            _previousProxyMode = _currentSettings.ProxyMode ?? "system";
             _previousProxyAddress = _currentSettings.ProxyAddress;
             _previousProxyPort = _currentSettings.ProxyPort;
             _previousProxyType = _currentSettings.ProxyType ?? "http";
@@ -158,6 +161,94 @@ namespace imgsaver
 
         private void BtnMinimize_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void BtnMaximize_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+        private async void BrowserWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.D && 
+                (System.Windows.Input.Keyboard.Modifiers & (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Alt)) == (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Alt))
+            {
+                e.Handled = true;
+                await DumpCurrentPageSourceAsync();
+            }
+        }
+
+        private async Task DumpCurrentPageSourceAsync()
+        {
+            try
+            {
+                var browser = GetCurrentBrowser();
+                if (browser == null || browser.CoreWebView2 == null) return;
+
+                string url = browser.Source?.ToString() ?? "unknown";
+                string html = await browser.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML");
+
+                try
+                {
+                    html = Newtonsoft.Json.JsonConvert.DeserializeObject<string>(html) ?? html;
+                }
+                catch { }
+
+                var uriObj = new Uri(url);
+
+                // 1) Download and inline Stylesheets and Scripts
+                using (var client = new System.Net.Http.HttpClient())
+                {
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                    
+                    var cssMatches = Regex.Matches(html, @"<link[^>]+href=[""']([^""']+)[""']", RegexOptions.IgnoreCase);
+                    foreach (Match m in cssMatches)
+                    {
+                        string href = m.Groups[1].Value;
+                        if (href.Contains(".css") || m.Value.Contains("stylesheet"))
+                        {
+                            string absUrl = href.StartsWith("http") ? href : new Uri(uriObj, href).AbsoluteUri;
+                            try
+                            {
+                                string cssContent = await client.GetStringAsync(absUrl);
+                                string styleTag = $"<style id=\"inlined_{Guid.NewGuid().ToString("N")}\">/* Inlined from {absUrl} */\n{cssContent}\n</style>";
+                                html = html.Replace(m.Value, styleTag);
+                            }
+                            catch { }
+                        }
+                    }
+
+                    // 2) Download and inline Scripts
+                    var jsMatches = Regex.Matches(html, @"<script[^>]+src=[""']([^""']+)[""']", RegexOptions.IgnoreCase);
+                    foreach (Match m in jsMatches)
+                    {
+                        string src = m.Groups[1].Value;
+                        string absUrl = src.StartsWith("http") ? src : new Uri(uriObj, src).AbsoluteUri;
+                        try
+                        {
+                            string jsContent = await client.GetStringAsync(absUrl);
+                            if (jsContent.Length < 10 * 1024 * 1024)
+                            {
+                                string scriptTag = $"<script id=\"inlined_{Guid.NewGuid().ToString("N")}\">/* Inlined from {absUrl} */\n{jsContent}\n</script>";
+                                html = html.Replace(m.Value, scriptTag);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "dom_dumps");
+                Directory.CreateDirectory(dataDir);
+
+                string host = uriObj.Host;
+                string filename = $"{host}_FULL_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+                string filepath = Path.Combine(dataDir, filename);
+
+                File.WriteAllText(filepath, html, Encoding.UTF8);
+
+                UpdateStatus($"Full page code dumped to: {filename}", "Success");
+                System.Windows.MessageBox.Show($"Current page DOM and all linked JS/CSS scripts have been fully inlined and saved successfully to:\n\n{filepath}", "Full DOM Dump Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Full dump failed: {ex.Message}", "Error");
+                System.Windows.MessageBox.Show($"Failed to dump full page DOM: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
     }
 }
