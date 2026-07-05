@@ -30,6 +30,7 @@ namespace imgsaver
         public bool ShowMiniClipImageImportButtons { get; set; } = false;
         public bool ReplaceMiniClipImageOnImport { get; set; } = false;
         public bool ShowFloatingRecordPlayer { get; set; } = false;
+        public bool ShowQuickPasteButton { get; set; } = true;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
 
