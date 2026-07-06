@@ -48,6 +48,7 @@ namespace imgsaver
         private InputRecorderWindow? _inputRecorderWindow;
         private BrowserWindow? _browserWindow;
         private FloatingExtraWindow? _floatingExtraWindow;
+        private PromptTaggerWindow? _promptTaggerWindow;
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -672,6 +673,13 @@ namespace imgsaver
             if (_inputRecorderWindow == null || !_inputRecorderWindow.IsLoaded) _inputRecorderWindow = new InputRecorderWindow();
             _inputRecorderWindow.Show();
             _inputRecorderWindow.Activate();
+        }
+
+        private void BtnPromptTags_Click(object sender, RoutedEventArgs e)
+        {
+            if (_promptTaggerWindow == null || !_promptTaggerWindow.IsLoaded) _promptTaggerWindow = new PromptTaggerWindow();
+            _promptTaggerWindow.Show();
+            _promptTaggerWindow.Activate();
         }
     }
 }

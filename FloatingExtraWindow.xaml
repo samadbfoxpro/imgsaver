@@ -122,14 +122,29 @@
                 </Border>
 
                 <!-- Custom text area -->
-                <Grid x:Name="PanelCustomText" Grid.Row="2" Visibility="Collapsed">
+                <Grid x:Name="PanelCustomText" Grid.Row="2" Visibility="Collapsed"
+                      Background="Transparent"
+                      TouchDown="PanelCustomText_TouchDown"
+                      TouchUp="PanelCustomText_TouchUp"
+                      TouchLeave="PanelCustomText_TouchLeave">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <TextBox x:Name="TxtCustomText" Grid.Row="0" AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" Padding="6"
-                             ToolTip="Enter your custom Extra text"/>
+                             VerticalScrollBarVisibility="Auto" Padding="6,4"
+                             VerticalContentAlignment="Top"
+                             ToolTip="Enter your custom Extra text">
+                        <TextBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="✂ Cut" Click="MenuCut_Click"/>
+                                <MenuItem Header="📋 Copy" Click="MenuCopy_Click"/>
+                                <MenuItem Header="📥 Paste" Click="MenuPaste_Click"/>
+                                <Separator/>
+                                <MenuItem Header="🔍 Select All" Click="MenuSelectAll_Click"/>
+                            </ContextMenu>
+                        </TextBox.ContextMenu>
+                    </TextBox>
                     <Button x:Name="BtnSaveToLibrary" Grid.Row="1" Content="💾 Save to List" Click="BtnSaveToLibrary_Click"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Margin="0,8,0,4" Height="28" Padding="10,2" FontSize="11" FontWeight="SemiBold"/>

@@ -79,12 +79,19 @@
                     <CheckBox x:Name="ChkSpiSyncPreserveBasePrompt" Content="Do not use saved base list when running SPI Sync"
                               Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
                               ToolTip="When enabled, SPI Sync keeps the current Mini-Clip POS/base text and only randomizes the Persona/Extra item. The selected item title is stored as Additional Title."/>
+                    <CheckBox x:Name="ChkUseTagReplacerForMiniClip" Content="Use Tag Replacer for Mini-Clip combination" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,10" VerticalContentAlignment="Center"
+                              ToolTip="When enabled, Mini-Clip will use sequential placeholder replacement (e.g. [PH_1], [PH_2]) instead of simple [extra] replacement."/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Tag Prefix (default: PH_):" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
+                        <TextBox x:Name="TxtTagReplacerPrefix" Text="PH_" Width="60" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                                 Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <TextBlock Text="Images to collect before saving:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
                         <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="50" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
                                  Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
                     </StackPanel>
-
                     <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
 
                     <TextBlock Text="Minimum Image Dimensions" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>

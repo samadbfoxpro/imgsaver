@@ -40,6 +40,8 @@ namespace imgsaver
                     if (lines.Length > 7) ChkAutoCopyExtraTemplateOutput.IsChecked = lines[7].Trim().ToLower() == "true";
                     ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
                     ChkSpiSyncPreserveBasePrompt.IsChecked = lines.Length > 9 && lines[9].Trim().ToLower() == "true";
+                    ChkUseTagReplacerForMiniClip.IsChecked = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
+                    TxtTagReplacerPrefix.Text = lines.Length > 11 ? lines[11].Trim() : "PH_";
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
@@ -81,6 +83,9 @@ namespace imgsaver
                 string autoCopyExtraTemplateOutput = (ChkAutoCopyExtraTemplateOutput.IsChecked == true).ToString().ToLower();
                 string replacePositivePromptOnClipboardText = (ChkReplacePositivePromptOnClipboardText.IsChecked == true).ToString().ToLower();
                 string spiSyncPreserveBasePrompt = (ChkSpiSyncPreserveBasePrompt.IsChecked == true).ToString().ToLower();
+                string useTagReplacer = (ChkUseTagReplacerForMiniClip.IsChecked == true).ToString().ToLower();
+                string tagReplacerPrefix = TxtTagReplacerPrefix.Text.Trim();
+                if (string.IsNullOrEmpty(tagReplacerPrefix)) tagReplacerPrefix = "PH_";
                 string galleryPath = TxtGalleryPath.Text.Trim();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
 
@@ -94,7 +99,9 @@ namespace imgsaver
                     autoCaptureExtraTemplate,
                     autoCopyExtraTemplateOutput,
                     replacePositivePromptOnClipboardText,
-                    spiSyncPreserveBasePrompt
+                    spiSyncPreserveBasePrompt,
+                    useTagReplacer,
+                    tagReplacerPrefix
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);

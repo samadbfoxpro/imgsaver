@@ -25,6 +25,7 @@ namespace imgsaver
             public long TotalBytes => CachedBytes + DownloadedBytes;
             public HashSet<string> CacheKeys { get; } = new(StringComparer.OrdinalIgnoreCase);
             public HashSet<string> DownloadKeys { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public HashSet<string> SkippedHosts { get; } = new(StringComparer.OrdinalIgnoreCase);
         }
 
         private TabItem? GetTabItemForCoreWebView2(CoreWebView2? core)
@@ -46,6 +47,7 @@ namespace imgsaver
                 stats.DownloadedBytes = 0;
                 stats.CacheKeys.Clear();
                 stats.DownloadKeys.Clear();
+                stats.SkippedHosts.Clear();
             }
             else
             {
@@ -135,14 +137,17 @@ namespace imgsaver
             string lowerUri = uri.ToLowerInvariant();
             _lastRequestUrl = uri;
 
-            // Check dynamically skipped/blocked hosts
-            if (_skippedHosts.Any(sh => lowerUri.Contains(sh.ToLowerInvariant())))
+            // Check dynamically skipped/blocked hosts for this tab
+            if (tabItem != null && _tabNetworkStats.TryGetValue(tabItem, out var stats))
             {
-                if (sender is CoreWebView2 wv)
+                if (stats.SkippedHosts.Any(sh => lowerUri.Contains(sh.ToLowerInvariant())))
                 {
-                    e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                    if (sender is CoreWebView2 wv)
+                    {
+                        e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                    }
+                    return;
                 }
-                return;
             }
 
             UpdateStatus($"Requesting: {uri}", "Queued");
@@ -803,8 +808,18 @@ namespace imgsaver
                 string host = uriObj.Host;
                 if (!string.IsNullOrEmpty(host))
                 {
-                    _skippedHosts.Add(host);
-                    UpdateStatus($"Skipped/Blocked: {host}", "Bypassed");
+                    var tabItem = BrowserTabs.SelectedItem as TabItem;
+                    if (tabItem != null)
+                    {
+                        if (!_tabNetworkStats.TryGetValue(tabItem, out var stats))
+                        {
+                            stats = new TabNetworkInfo();
+                            _tabNetworkStats[tabItem] = stats;
+                        }
+                        stats.SkippedHosts.Add(host);
+                    }
+
+                    UpdateStatus($"Temporarily Skipped: {host} (Cleared on reload)", "Bypassed");
 
                     var browser = GetCurrentBrowser();
                     if (browser != null)

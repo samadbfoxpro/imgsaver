@@ -54,7 +54,6 @@ namespace imgsaver
         private readonly string _miniClipImportFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_mini_clip_imports");
         private readonly InputPlayer _browserRecordingPlayer = new InputPlayer();
         private readonly InputRecorder _browserInputRecorder = new InputRecorder();
-        private readonly HashSet<string> _skippedHosts = new(StringComparer.OrdinalIgnoreCase);
         private string _lastRequestUrl = "";
 
         // Download Manager

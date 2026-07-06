@@ -58,6 +58,7 @@ namespace imgsaver
     public partial class FloatingExtraWindow : Window
     {
         private readonly ObservableCollection<SelectableExtra> _extras = new ObservableCollection<SelectableExtra>();
+        private readonly System.Collections.Generic.HashSet<int> _activeTouchIds = new System.Collections.Generic.HashSet<int>();
 
         public FloatingExtraWindow()
         {
@@ -258,6 +259,54 @@ namespace imgsaver
         {
             try { CustomMessageBox.Show(message, "Extra Float", MessageBoxButton.OK, MessageBoxImage.Warning); }
             catch { System.Windows.MessageBox.Show(message, "Extra Float"); }
+        }
+
+        private void PanelCustomText_TouchDown(object? sender, TouchEventArgs e)
+        {
+            _activeTouchIds.Add(e.TouchDevice.Id);
+            if (_activeTouchIds.Count == 2)
+            {
+                if (TxtCustomText.ContextMenu != null)
+                {
+                    System.Windows.Point touchPoint = e.GetTouchPoint(TxtCustomText).Position;
+                    TxtCustomText.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
+                    TxtCustomText.ContextMenu.PlacementTarget = TxtCustomText;
+                    TxtCustomText.ContextMenu.HorizontalOffset = touchPoint.X;
+                    TxtCustomText.ContextMenu.VerticalOffset = touchPoint.Y;
+                    TxtCustomText.ContextMenu.IsOpen = true;
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void PanelCustomText_TouchUp(object? sender, TouchEventArgs e)
+        {
+            _activeTouchIds.Remove(e.TouchDevice.Id);
+        }
+
+        private void PanelCustomText_TouchLeave(object? sender, TouchEventArgs e)
+        {
+            _activeTouchIds.Remove(e.TouchDevice.Id);
+        }
+
+        private void MenuCut_Click(object sender, RoutedEventArgs e)
+        {
+            TxtCustomText.Cut();
+        }
+
+        private void MenuCopy_Click(object sender, RoutedEventArgs e)
+        {
+            TxtCustomText.Copy();
+        }
+
+        private void MenuPaste_Click(object sender, RoutedEventArgs e)
+        {
+            TxtCustomText.Paste();
+        }
+
+        private void MenuSelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            TxtCustomText.SelectAll();
         }
     }
 }

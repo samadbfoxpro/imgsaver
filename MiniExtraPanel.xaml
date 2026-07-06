@@ -1,0 +1,227 @@
+<Window x:Class="imgsaver.MiniExtraPanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Extra Panel"
+        Width="220"
+        SizeToContent="Height"
+        Background="Transparent"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        Topmost="True"
+        ShowInTaskbar="False">
+
+    <Border CornerRadius="0,10,10,10"
+            BorderThickness="1"
+            BorderBrush="#2A3A4A"
+            Background="#1A1F2E"
+            Opacity="0.97">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.45" Color="#000000"/>
+        </Border.Effect>
+
+        <Grid Margin="10,10,10,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- Mode toggle -->
+                <RowDefinition Height="Auto"/>  <!-- Search -->
+                <RowDefinition Height="Auto" MinHeight="120"/>  <!-- List or custom text -->
+                <RowDefinition Height="Auto"/>  <!-- Title override -->
+                <RowDefinition Height="Auto"/>  <!-- Confirm -->
+            </Grid.RowDefinitions>
+
+            <!-- Mode toggle checkbox -->
+            <CheckBox x:Name="ChkUseCustomText" Grid.Row="0"
+                      Content="Custom text"
+                      Foreground="#8899AA" FontSize="10"
+                      Margin="2,0,0,7"
+                      Checked="ChkUseCustomText_Changed"
+                      Unchecked="ChkUseCustomText_Changed"/>
+
+            <!-- Search row -->
+            <Grid x:Name="GridSearch" Grid.Row="1" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtSearch" FontSize="10.5" Height="22" Padding="5,1"
+                         Foreground="#CCDDEE" Background="#252E3E"
+                         BorderBrush="#2A3A4A" BorderThickness="1"
+                         VerticalContentAlignment="Center"
+                         TextChanged="TxtSearch_TextChanged"
+                         ToolTip="Search extras..."/>
+                <Button Grid.Column="1" Content="✕" Width="20" Height="22" Margin="4,0,0,0"
+                        Background="#252E3E" BorderBrush="#2A3A4A" BorderThickness="1"
+                        Foreground="#667788" FontSize="9" Cursor="Hand"
+                        Click="BtnClearSearch_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#30445A"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- Extras list -->
+            <Border x:Name="BorderExtraList" Grid.Row="2"
+                    Background="#141920" CornerRadius="5"
+                    BorderBrush="#2A3A4A" BorderThickness="1"
+                    MinHeight="120" MaxHeight="260">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ListBox x:Name="LstExtras" Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             Focusable="False">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          Margin="3,2" Cursor="Hand"
+                                          Checked="ExtraCheck_Changed"
+                                          Unchecked="ExtraCheck_Changed"
+                                          Foreground="#AABBCC">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding ShortName}" FontWeight="SemiBold"
+                                                   FontSize="10.5" Foreground="#CCDFF0"/>
+                                        <TextBlock Text="{Binding Text}" FontSize="9"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="170"
+                                                   Foreground="#667788"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Padding" Value="3,1"/>
+                                <Setter Property="Focusable" Value="False"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="itemBd" Background="{TemplateBinding Background}"
+                                                    Padding="{TemplateBinding Padding}" CornerRadius="3">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="itemBd" Property="Background" Value="#1E2D3E"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Custom text area (hidden by default) -->
+            <Grid x:Name="GridCustomText" Grid.Row="2" Visibility="Collapsed" MinHeight="120">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBox x:Name="TxtCustomText" Grid.Row="0"
+                         AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         Padding="6,4" VerticalContentAlignment="Top"
+                         Foreground="#CCDFF0" Background="#141920"
+                         BorderBrush="#2A3A4A" BorderThickness="1"
+                         MinHeight="90"
+                         ToolTip="Enter your custom Extra text">
+                    <TextBox.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="✂ Cut"       Click="MenuCut_Click"/>
+                            <MenuItem Header="📋 Copy"     Click="MenuCopy_Click"/>
+                            <MenuItem Header="📥 Paste"    Click="MenuPaste_Click"/>
+                            <Separator/>
+                            <MenuItem Header="🔍 Select All" Click="MenuSelectAll_Click"/>
+                        </ContextMenu>
+                    </TextBox.ContextMenu>
+                </TextBox>
+                <Button x:Name="BtnSaveToLibrary" Grid.Row="1" Content="💾 Save to List"
+                        Margin="0,5,0,0" Height="24" FontSize="10" FontWeight="SemiBold"
+                        Click="BtnSaveToLibrary_Click"
+                        Cursor="Hand"
+                        Foreground="#20B2AA" Background="#1A252E"
+                        BorderBrush="#20B2AA" BorderThickness="1">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"
+                                                  TextElement.FontSize="{TemplateBinding FontSize}"
+                                                  TextElement.FontWeight="{TemplateBinding FontWeight}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#22424A"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- Optional title override -->
+            <Grid Grid.Row="3" Margin="0,7,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Title:" FontSize="10" VerticalAlignment="Center"
+                           Foreground="#556677" Margin="2,0,6,0"/>
+                <TextBox x:Name="TxtCustomTitle" Grid.Column="1" FontSize="10.5" Height="22"
+                         Padding="5,1" VerticalContentAlignment="Center"
+                         Foreground="#CCDFF0" Background="#252E3E"
+                         BorderBrush="#2A3A4A" BorderThickness="1"
+                         ToolTip="Optional title override"/>
+            </Grid>
+
+            <!-- Confirm button -->
+            <Button x:Name="BtnConfirm" Grid.Row="4"
+                    Content="✔  Confirm Extra"
+                    Height="30" Margin="0,8,0,0"
+                    FontSize="11" FontWeight="Bold"
+                    Cursor="Hand"
+                    Click="BtnConfirm_Click"
+                    Foreground="White">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="6">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#0D9488" Offset="0"/>
+                                    <GradientStop Color="#0891B2" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="White"
+                                              TextElement.FontSize="11"
+                                              TextElement.FontWeight="Bold"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+    </Border>
+</Window>
