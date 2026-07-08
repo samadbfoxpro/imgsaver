@@ -57,17 +57,22 @@
             <!-- Content -->
             <Grid Grid.Row="1" Margin="10,8,10,4">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/> <!-- Mode toggle -->
-                    <RowDefinition Height="Auto"/> <!-- Search Box -->
-                    <RowDefinition Height="*"/>    <!-- List / Custom area -->
-                    <RowDefinition Height="Auto"/> <!-- Title override -->
-                    <RowDefinition Height="Auto"/> <!-- Confirm button -->
+                    <RowDefinition Height="Auto"/> <!-- Row 0: Mode toggles -->
+                    <RowDefinition Height="Auto"/> <!-- Row 1: Search Box -->
+                    <RowDefinition Height="*"/>    <!-- Row 2: List / Custom / Tagger Values -->
+                    <RowDefinition Height="Auto"/> <!-- Row 3: Title override -->
+                    <RowDefinition Height="Auto"/> <!-- Row 4: Confirm button -->
                 </Grid.RowDefinitions>
 
-                <!-- Mode toggle -->
-                <CheckBox x:Name="ChkUseCustomText" Grid.Row="0" Content="Use custom text instead"
-                          Foreground="{StaticResource ForegroundMutedBrush}" FontSize="11"
-                          Margin="2,0,0,6" Checked="ChkUseCustomText_CheckedChanged" Unchecked="ChkUseCustomText_CheckedChanged"/>
+                <!-- Mode toggles -->
+                <WrapPanel Grid.Row="0" Margin="2,0,0,6">
+                    <CheckBox x:Name="ChkUseCustomText" Content="Custom text"
+                              Foreground="{StaticResource ForegroundMutedBrush}" FontSize="10.5"
+                              Margin="0,0,10,0" Checked="ChkUseCustomText_CheckedChanged" Unchecked="ChkUseCustomText_CheckedChanged"/>
+                    <CheckBox x:Name="ChkUseTaggerValues" Content="Tagger Values"
+                              Foreground="{StaticResource ForegroundMutedBrush}" FontSize="10.5"
+                              Checked="ChkUseTaggerValues_CheckedChanged" Unchecked="ChkUseTaggerValues_CheckedChanged"/>
+                </WrapPanel>
 
                 <!-- Search Box -->
                 <Grid x:Name="GridSearch" Grid.Row="1" Margin="0,0,0,6" Visibility="Visible">
@@ -148,6 +153,30 @@
                     <Button x:Name="BtnSaveToLibrary" Grid.Row="1" Content="💾 Save to List" Click="BtnSaveToLibrary_Click"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Margin="0,8,0,4" Height="28" Padding="10,2" FontSize="11" FontWeight="SemiBold"/>
+                </Grid>
+
+                <!-- Tagger Values area (hidden by default, in Row 2) -->
+                <Grid x:Name="GridTaggerValues" Grid.Row="2" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Replacement Values (comma-separated list):" FontSize="9.5" Foreground="{StaticResource ForegroundMutedBrush}" Margin="2,0,0,4"/>
+                    <TextBox x:Name="TxtTaggerValues" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" Padding="6,4" VerticalContentAlignment="Top"
+                             Foreground="{StaticResource ForegroundBrush}" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                             MinHeight="100"
+                             ToolTip="Enter replacement values separated by commas">
+                        <TextBox.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="✂ Cut" Click="MenuCut_Click"/>
+                                <MenuItem Header="📋 Copy" Click="MenuCopy_Click"/>
+                                <MenuItem Header="📥 Paste" Click="MenuPaste_Click"/>
+                                <Separator/>
+                                <MenuItem Header="🔍 Select All" Click="MenuSelectAll_Click"/>
+                            </ContextMenu>
+                        </TextBox.ContextMenu>
+                    </TextBox>
                 </Grid>
 
                 <!-- Title override -->

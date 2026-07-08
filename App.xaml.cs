@@ -13,6 +13,9 @@ namespace imgsaver
         {
             base.OnStartup(e);
 
+            string lang = LanguageManager.LoadLanguageFromConfig();
+            LanguageManager.ApplyLanguage(lang);
+
             // Register a global handler for all TextBoxes to select all text on double-click
             // Using fully qualified names to resolve ambiguity with System.Windows.Forms
             EventManager.RegisterClassHandler(typeof(System.Windows.Controls.TextBox),

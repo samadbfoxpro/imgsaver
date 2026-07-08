@@ -1,0 +1,102 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- MainWindow -->
+    <sys:String x:Key="Lbl_Suite">مجموعه پیشرفته جمع‌آوری دیتاست</sys:String>
+    <sys:String x:Key="Btn_MiniClip">مینی کلیپ</sys:String>
+    <sys:String x:Key="Btn_ExtraFloat">اکسترا فلوت</sys:String>
+    <sys:String x:Key="Btn_Persona">پرسونا</sys:String>
+    <sys:String x:Key="Btn_Gallery">گالری</sys:String>
+    <sys:String x:Key="Btn_ClipSaver">ذخیره‌ساز کلیپ‌بورد</sys:String>
+    <sys:String x:Key="Btn_Snippets">اسنیپت‌ها</sys:String>
+    <sys:String x:Key="Btn_QuickSave">ذخیره سریع</sys:String>
+    <sys:String x:Key="Btn_Remote">کنترل از راه دور</sys:String>
+    <sys:String x:Key="Btn_CloudLink">لینک ابری</sys:String>
+    <sys:String x:Key="Btn_Archive">آرشیو</sys:String>
+    <sys:String x:Key="Btn_ZipShare">فشرده‌سازی و اشتراک‌گذاری</sys:String>
+    <sys:String x:Key="Btn_Browser">مرورگر</sys:String>
+    <sys:String x:Key="Btn_Tutorial">آموزش</sys:String>
+    <sys:String x:Key="Btn_InputRecorder">ضبط‌کننده ورودی</sys:String>
+    <sys:String x:Key="Btn_PromptTags">تگ‌های پرامپت</sys:String>
+    <sys:String x:Key="Btn_Settings">تنظیمات</sys:String>
+
+    <!-- SettingsWindow -->
+    <sys:String x:Key="Lbl_Settings_Title">تنظیمات</sys:String>
+    <sys:String x:Key="Lbl_Storage_Location">محل ذخیره‌سازی</sys:String>
+    <sys:String x:Key="Lbl_Browse">جستجو...</sys:String>
+    <sys:String x:Key="Lbl_Shared_Folder">پوشه اشتراکی محتوای پرامپت</sys:String>
+    <sys:String x:Key="Chk_Custom_Folder">استفاده از پوشه دلخواه برای پرسونا، پرامپت پایه و اکسترا</sys:String>
+    <sys:String x:Key="Lbl_Gallery_Folder">پوشه گالری</sys:String>
+    <sys:String x:Key="Lbl_Gallery_Desc">مورد استفاده در گالری دسکتاپ و وب گالری شبکه محلی.</sys:String>
+    <sys:String x:Key="Lbl_MiniClip_Autosave">ذخیره خودکار مینی‌کلیپ</sys:String>
+    <sys:String x:Key="Chk_Autosave_Enabled">ذخیره خودکار هنگام آماده شدن پرامپت‌ها و عنوان</sys:String>
+    <sys:String x:Key="Chk_AutoCapture_Extra">دریافت خودکار متن برای قالب‌های اکسترا دارای [extra]</sys:String>
+    <sys:String x:Key="Chk_AutoCapture_TagReplacer">دریافت خودکار متن برای قالب‌های تگ‌گذار دارای جایگاه تگ</sys:String>
+    <sys:String x:Key="Chk_AutoCopy_Extra">کپی خودکار خروجی اکسترا پس از دریافت قالب اکسترا</sys:String>
+    <sys:String x:Key="Chk_AutoCopy_TagReplacer">کپی خودکار خروجی تگ‌گذار پس از دریافت قالب تگ‌گذار</sys:String>
+    <sys:String x:Key="Chk_Replace_Pos">جایگزینی پرامپت مثبت با کپی شدن متن جدید در کلیپ‌بورد</sys:String>
+    <sys:String x:Key="Chk_Preserve_Base">عدم استفاده از لیست پایه ذخیره شده در هنگام اجرای SPI Sync</sys:String>
+    <sys:String x:Key="Lbl_Collect_Before_Save">تعداد تصاویری که باید قبل از ذخیره جمع‌آوری شوند:</sys:String>
+    <sys:String x:Key="Lbl_Min_Dimensions">حداقل ابعاد تصویر</sys:String>
+    <sys:String x:Key="Lbl_Min_Dimensions_Desc">رد تصاویر کوچک‌تر از این ابعاد هنگام وارد کردن به مینی‌کلیپ‌بورد</sys:String>
+    <sys:String x:Key="Chk_AutoImport">فعال‌سازی وارد کردن خودکار از پوشه</sys:String>
+    <sys:String x:Key="Lbl_Recorder_Settings">تنظیمات ضبط‌کننده</sys:String>
+    <sys:String x:Key="Chk_Sequential">پخش متوالی (اسلات ۱ و ۲)</sys:String>
+    <sys:String x:Key="Lbl_Default_Slot">اسلات پیش‌فرض:</sys:String>
+    <sys:String x:Key="Lbl_Injector_Settings">تنظیمات تزریق‌کننده (Injector)</sys:String>
+    <sys:String x:Key="Chk_Favorites_Only">دکمه‌های تصادفی فقط از لیست علاقه‌مندی‌ها استفاده کنند</sys:String>
+    <sys:String x:Key="Btn_Save_Close">ذخیره و بستن</sys:String>
+    <sys:String x:Key="Chk_Use_Tag_Replacer">استفاده از جایگزین‌کننده تگ برای ترکیب مینی‌کلیپ</sys:String>
+    <sys:String x:Key="Lbl_Tag_Prefix">پیشوند تگ (پیش‌فرض: PH_):</sys:String>
+    <sys:String x:Key="Lbl_Language">زبان برنامه:</sys:String>
+
+    <!-- MiniClipboardWindow -->
+    <sys:String x:Key="Lbl_MiniClip_Title">مینی کلیپ</sys:String>
+    <sys:String x:Key="Lbl_Enter_Title">ورود عنوان...</sys:String>
+    <sys:String x:Key="Lbl_Positive">مثبت (POS)</sys:String>
+    <sys:String x:Key="Lbl_Negative">منفی (NEG)</sys:String>
+    <sys:String x:Key="Lbl_Lock_Sfx">قفل پسوند</sys:String>
+    <sys:String x:Key="Lbl_Lock_Ttl">قفل عنوان</sys:String>
+    <sys:String x:Key="Lbl_Lock_Dsc">قفل توضیح</sys:String>
+    <sys:String x:Key="Lbl_Auto_Ex">AUTO EX</sys:String>
+    <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>
+    <sys:String x:Key="Lbl_Br_Paste">BR PASTE</sys:String>
+    <sys:String x:Key="Lbl_Man_Ex">MAN EX</sys:String>
+    <sys:String x:Key="Lbl_Base_Pr">BASE PR</sys:String>
+    <sys:String x:Key="Lbl_Ext_Fl">EXT FL</sys:String>
+    <sys:String x:Key="Lbl_Spi_Sync">SPI SYNC</sys:String>
+    <sys:String x:Key="Lbl_Auto_Fill">AUTO FILL</sys:String>
+    <sys:String x:Key="Btn_Save_To_Disk">ذخیره در دیسک</sys:String>
+    <sys:String x:Key="Lbl_Custom_Text">متن سفارشی</sys:String>
+    <sys:String x:Key="Lbl_Title">عنوان:</sys:String>
+    <sys:String x:Key="Btn_Confirm_Extra">✔ تایید اکسترا</sys:String>
+    <sys:String x:Key="Btn_Save_To_List">💾 ذخیره در لیست</sys:String>
+
+    <!-- PromptTaggerWindow -->
+    <sys:String x:Key="Lbl_PromptTagger_Title">سیستم تگ‌گذاری و مقایسه پرامپت</sys:String>
+    <sys:String x:Key="Btn_Tab_Replacer">📝 جایگزین‌کننده تگ</sys:String>
+    <sys:String x:Key="Btn_Tab_Diff">🔍 مقایسه پرامپت</sys:String>
+    <sys:String x:Key="Lbl_Template_Prompt">قالب پرامپت (شامل [PH_1]، [PH_2] و غیره):</sys:String>
+    <sys:String x:Key="Lbl_Replacement_Values">مقادیر جایگزین (لیست جدا شده با کاما):</sys:String>
+    <sys:String x:Key="Lbl_Result_Output">خروجی نتیجه:</sys:String>
+    <sys:String x:Key="Btn_Copy_Result">📋 کپی نتیجه</sys:String>
+    <sys:String x:Key="Btn_Process_Replacer">🔄 اجرای جایگزینی تگ</sys:String>
+    <sys:String x:Key="Lbl_Prompt_A">پرامپت آ (مرجع/تمیز):</sys:String>
+    <sys:String x:Key="Lbl_Prompt_B">پرامپت ب (تغییریافته/پرجزئیات):</sys:String>
+    <sys:String x:Key="Btn_Compare_Prompts">🔍 مقایسه خودکار و تولید تگ‌ها</sys:String>
+    <sys:String x:Key="Lbl_Generated_Template">پرامپت قالب تولید شده (همراه تگ‌ها):</sys:String>
+    <sys:String x:Key="Lbl_Extracted_Diffs">تفاوت‌های استخراج شده (لیست مقادیر):</sys:String>
+    <sys:String x:Key="Btn_Transfer">🚀 انتقال خروجی و مقادیر به جایگزین‌کننده تگ</sys:String>
+
+    <!-- Context Menu -->
+    <sys:String x:Key="Menu_Cut">✂ برش (Cut)</sys:String>
+    <sys:String x:Key="Menu_Copy">📋 کپی (Copy)</sys:String>
+    <sys:String x:Key="Menu_Paste">📥 چسباندن (Paste)</sys:String>
+    <sys:String x:Key="Menu_SelectAll">🔍 انتخاب همه</sys:String>
+    <sys:String x:Key="Menu_Clear">🧹 پاک کردن همه</sys:String>
+
+    <sys:String x:Key="Lbl_Tagger_Values">مقادیر تگ‌گذار</sys:String>
+    <sys:String x:Key="Lbl_Replacement_Values_Label">مقادیر جایگزین (لیست جدا شده با کاما):</sys:String>
+    <sys:String x:Key="Btn_Transfer_To_Extra">🚀 ارسال مقادیر به پنل‌های اکسترا</sys:String>
+</ResourceDictionary>

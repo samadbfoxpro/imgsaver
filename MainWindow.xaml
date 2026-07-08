@@ -88,7 +88,7 @@
                             <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.4" Color="Black"/>
                         </TextBlock.Effect>
                     </TextBlock>
-                    <TextBlock Text="PREMIUM DATASET COLLECTION SUITE" FontSize="10" FontWeight="Bold" 
+                    <TextBlock Text="{DynamicResource Lbl_Suite}" FontSize="10" FontWeight="Bold" 
                                Foreground="{StaticResource ForegroundMutedBrush}"
                                HorizontalAlignment="Center" Margin="0,2,0,0" Opacity="0.7"/>
                 </StackPanel>
@@ -160,29 +160,29 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" Content="MINI CLIP" Tag="📋" Click="BtnMiniClipboard_Click" Style="{StaticResource NavButtonStyle}" Background="#1B5E20" Foreground="White"/>
-                        <Button Grid.Column="1" Content="EXTRA FLOAT" Tag="🧩" Click="BtnExtraFloat_Click" Style="{StaticResource NavButtonStyle}" Background="#0E7A6E" Foreground="White"/>
-                        <Button Grid.Column="2" Content="PERSONA" Tag="🎭" Click="BtnPersona_Click" Style="{StaticResource NavButtonStyle}" Background="#4A148C" Foreground="White"/>
+                        <Button Grid.Column="0" Content="{DynamicResource Btn_MiniClip}" Tag="📋" Click="BtnMiniClipboard_Click" Style="{StaticResource NavButtonStyle}" Background="#1B5E20" Foreground="White"/>
+                        <Button Grid.Column="1" Content="{DynamicResource Btn_ExtraFloat}" Tag="🧩" Click="BtnExtraFloat_Click" Style="{StaticResource NavButtonStyle}" Background="#0E7A6E" Foreground="White"/>
+                        <Button Grid.Column="2" Content="{DynamicResource Btn_Persona}" Tag="🎭" Click="BtnPersona_Click" Style="{StaticResource NavButtonStyle}" Background="#4A148C" Foreground="White"/>
                     </Grid>
 
-                    <Button Grid.Row="1" Content="GALLERY" Tag="🖼️" Click="BtnGallery_Click" Style="{StaticResource NavButtonStyle}" Margin="0,4"/>
+                    <Button Grid.Row="1" Content="{DynamicResource Btn_Gallery}" Tag="🖼️" Click="BtnGallery_Click" Style="{StaticResource NavButtonStyle}" Margin="0,4"/>
 
                     <UniformGrid Grid.Row="2" Columns="4">
-                        <Button Content="CLIP SAVER" Tag="⚡" Click="BtnQuickClipboard_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="SNIPPETS" Tag="📜" Click="BtnSnippets_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="QUICK SAVE" Tag="⚡📸" Click="BtnMiniQuickSave_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="REMOTE" x:Name="BtnRemote" Tag="📱" Click="BtnRemote_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="CLOUD LINK" Tag="☁️" Click="BtnCloudLink_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="ARCHIVE" Tag="📦" Click="BtnArchive_Click" Style="{StaticResource NavButtonStyle}" 
+                        <Button Content="{DynamicResource Btn_ClipSaver}" Tag="⚡" Click="BtnQuickClipboard_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_Snippets}" Tag="📜" Click="BtnSnippets_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_QuickSave}" Tag="⚡📸" Click="BtnMiniQuickSave_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_Remote}" x:Name="BtnRemote" Tag="📱" Click="BtnRemote_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_CloudLink}" Tag="☁️" Click="BtnCloudLink_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_Archive}" Tag="📦" Click="BtnArchive_Click" Style="{StaticResource NavButtonStyle}" 
                                 Background="{StaticResource PrimaryBrush}" Foreground="{StaticResource OnPrimaryBrush}"/>
-                        <Button Content="ZIP &amp; SHARE" Tag="📤" Click="BtnZipShare_Click" Style="{StaticResource NavButtonStyle}" 
+                        <Button Content="{DynamicResource Btn_ZipShare}" Tag="📤" Click="BtnZipShare_Click" Style="{StaticResource NavButtonStyle}" 
                                 Background="#8B8000" Foreground="White"/>
-                        <Button Content="BROWSER" Tag="🌐" Click="BtnBrowser_Click" Style="{StaticResource NavButtonStyle}" 
+                        <Button Content="{DynamicResource Btn_Browser}" Tag="🌐" Click="BtnBrowser_Click" Style="{StaticResource NavButtonStyle}" 
                                 Background="#005A9E" Foreground="White"/>
-                        <Button Content="TUTORIAL" Tag="🎓" Click="BtnTutorial_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="INPUT RECORDER" Tag="⏺️" Click="BtnOpenRecorder_Click" Style="{StaticResource NavButtonStyle}"/>
-                        <Button Content="PROMPT TAGS" Tag="🏷️" Click="BtnPromptTags_Click" Style="{StaticResource NavButtonStyle}" Background="#0284C7" Foreground="White"/>
-                        <Button Content="SETTINGS" Tag="⚙️" Click="BtnSettings_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_Tutorial}" Tag="🎓" Click="BtnTutorial_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_InputRecorder}" Tag="⏺️" Click="BtnOpenRecorder_Click" Style="{StaticResource NavButtonStyle}"/>
+                        <Button Content="{DynamicResource Btn_PromptTags}" Tag="🏷️" Click="BtnPromptTags_Click" Style="{StaticResource NavButtonStyle}" Background="#0284C7" Foreground="White"/>
+                        <Button Content="{DynamicResource Btn_Settings}" Tag="⚙️" Click="BtnSettings_Click" Style="{StaticResource NavButtonStyle}"/>
                     </UniformGrid>
                 </Grid>
 

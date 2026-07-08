@@ -10,6 +10,7 @@
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="CanResize"
+        StateChanged="Window_StateChanged"
         xmlns:local="clr-namespace:imgsaver">
 
     <WindowChrome.WindowChrome>
@@ -130,7 +131,7 @@
         </Style>
     </Window.Resources>
 
-    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Background="{StaticResource BackgroundBrush}">
+    <Border x:Name="MainBorder" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Background="{StaticResource BackgroundBrush}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="32"/>

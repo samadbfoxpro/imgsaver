@@ -362,7 +362,7 @@
                         </Button.Template>
                     </Button>
  
-                    <Button x:Name="BtnSEO" Grid.Column="1" Content="SAVE TO DISK"
+                    <Button x:Name="BtnSEO" Grid.Column="1" Content="{DynamicResource Btn_Save_To_Disk}"
                             Click="BtnSEO_Click" Height="34" FontSize="11" FontWeight="Bold"
                             Margin="8,0,0,0" IsEnabled="False"
                             ToolTip="Save to target directory (Ctrl + S)" Cursor="Hand">
@@ -466,7 +466,7 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                        <TextBlock x:Name="txt" Text="LOCK SFX" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                         <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Lock_Sfx}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -485,7 +485,7 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                        <TextBlock x:Name="txt" Text="LOCK TTL" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                         <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Lock_Ttl}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -504,7 +504,7 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                        <TextBlock x:Name="txt" Text="LOCK DSC" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                         <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Lock_Dsc}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -523,7 +523,7 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="bd" Background="#4B0082" CornerRadius="4" BorderBrush="#663399" BorderThickness="1">
-                                        <TextBlock Text="SPI SYNC" FontSize="9" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                         <TextBlock Text="{DynamicResource Lbl_Spi_Sync}" FontSize="9" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -538,7 +538,7 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                        <TextBlock x:Name="txt" Text="AUTO FILL" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                         <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Auto_Fill}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -572,7 +572,7 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="AUTO EX" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Auto_Ex}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                     </ControlTemplate>
                                 </Button.Template>
@@ -582,7 +582,7 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="COPY EX" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Copy_Ex}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
@@ -597,7 +597,7 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="BR PASTE" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Br_Paste}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
@@ -612,7 +612,7 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="MAN EX" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Man_Ex}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
@@ -627,7 +627,7 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="BASE PR" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Base_Pr}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
@@ -646,7 +646,7 @@
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                            <TextBlock x:Name="txt" Text="EXT FL" FontSize="9" FontWeight="Bold" Foreground="#20B2AA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Ext_Fl}" FontSize="9" FontWeight="Bold" Foreground="#20B2AA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">

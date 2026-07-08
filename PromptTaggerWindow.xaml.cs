@@ -19,7 +19,56 @@ namespace imgsaver
         public PromptTaggerWindow()
         {
             InitializeComponent();
+            LanguageManager.ApplyWindowLanguage(this);
+            
+            TouchRightClickHelper.Register(TxtTemplate);
+            TouchRightClickHelper.Register(TxtValues);
+            TouchRightClickHelper.Register(TxtReplacerPrefix);
+            TouchRightClickHelper.Register(TxtReplacerOutput);
+            
+            TouchRightClickHelper.Register(TxtPromptA);
+            TouchRightClickHelper.Register(TxtPromptB);
+            TouchRightClickHelper.Register(TxtDiffPrefix);
+            TouchRightClickHelper.Register(TxtDiffTemplateOutput);
+            TouchRightClickHelper.Register(TxtDiffValuesOutput);
+
+            Loaded += PromptTaggerWindow_Loaded;
+            Closed += PromptTaggerWindow_Closed;
+        }
+
+        private void PromptTaggerWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Restore persistent values from the store
+            TxtTemplate.Text = PromptTaggerStore.Template;
+            TxtValues.Text = PromptTaggerStore.Values;
+            TxtReplacerPrefix.Text = string.IsNullOrEmpty(PromptTaggerStore.Prefix) ? "PH_" : PromptTaggerStore.Prefix;
+            TxtPromptA.Text = PromptTaggerStore.DiffPromptA;
+            TxtPromptB.Text = PromptTaggerStore.DiffPromptB;
+            TxtDiffPrefix.Text = string.IsNullOrEmpty(PromptTaggerStore.DiffPrefix) ? "PH_" : PromptTaggerStore.DiffPrefix;
+            TxtReplacerOutput.Text = PromptTaggerStore.ReplacerOutput;
+            TxtDiffTemplateOutput.Text = PromptTaggerStore.DiffTemplateOutput;
+            TxtDiffValuesOutput.Text = PromptTaggerStore.DiffValuesOutput;
+
             SwitchToTab(true); // Replacer default
+        }
+
+        private void PromptTaggerWindow_Closed(object? sender, EventArgs e)
+        {
+            SaveCurrentState();
+        }
+
+        private void SaveCurrentState()
+        {
+            PromptTaggerStore.Template = TxtTemplate.Text;
+            PromptTaggerStore.Values = TxtValues.Text;
+            PromptTaggerStore.Prefix = TxtReplacerPrefix.Text;
+            PromptTaggerStore.DiffPromptA = TxtPromptA.Text;
+            PromptTaggerStore.DiffPromptB = TxtPromptB.Text;
+            PromptTaggerStore.DiffPrefix = TxtDiffPrefix.Text;
+            PromptTaggerStore.ReplacerOutput = TxtReplacerOutput.Text;
+            PromptTaggerStore.DiffTemplateOutput = TxtDiffTemplateOutput.Text;
+            PromptTaggerStore.DiffValuesOutput = TxtDiffValuesOutput.Text;
+            PromptTaggerStore.Save();
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -66,8 +115,12 @@ namespace imgsaver
         {
             try
             {
-                string template = TxtTemplate.Text;
-                string rawValues = TxtValues.Text;
+                string template = TxtTemplate.Text.Replace("\r", " ").Replace("\n", " ");
+                while (template.Contains("  ")) template = template.Replace("  ", " ");
+                
+                string rawValues = TxtValues.Text.Replace("\r", " ").Replace("\n", " ");
+                while (rawValues.Contains("  ")) rawValues = rawValues.Replace("  ", " ");
+
                 string prefix = TxtReplacerPrefix.Text.Trim();
                 if (string.IsNullOrEmpty(prefix)) prefix = "PH_";
 
@@ -96,6 +149,7 @@ namespace imgsaver
                 });
 
                 TxtReplacerOutput.Text = result;
+                SaveCurrentState();
             }
             catch (Exception ex)
             {
@@ -121,8 +175,11 @@ namespace imgsaver
         {
             try
             {
-                string rawA = TxtPromptA.Text;
-                string rawB = TxtPromptB.Text;
+                string rawA = TxtPromptA.Text.Replace("\r", " ").Replace("\n", " ");
+                while (rawA.Contains("  ")) rawA = rawA.Replace("  ", " ");
+
+                string rawB = TxtPromptB.Text.Replace("\r", " ").Replace("\n", " ");
+                while (rawB.Contains("  ")) rawB = rawB.Replace("  ", " ");
                 string prefix = TxtDiffPrefix.Text.Trim();
                 if (string.IsNullOrEmpty(prefix)) prefix = "PH_";
 
@@ -181,6 +238,7 @@ namespace imgsaver
 
                 TxtDiffTemplateOutput.Text = string.Join(",", resultParts);
                 TxtDiffValuesOutput.Text = string.Join(", ", extractedDiffs);
+                SaveCurrentState();
             }
             catch (Exception ex)
             {
@@ -194,11 +252,53 @@ namespace imgsaver
             TxtValues.Text = TxtDiffValuesOutput.Text;
             TxtReplacerPrefix.Text = TxtDiffPrefix.Text;
 
-            PromptTaggerStore.Template = TxtDiffTemplateOutput.Text;
-            PromptTaggerStore.Values = TxtDiffValuesOutput.Text;
-            PromptTaggerStore.Prefix = TxtDiffPrefix.Text;
+            SaveCurrentState();
 
             SwitchToTab(true); // Switch to Tab 1
+        }
+
+        private void BtnTransferToExtra_Click(object sender, RoutedEventArgs e)
+        {
+            string extractedValues = TxtDiffValuesOutput.Text;
+            
+            // 1. Save template and prefix to the main tagger store
+            PromptTaggerStore.Template = TxtDiffTemplateOutput.Text;
+            PromptTaggerStore.Values = extractedValues;
+            PromptTaggerStore.Prefix = TxtDiffPrefix.Text;
+            PromptTaggerStore.DiffPromptA = TxtPromptA.Text;
+            PromptTaggerStore.DiffPromptB = TxtPromptB.Text;
+            PromptTaggerStore.DiffPrefix = TxtDiffPrefix.Text;
+            
+            // 2. Save manual values specifically for the extra panels
+            PromptTaggerStore.ManualValues = extractedValues;
+            PromptTaggerStore.Save();
+
+            // 3. Dynamically update open panels
+            foreach (Window win in System.Windows.Application.Current.Windows)
+            {
+                if (win is MiniExtraPanel panel)
+                {
+                    panel.TxtTaggerValues.Text = extractedValues;
+                    panel.ChkUseTaggerValues.IsChecked = true; // Auto-activate tagger values mode!
+                }
+                else if (win is FloatingExtraWindow floatWin)
+                {
+                    floatWin.TxtTaggerValues.Text = extractedValues;
+                    floatWin.ChkUseTaggerValues.IsChecked = true; // Auto-activate tagger values mode!
+                }
+            }
+
+            System.Windows.MessageBox.Show("Extracted values successfully sent to Extra panels!", "Prompt Tagger", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void MenuClear_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.MenuItem menuItem && 
+                menuItem.Parent is System.Windows.Controls.ContextMenu contextMenu && 
+                contextMenu.PlacementTarget is System.Windows.Controls.TextBox textBox)
+            {
+                textBox.Text = "";
+            }
         }
     }
 }

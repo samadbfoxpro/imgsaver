@@ -101,6 +101,7 @@ namespace imgsaver
         public MainWindow()
         {
             InitializeComponent();
+            LanguageManager.ApplyWindowLanguage(this);
             LoadSettings();
             this.MaxHeight = SystemParameters.WorkArea.Height;
             VersionManager.Load();
@@ -147,12 +148,14 @@ namespace imgsaver
         {
             if (WindowState == WindowState.Maximized)
             {
+                this.SizeToContent = SizeToContent.Manual;
                 MainBorder.Margin = new Thickness(6);
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.BorderThickness = new Thickness(0);
             }
             else
             {
+                this.SizeToContent = SizeToContent.Height;
                 MainBorder.Margin = new Thickness(20);
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.BorderThickness = new Thickness(1);

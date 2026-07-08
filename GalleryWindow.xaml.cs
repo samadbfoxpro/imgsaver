@@ -961,5 +961,21 @@ namespace imgsaver
             public bool HasPrompt { get; init; }
             public string PromptPath { get; init; } = "";
         }
+
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                MainBorder.Margin = new Thickness(8);
+                MainBorder.CornerRadius = new CornerRadius(0);
+                MainBorder.BorderThickness = new Thickness(0);
+            }
+            else
+            {
+                MainBorder.Margin = new Thickness(0);
+                MainBorder.CornerRadius = new CornerRadius(8);
+                MainBorder.BorderThickness = new Thickness(1);
+            }
+        }
     }
 }

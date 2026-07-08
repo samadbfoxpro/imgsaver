@@ -18,6 +18,12 @@ namespace imgsaver
         public MiniExtraPanel()
         {
             InitializeComponent();
+            LanguageManager.ApplyWindowLanguage(this);
+            
+            TouchRightClickHelper.Register(TxtCustomText);
+            TouchRightClickHelper.Register(TxtCustomTitle);
+            TouchRightClickHelper.Register(TxtTaggerValues);
+
             Loaded += MiniExtraPanel_Loaded;
         }
 
@@ -25,6 +31,12 @@ namespace imgsaver
         {
             try { ExtraManager.Load(); } catch { }
             RefreshExtraList();
+
+            TxtTaggerValues.Text = PromptTaggerStore.ManualValues;
+            if (!string.IsNullOrEmpty(PromptTaggerStore.ManualTitle))
+            {
+                TxtCustomTitle.Text = PromptTaggerStore.ManualTitle;
+            }
         }
 
         // ──────────────────────── List management ────────────────────────
@@ -68,10 +80,33 @@ namespace imgsaver
 
         private void ChkUseCustomText_Changed(object sender, RoutedEventArgs e)
         {
+            if (ChkUseCustomText.IsChecked == true)
+            {
+                ChkUseTaggerValues.IsChecked = false;
+            }
+            UpdateViewMode();
+        }
+
+        private void ChkUseTaggerValues_Changed(object sender, RoutedEventArgs e)
+        {
+            if (ChkUseTaggerValues.IsChecked == true)
+            {
+                ChkUseCustomText.IsChecked = false;
+            }
+            UpdateViewMode();
+        }
+
+        private void UpdateViewMode()
+        {
             bool custom = ChkUseCustomText.IsChecked == true;
-            GridCustomText.Visibility  = custom ? Visibility.Visible : Visibility.Collapsed;
-            BorderExtraList.Visibility = custom ? Visibility.Collapsed : Visibility.Visible;
-            GridSearch.Visibility      = custom ? Visibility.Collapsed : Visibility.Visible;
+            bool tagger = ChkUseTaggerValues.IsChecked == true;
+
+            GridCustomText.Visibility   = custom ? Visibility.Visible : Visibility.Collapsed;
+            GridTaggerValues.Visibility = tagger ? Visibility.Visible : Visibility.Collapsed;
+            
+            bool listMode = !custom && !tagger;
+            BorderExtraList.Visibility  = listMode ? Visibility.Visible : Visibility.Collapsed;
+            GridSearch.Visibility       = listMode ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void ExtraCheck_Changed(object sender, RoutedEventArgs e)
@@ -124,6 +159,55 @@ namespace imgsaver
                 if (string.IsNullOrWhiteSpace(finalText)) { Warn("Enter your custom Extra text first."); return; }
                 string ct = TxtCustomTitle.Text?.Trim() ?? "";
                 finalTitle = string.IsNullOrWhiteSpace(ct) ? "Custom Extra" : ct;
+                PromptTaggerStore.UseManualValuesMode = false;
+                PromptTaggerStore.Save();
+            }
+            else if (ChkUseTaggerValues.IsChecked == true)
+            {
+                string valuesText = TxtTaggerValues.Text?.Trim() ?? "";
+                string ct = TxtCustomTitle.Text?.Trim() ?? "";
+                finalTitle = string.IsNullOrWhiteSpace(ct) ? "Tagger Prompt" : ct;
+
+                // Save values & title & mode to store
+                PromptTaggerStore.ManualValues = valuesText;
+                PromptTaggerStore.ManualTitle = ct;
+                PromptTaggerStore.UseManualValuesMode = true;
+                PromptTaggerStore.Save();
+
+                string template = (PromptTaggerStore.Template ?? "").Replace("\r", " ").Replace("\n", " ");
+                while (template.Contains("  ")) template = template.Replace("  ", " ");
+
+                if (string.IsNullOrWhiteSpace(template))
+                {
+                    Warn("Please define a Template in the Prompt Tagger tab first.");
+                    return;
+                }
+
+                var values = valuesText.Replace("\r", " ").Replace("\n", " ")
+                                       .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                       .Select(v => v.Trim())
+                                       .Where(v => !string.IsNullOrEmpty(v))
+                                       .ToList();
+
+                string prefix = PromptTaggerStore.Prefix ?? "PH_";
+                var tagRegex = new System.Text.RegularExpressions.Regex($@"\[{System.Text.RegularExpressions.Regex.Escape(prefix)}\d+\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                int expectedCount = tagRegex.Matches(template).Count;
+                if (values.Count != expectedCount)
+                {
+                    string warnMsg = LanguageManager.CurrentLanguage == "fa"
+                        ? $"هشدار: تعداد مقادیر وارد شده ({values.Count}) با تعداد جایگاه‌های تگ ({expectedCount}) در قالب فعال مطابقت ندارد.\n\nلطفاً عملیات تگ‌گذار پرامپت را مجدداً اجرا کرده و خروجی جدید را ارسال کنید تا هماهنگ شوند."
+                        : $"Warning: The number of values ({values.Count}) does not match the placeholder count ({expectedCount}) in the active template.\n\nPlease re-run the Prompt Tagger process and send the new text to keep them synchronized.";
+                    
+                    System.Windows.MessageBox.Show(warnMsg, 
+                        LanguageManager.CurrentLanguage == "fa" ? "عدم هماهنگی تگ‌ها" : "Tag Mismatch", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                finalText = template;
+                for (int i = 0; i < values.Count; i++)
+                {
+                    finalText = finalText.Replace($"[{prefix}{i + 1}]", values[i]);
+                }
             }
             else
             {
@@ -135,6 +219,8 @@ namespace imgsaver
                 string com = string.Join(" + ", selected.Select(x => x.ShortName).Where(n => !string.IsNullOrWhiteSpace(n)));
                 finalTitle = string.IsNullOrWhiteSpace(ct) ? com : ct;
                 if (selected.Count == 1) extraId = selected[0].Extra.Id ?? "";
+                PromptTaggerStore.UseManualValuesMode = false;
+                PromptTaggerStore.Save();
             }
 
             if (string.IsNullOrWhiteSpace(finalText)) { Warn("The resulting Extra text is empty."); return; }

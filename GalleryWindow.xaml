@@ -9,6 +9,7 @@
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="CanResize"
+        StateChanged="Window_StateChanged"
         Icon="{x:Null}">
 
     <WindowChrome.WindowChrome>
@@ -18,7 +19,7 @@
                       CornerRadius="8"/>
     </WindowChrome.WindowChrome>
 
-    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Background="{StaticResource BackgroundBrush}">
+    <Border x:Name="MainBorder" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Background="{StaticResource BackgroundBrush}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="32"/>   <!-- Title Bar -->

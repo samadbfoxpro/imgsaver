@@ -43,6 +43,7 @@ namespace imgsaver
         public PersonaInjectorWindow()
         {
             InitializeComponent();
+            LanguageManager.ApplyWindowLanguage(this);
 
             // Set dynamic max height based on screen working area
             this.MaxHeight = SystemParameters.WorkArea.Height;
@@ -1232,6 +1233,22 @@ namespace imgsaver
             _extraView.SortDescriptions.Add(new SortDescription("ShortName", ListSortDirection.Ascending));
             _extraView.Filter = ExtraFilter;
             ExtraList.ItemsSource = _extraView;
+        }
+
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                MainBorder.Margin = new Thickness(8);
+                MainBorder.CornerRadius = new CornerRadius(0);
+                MainBorder.BorderThickness = new Thickness(0);
+            }
+            else
+            {
+                MainBorder.Margin = new Thickness(0);
+                MainBorder.CornerRadius = new CornerRadius(8);
+                MainBorder.BorderThickness = new Thickness(1);
+            }
         }
     }
 }

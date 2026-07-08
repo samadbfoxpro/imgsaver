@@ -80,9 +80,6 @@ namespace imgsaver
             ProxyBridge.Start();
             InitializeComponent();
 
-            this.MaxHeight = SystemParameters.WorkArea.Height + 16;
-            this.MaxWidth = SystemParameters.WorkArea.Width + 16;
-
             InitializeStatusTimer();
             InitializeDownloadService();
             RefreshSettings();
@@ -104,8 +101,21 @@ namespace imgsaver
 
         private void BrowserWindow_StateChanged(object? sender, EventArgs e)
         {
-            if (this.WindowState == WindowState.Maximized) { MainBorder.Margin = new Thickness(8); }
-            else { MainBorder.Margin = new Thickness(0); }
+            if (this.WindowState == WindowState.Maximized) 
+            {
+                var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
+                var currentScreen = System.Windows.Forms.Screen.FromHandle(windowInteropHelper.Handle);
+                
+                this.MaxHeight = currentScreen.WorkingArea.Height + 16;
+                this.MaxWidth = currentScreen.WorkingArea.Width + 16;
+                MainBorder.Margin = new Thickness(8); 
+            }
+            else 
+            {
+                this.MaxHeight = double.PositiveInfinity;
+                this.MaxWidth = double.PositiveInfinity;
+                MainBorder.Margin = new Thickness(0); 
+            }
         }
 
         private void InitializeStatusTimer()

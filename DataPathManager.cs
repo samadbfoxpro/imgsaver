@@ -50,15 +50,16 @@ namespace imgsaver
 
         public static string GetDataSubfolderPath(string folderName)
         {
-            string path = Path.Combine(LocalDataDirectory, folderName);
+            string path = Path.Combine(SharedPromptDataDirectory, folderName);
             if (!Directory.Exists(path)) Directory.CreateDirectory(path);
             return path;
         }
 
         public static string GetLocalDataFilePath(string fileName)
         {
-            if (!Directory.Exists(LocalDataDirectory)) Directory.CreateDirectory(LocalDataDirectory);
-            return Path.Combine(LocalDataDirectory, fileName);
+            string dir = SharedPromptDataDirectory;
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            return Path.Combine(dir, fileName);
         }
 
         public static string GetLegacyRootFilePath(string fileName) => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);

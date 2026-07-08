@@ -48,8 +48,9 @@ namespace imgsaver
         // Auto-Save Settings
         private bool _autoSaveEnabled = false;
         private int _autoSaveThreshold = 1;
-        private bool _autoCaptureExtraTemplate = false;
-        private bool _autoCopyExtraTemplateOutput = false;
+        private bool _autoCaptureExtraTemplate = true;
+        private bool _autoCopyExtraTemplateOutput = true;
+        private bool _autoCopyTagReplacerOutput = true;
         private bool _replacePositivePromptOnClipboardText = true;
         private bool _useTagReplacerForMiniClip = false;
         private string _tagReplacerPrefix = "PH_";
@@ -222,6 +223,12 @@ namespace imgsaver
         public MiniClipboardWindow()
         {
             InitializeComponent();
+            LanguageManager.ApplyWindowLanguage(this);
+            
+            TouchRightClickHelper.Register(TxtTitle);
+            TouchRightClickHelper.Register(TxtAdditionalTitle);
+            TouchRightClickHelper.Register(TxtDescription);
+
             Loaded  += MiniClipboardWindow_Loaded;
             Closed  += MiniClipboardWindow_Closed;
             LocationChanged += (s, e) => RepositionExtraPanel();
@@ -283,11 +290,12 @@ namespace imgsaver
                 // Load Auto-Save Settings
                 if (lines.Length > 4) _autoSaveEnabled = lines[4].Trim().ToLower() == "true";
                 if (lines.Length > 5 && int.TryParse(lines[5].Trim(), out int threshold)) _autoSaveThreshold = threshold;
-                _autoCaptureExtraTemplate = lines.Length > 6 && lines[6].Trim().ToLower() == "true";
-                _autoCopyExtraTemplateOutput = lines.Length > 7 && lines[7].Trim().ToLower() == "true";
+                _autoCaptureExtraTemplate = lines.Length <= 6 || lines[6].Trim().ToLower() == "true";
+                _autoCopyExtraTemplateOutput = lines.Length <= 7 || lines[7].Trim().ToLower() == "true";
                 _replacePositivePromptOnClipboardText = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
                 _useTagReplacerForMiniClip = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
                 _tagReplacerPrefix = lines.Length > 11 ? lines[11].Trim() : "PH_";
+                _autoCopyTagReplacerOutput = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
 
                 if (lines.Length < 4) return;
 
@@ -469,6 +477,7 @@ namespace imgsaver
         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
         {
             ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
+            _miniExtraPanel?.Close();
             _netTimer?.Stop();
             _globalHook?.Dispose();
             if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
@@ -560,9 +569,40 @@ namespace imgsaver
                         return;
                     }
 
-                    if (_autoCaptureExtraTemplate && TrySetMiniExtraTemplate(rawText))
+                    string tagPrefix = _tagReplacerPrefix;
+                    if (string.IsNullOrEmpty(tagPrefix)) tagPrefix = "PH_";
+                    var tagPattern = $@"\[{Regex.Escape(tagPrefix)}\d+\]";
+                    bool isPhTemplate = Regex.IsMatch(rawText, tagPattern, RegexOptions.IgnoreCase);
+                    bool isExtraTemplate = rawText.Contains(MiniExtraPlaceholderTag, StringComparison.OrdinalIgnoreCase);
+
+                    bool shouldCapture = false;
+                    bool shouldAutoCopy = false;
+
+                    if (isPhTemplate)
                     {
-                        if (_autoCopyExtraTemplateOutput)
+                        if (_autoCopyTagReplacerOutput)
+                        {
+                            shouldCapture = true;
+                            shouldAutoCopy = true;
+                            _useTagReplacerForMiniClip = true;
+                        }
+                    }
+                    else if (isExtraTemplate)
+                    {
+                        if (_autoCaptureExtraTemplate)
+                        {
+                            shouldCapture = true;
+                            _useTagReplacerForMiniClip = false;
+                            shouldAutoCopy = _autoCopyExtraTemplateOutput;
+                        }
+                    }
+
+                    if (shouldCapture)
+                    {
+                        _miniExtraTemplate = rawText;
+                        SetMiniExtraButtonState(true);
+
+                        if (shouldAutoCopy)
                             _ = AutoCopyExtraTemplateOutputAsync();
                         return;
                     }
@@ -798,16 +838,21 @@ namespace imgsaver
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
 
-            if (_useTagReplacerForMiniClip)
+            string prefix = _tagReplacerPrefix;
+            if (string.IsNullOrEmpty(prefix)) prefix = "PH_";
+            var tagPattern = $@"\[{Regex.Escape(prefix)}\d+\]";
+            bool hasPhTags = Regex.IsMatch(text, tagPattern, RegexOptions.IgnoreCase);
+            bool hasExtraTag = text.Contains(MiniExtraPlaceholderTag, StringComparison.OrdinalIgnoreCase);
+
+            if (!hasPhTags && !hasExtraTag) return false;
+
+            if (hasPhTags)
             {
-                string prefix = _tagReplacerPrefix;
-                if (string.IsNullOrEmpty(prefix)) prefix = "PH_";
-                var tagPattern = $@"\[{Regex.Escape(prefix)}\d+\]";
-                if (!Regex.IsMatch(text, tagPattern, RegexOptions.IgnoreCase)) return false;
+                _useTagReplacerForMiniClip = true;
             }
             else
             {
-                if (!text.Contains(MiniExtraPlaceholderTag, StringComparison.OrdinalIgnoreCase)) return false;
+                _useTagReplacerForMiniClip = false;
             }
 
             _miniExtraTemplate = text;
@@ -888,14 +933,25 @@ namespace imgsaver
             string extraText = "";
             if (_useTagReplacerForMiniClip)
             {
-                extraText = PromptTaggerStore.Values;
+                if (PromptTaggerStore.UseManualValuesMode)
+                {
+                    extraText = PromptTaggerStore.ManualValues;
+                }
+                else
+                {
+                    TryGetLatestExtraText(out extraText, out errorMessage);
+                }
+
+                // Fallback to general Tagger store values if empty
                 if (string.IsNullOrWhiteSpace(extraText))
                 {
-                    if (!TryGetLatestExtraText(out extraText, out errorMessage))
-                    {
-                        errorMessage = "Prompt Tagger values list is empty. Please enter or compare values in the Prompt Tagger first.";
-                        return false;
-                    }
+                    extraText = PromptTaggerStore.Values;
+                }
+
+                if (string.IsNullOrWhiteSpace(extraText))
+                {
+                    errorMessage = "Prompt Tagger values list is empty. Please enter manual values or select items from the list first.";
+                    return false;
                 }
             }
             else
@@ -959,6 +1015,7 @@ namespace imgsaver
         private void SetClipboardTextIgnoringNextChange(string text)
         {
             _ignoreNextClipboardChange = true;
+            _lastClipboardText = text;
             System.Windows.Clipboard.SetText(text);
         }
 
@@ -1208,7 +1265,7 @@ namespace imgsaver
         /// </summary>
         private void RepositionExtraPanel()
         {
-            if (_miniExtraPanel == null || !_miniExtraPanel.IsVisible) return;
+            if (_miniExtraPanel == null) return;
 
             // Snap: right edge of MiniClip + small gap, aligned to bottom of title bar
             _miniExtraPanel.Left = this.Left + this.ActualWidth - 8;

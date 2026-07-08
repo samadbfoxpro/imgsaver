@@ -15,6 +15,7 @@ namespace imgsaver
         public SettingsWindow()
         {
             InitializeComponent();
+            LanguageManager.ApplyWindowLanguage(this);
             LoadSettings();
         }
 
@@ -22,6 +23,17 @@ namespace imgsaver
         {
             try
             {
+                // Load language selection
+                string currentLang = LanguageManager.CurrentLanguage;
+                CmbLanguage.SelectedIndex = 0; // Default to English
+                foreach (ComboBoxItem item in CmbLanguage.Items)
+                {
+                    if (item.Tag?.ToString() == currentLang)
+                    {
+                        CmbLanguage.SelectedItem = item;
+                        break;
+                    }
+                }
                 DataPathManager.Reload();
                 ChkUseCustomDataFolder.IsChecked = DataPathManager.UseCustomDataFolder;
                 TxtCustomDataFolder.Text = DataPathManager.CustomDataFolder;
@@ -36,12 +48,13 @@ namespace imgsaver
                     if (lines.Length > 3) TxtAutoImportPath.Text = lines[3].Trim();
                     if (lines.Length > 4) ChkAutoSaveEnabled.IsChecked = lines[4].Trim().ToLower() == "true";
                     if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
-                    if (lines.Length > 6) ChkAutoCaptureExtraTemplate.IsChecked = lines[6].Trim().ToLower() == "true";
-                    if (lines.Length > 7) ChkAutoCopyExtraTemplateOutput.IsChecked = lines[7].Trim().ToLower() == "true";
+                    ChkAutoCaptureExtraTemplate.IsChecked = lines.Length <= 6 || lines[6].Trim().ToLower() == "true";
+                    ChkAutoCopyExtraTemplateOutput.IsChecked = lines.Length <= 7 || lines[7].Trim().ToLower() == "true";
                     ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
                     ChkSpiSyncPreserveBasePrompt.IsChecked = lines.Length > 9 && lines[9].Trim().ToLower() == "true";
                     ChkUseTagReplacerForMiniClip.IsChecked = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
                     TxtTagReplacerPrefix.Text = lines.Length > 11 ? lines[11].Trim() : "PH_";
+                    ChkAutoCopyTagReplacerOutput.IsChecked = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
@@ -66,12 +79,23 @@ namespace imgsaver
         {
             try
             {
-                DataPathManager.SaveLocation(ChkUseCustomDataFolder.IsChecked == true, TxtCustomDataFolder.Text.Trim());
+                bool useCustom = ChkUseCustomDataFolder.IsChecked == true;
+                string customFolder = TxtCustomDataFolder.Text.Trim();
+                
+                bool pathChanged = useCustom && (customFolder != DataPathManager.CustomDataFolder || !DataPathManager.UseCustomDataFolder);
 
+                DataPathManager.SaveLocation(useCustom, customFolder);
                 ReloadSharedDataStores();
 
                 string configPath = DataPathManager.GetSettingsFilePath(ConfigFileName);
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
+
+                if (pathChanged && File.Exists(configPath))
+                {
+                    LoadSettings(); // Load the shared settings into the UI
+                    System.Windows.MessageBox.Show("Shared settings detected in the selected folder. Your application has loaded and applied these settings successfully.", "Settings Loaded", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
 
                 string path = TxtSavePath.Text.Trim();
                 string onlyFavs = (ChkRandomOnlyFavorites.IsChecked == true).ToString().ToLower();
@@ -86,8 +110,18 @@ namespace imgsaver
                 string useTagReplacer = (ChkUseTagReplacerForMiniClip.IsChecked == true).ToString().ToLower();
                 string tagReplacerPrefix = TxtTagReplacerPrefix.Text.Trim();
                 if (string.IsNullOrEmpty(tagReplacerPrefix)) tagReplacerPrefix = "PH_";
+                string autoCopyTagReplacerOutput = (ChkAutoCopyTagReplacerOutput.IsChecked == true).ToString().ToLower();
                 string galleryPath = TxtGalleryPath.Text.Trim();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
+
+                string selectedLang = "en";
+                if (CmbLanguage.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag != null)
+                {
+                    selectedLang = selectedItem.Tag.ToString();
+                }
+
+                // Apply language immediately
+                LanguageManager.ApplyLanguage(selectedLang);
 
                 File.WriteAllLines(configPath, new string[] {
                     path,
@@ -101,7 +135,9 @@ namespace imgsaver
                     replacePositivePromptOnClipboardText,
                     spiSyncPreserveBasePrompt,
                     useTagReplacer,
-                    tagReplacerPrefix
+                    tagReplacerPrefix,
+                    selectedLang,
+                    autoCopyTagReplacerOutput
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);
@@ -117,7 +153,6 @@ namespace imgsaver
                 RecordingManager.SequentialMode = ChkSequentialMode.IsChecked == true;
                 RecordingManager.SelectedSlot = CmbDefaultSlot.SelectedIndex + 1;
                 RecordingManager.SaveState();
-
                 // Notify MiniClipboard if open
                 foreach (Window w in System.Windows.Application.Current.Windows)
                 {
