@@ -203,7 +203,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}"
+                    <Border x:Name="BorderNegative" Grid.Column="1" Background="{StaticResource SurfaceBrush}"
                             CornerRadius="6" Padding="6,8" Margin="4,0,0,0"
                             Cursor="Hand" MouseLeftButtonDown="NegativePrompt_MouseLeftButtonDown"
                             ToolTip="Negative Prompt (Click to clear)">
@@ -567,7 +567,7 @@
                             </Style>
                         </Grid.Style>
 
-                        <UniformGrid Columns="3" Rows="2">
+                        <UniformGrid Columns="3" Rows="3">
                             <Button x:Name="BtnAutoExtraCopyStatus" Height="28" Margin="2" Cursor="Arrow" IsHitTestVisible="False" ToolTip="Auto Copy EX status">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -647,6 +647,21 @@
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
                                              <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Ext_Fl}" FontSize="9" FontWeight="Bold" Foreground="#20B2AA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnToggleNegativePanel" Click="BtnToggleNegativePanel_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Open Negative Presets Panel">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Neg_Fl}" FontSize="9" FontWeight="Bold" Foreground="#FF6B6B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">

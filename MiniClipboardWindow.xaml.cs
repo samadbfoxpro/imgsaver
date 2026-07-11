@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -207,6 +208,88 @@ namespace imgsaver
         private List<CapturedImageInfo> _capturedImages = new List<CapturedImageInfo>();
         private string _positivePrompt = "";
         private string _negativePrompt = "";
+        public string NegativePrompt
+        {
+            get => _negativePrompt;
+            set
+            {
+                _negativePrompt = value;
+                if (BorderNegative != null)
+                {
+                    BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
+                }
+                SaveNegativePromptState();
+                _miniNegativePanel?.UpdateActiveText();
+            }
+        }
+
+        private string GetTruncatedTooltipText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "Negative Prompt (Click to clear)";
+            string cleanText = Regex.Replace(text.Replace('\r', ' ').Replace('\n', ' '), @"\s+", " ").Trim();
+            var words = cleanText.Split(' ');
+            if (words.Length <= 5) return cleanText;
+            return string.Join(" ", words.Take(5)) + "...";
+        }
+
+        private string NegativePromptStatePath => DataPathManager.GetSettingsFilePath("negative_prompt_state.json");
+
+        private void SaveNegativePromptState()
+        {
+            try
+            {
+                var data = new NegativePromptState
+                {
+                    NegativePrompt = _negativePrompt,
+                    IsNegativeLocked = IsNegativeLocked
+                };
+                string path = NegativePromptStatePath;
+                string dir = Path.GetDirectoryName(path) ?? "";
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(path, json);
+            }
+            catch { }
+        }
+
+        private void LoadNegativePromptState()
+        {
+            try
+            {
+                string path = NegativePromptStatePath;
+                if (File.Exists(path))
+                {
+                    string json = File.ReadAllText(path);
+                    var data = JsonSerializer.Deserialize<NegativePromptState>(json);
+                    if (data != null)
+                    {
+                        _negativePrompt = data.NegativePrompt ?? "";
+                        if (BorderNegative != null)
+                        {
+                            BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
+                        }
+                        IsNegativeLocked = data.IsNegativeLocked;
+                        if (!string.IsNullOrEmpty(_negativePrompt))
+                        {
+                            _hasNegativePrompt = true;
+                            TxtNegativeCheck.Text = "✓";
+                            TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
+                        }
+                        UpdateState();
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private class NegativePromptState
+        {
+            public string? NegativePrompt { get; set; }
+            public bool IsNegativeLocked { get; set; }
+        }
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetClipboardViewer(IntPtr hWndNewViewer);
@@ -231,8 +314,8 @@ namespace imgsaver
 
             Loaded  += MiniClipboardWindow_Loaded;
             Closed  += MiniClipboardWindow_Closed;
-            LocationChanged += (s, e) => RepositionExtraPanel();
-            SizeChanged     += (s, e) => RepositionExtraPanel();
+            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); };
+            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); };
 
             if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
             {
@@ -269,6 +352,7 @@ namespace imgsaver
 
             StartNetMonitoring();
             RefreshAutoImport();
+            LoadNegativePromptState();
         }
 
         public void RefreshAutoImport()
@@ -478,6 +562,7 @@ namespace imgsaver
         {
             ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
             _miniExtraPanel?.Close();
+            _miniNegativePanel?.Close();
             _netTimer?.Stop();
             _globalHook?.Dispose();
             if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
@@ -626,6 +711,7 @@ namespace imgsaver
                     {
                         int englishLetterCount = Regex.Matches(rawText, "[A-Za-z]").Count;
                         if (englishLetterCount > 0 && englishLetterCount < 5) return;
+                        if (Regex.IsMatch(text.Trim(), @"^\d{4,}")) return;
                         if (text == _positivePrompt || text == _negativePrompt) return;
                         if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt) return;
 
@@ -636,13 +722,13 @@ namespace imgsaver
                         }
                         else if (!_hasNegativePrompt && !IsNegativeLocked)
                         {
-                            _negativePrompt = text; _hasNegativePrompt = true;
+                            NegativePrompt = text; _hasNegativePrompt = true;
                             TxtNegativeCheck.Text = "✓"; TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
                             IsNegativeLocked = true; // Auto-lock after receiving
                         }
                         else if (!IsNegativeLocked)
                         {
-                            _positivePrompt = _negativePrompt; _negativePrompt = text;
+                            _positivePrompt = _negativePrompt; NegativePrompt = text;
                             TxtPositiveCheck.Text = "✓"; TxtNegativeCheck.Text = "✓";
                             IsNegativeLocked = true; // Auto-lock after receiving
                         }
@@ -731,7 +817,7 @@ namespace imgsaver
         private void NegativePrompt_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (IsNegativeLocked) return;
-            _hasNegativePrompt = false; _negativePrompt = ""; TxtNegativeCheck.Text = "○";
+            _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○";
             TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
             UpdateState();
         }
@@ -816,7 +902,7 @@ namespace imgsaver
         private void ResetState()
         {
             _hasImage = false; _hasPositivePrompt = false; _capturedImages.Clear(); _positivePrompt = "";
-            if (!IsNegativeLocked) { _hasNegativePrompt = false; _negativePrompt = ""; TxtNegativeCheck.Text = "○"; TxtNegativeCheck.Foreground = System.Windows.Media.Brushes.Gray; }
+            if (!IsNegativeLocked) { _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○"; TxtNegativeCheck.Foreground = System.Windows.Media.Brushes.Gray; }
             UpdateImagePreviews();
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
             if (!IsTitleLocked) TxtTitle.Text = "";
@@ -827,7 +913,11 @@ namespace imgsaver
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 1) DragMove(); }
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
-        private void BtnLockNegative_Click(object sender, RoutedEventArgs e) => IsNegativeLocked = !IsNegativeLocked;
+        private void BtnLockNegative_Click(object sender, RoutedEventArgs e)
+        {
+            IsNegativeLocked = !IsNegativeLocked;
+            SaveNegativePromptState();
+        }
         private void BtnLockAdditionalTitle_Click(object sender, RoutedEventArgs e) => IsAdditionalTitleLocked = !IsAdditionalTitleLocked;
         private void BtnLockTitle_Click(object sender, RoutedEventArgs e) => IsTitleLocked = !IsTitleLocked;
         private void BtnToggleMenu_Click(object sender, RoutedEventArgs e) => IsExtraMenuOpen = !IsExtraMenuOpen;
@@ -1270,6 +1360,40 @@ namespace imgsaver
             // Snap: right edge of MiniClip + small gap, aligned to bottom of title bar
             _miniExtraPanel.Left = this.Left + this.ActualWidth - 8;
             _miniExtraPanel.Top  = this.Top  + 22; // just below the title bar
+        }
+
+        // ─── Mini Negative Presets Panel (attached to left side) ─────────
+
+        private MiniNegativePanel? _miniNegativePanel;
+
+        private void BtnToggleNegativePanel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_miniNegativePanel != null && _miniNegativePanel.IsVisible)
+            {
+                _miniNegativePanel.Hide();
+                return;
+            }
+
+            if (_miniNegativePanel == null || !_miniNegativePanel.IsLoaded)
+            {
+                _miniNegativePanel = new MiniNegativePanel(this);
+                _miniNegativePanel.Closed += (s, ev) => _miniNegativePanel = null;
+            }
+
+            RepositionNegativePanel();
+            _miniNegativePanel.Show();
+            _miniNegativePanel.Activate();
+        }
+
+        private void RepositionNegativePanel()
+        {
+            if (_miniNegativePanel == null) return;
+
+            // Snap: left edge of MiniClip - negative panel width + 8, aligned to top + 22
+            double panelWidth = _miniNegativePanel.Width;
+            if (double.IsNaN(panelWidth) || panelWidth == 0) panelWidth = 230;
+            _miniNegativePanel.Left = this.Left - panelWidth + 8;
+            _miniNegativePanel.Top  = this.Top  + 22;
         }
     }
 }

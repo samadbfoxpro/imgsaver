@@ -16,27 +16,25 @@ namespace imgsaver
             string lang = LanguageManager.LoadLanguageFromConfig();
             LanguageManager.ApplyLanguage(lang);
 
-            // Register a global handler for all TextBoxes to select all text on double-click
-            // Using fully qualified names to resolve ambiguity with System.Windows.Forms
+            // Register a global handler for all TextBoxes to select one word on double-click (WPF default)
+            // and select all text on triple-click.
             EventManager.RegisterClassHandler(typeof(System.Windows.Controls.TextBox),
-                System.Windows.Controls.Control.PreviewMouseDoubleClickEvent,
-                new RoutedEventHandler(TextBox_PreviewMouseDoubleClick));
+                System.Windows.Controls.Control.PreviewMouseLeftButtonDownEvent,
+                new System.Windows.Input.MouseButtonEventHandler(TextBox_PreviewMouseLeftButtonDown));
 
             BrowserRecordingFloatingWindowManager.SyncWithSettings(BrowserSettings.Load());
         }
 
-        private void TextBox_PreviewMouseDoubleClick(object sender, RoutedEventArgs e)
+        private void TextBox_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (sender is System.Windows.Controls.TextBox textBox)
             {
-                textBox.SelectAll();
-                e.Handled = true; // Prevent the default word-selection behavior
+                if (e.ClickCount == 3)
+                {
+                    textBox.SelectAll();
+                    e.Handled = true;
+                }
             }
-        }
-
-        protected override void OnExit(ExitEventArgs e)
-        {
-            base.OnExit(e);
         }
     }
 }

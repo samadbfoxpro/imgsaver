@@ -65,6 +65,7 @@
     <sys:String x:Key="Lbl_Man_Ex">MAN EX</sys:String>
     <sys:String x:Key="Lbl_Base_Pr">BASE PR</sys:String>
     <sys:String x:Key="Lbl_Ext_Fl">EXT FL</sys:String>
+    <sys:String x:Key="Lbl_Neg_Fl">NEG LST</sys:String>
     <sys:String x:Key="Lbl_Spi_Sync">SPI SYNC</sys:String>
     <sys:String x:Key="Lbl_Auto_Fill">AUTO FILL</sys:String>
     <sys:String x:Key="Btn_Save_To_Disk">ذخیره در دیسک</sys:String>
