@@ -55,6 +55,47 @@ namespace imgsaver
         private bool _replacePositivePromptOnClipboardText = true;
         private bool _useTagReplacerForMiniClip = false;
         private string _tagReplacerPrefix = "PH_";
+        private bool _autoSaveDelayEnabled = false;
+        private int _autoSaveDelaySeconds = 10;
+        private DispatcherTimer? _autoSaveCountdownTimer;
+        private int _autoSaveRemainingSeconds = 0;
+
+        public bool IsAutoSaveEnabled
+        {
+            get => _autoSaveEnabled;
+            set { _autoSaveEnabled = value; SaveConfigSettings(); }
+        }
+        public int AutoSaveThreshold
+        {
+            get => _autoSaveThreshold;
+            set { _autoSaveThreshold = value; SaveConfigSettings(); }
+        }
+        public bool IsAutoSaveDelayEnabled
+        {
+            get => _autoSaveDelayEnabled;
+            set { _autoSaveDelayEnabled = value; SaveConfigSettings(); }
+        }
+        public int AutoSaveDelaySeconds
+        {
+            get => _autoSaveDelaySeconds;
+            set { _autoSaveDelaySeconds = value; SaveConfigSettings(); }
+        }
+
+        public void SaveConfigSettings()
+        {
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath("config.txt");
+                if (!File.Exists(configPath)) return;
+                string[] lines = File.ReadAllLines(configPath);
+                if (lines.Length > 4) lines[4] = _autoSaveEnabled.ToString().ToLower();
+                if (lines.Length > 5) lines[5] = _autoSaveThreshold.ToString();
+                if (lines.Length > 14) lines[14] = _autoSaveDelayEnabled.ToString().ToLower();
+                if (lines.Length > 15) lines[15] = _autoSaveDelaySeconds.ToString();
+                File.WriteAllLines(configPath, lines);
+            }
+            catch { }
+        }
 
         private DispatcherTimer _netTimer;
         private long _lastBytesReceived = 0;
@@ -82,12 +123,30 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsNegativeLockedProperty =
-            DependencyProperty.Register("IsNegativeLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsNegativeLocked", typeof(bool), typeof(MiniClipboardWindow), 
+                new PropertyMetadata(false, OnIsNegativeLockedChanged));
+
+        private static void OnIsNegativeLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is MiniClipboardWindow window)
+            {
+                window.SaveNegativePromptState();
+            }
+        }
 
         public bool IsNegativeLocked
         {
             get { return (bool)GetValue(IsNegativeLockedProperty); }
             set { SetValue(IsNegativeLockedProperty, value); }
+        }
+
+        public static readonly DependencyProperty IsDescriptionVisibleProperty =
+            DependencyProperty.Register("IsDescriptionVisible", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+
+        public bool IsDescriptionVisible
+        {
+            get { return (bool)GetValue(IsDescriptionVisibleProperty); }
+            set { SetValue(IsDescriptionVisibleProperty, value); }
         }
 
         public static readonly DependencyProperty IsAdditionalTitleLockedProperty =
@@ -214,12 +273,29 @@ namespace imgsaver
             set
             {
                 _negativePrompt = value;
+                _hasNegativePrompt = !string.IsNullOrEmpty(_negativePrompt);
                 if (BorderNegative != null)
                 {
                     BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
                 }
+
+                if (TxtNegativeCheck != null)
+                {
+                    if (_hasNegativePrompt)
+                    {
+                        TxtNegativeCheck.Text = "✓";
+                        TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
+                    }
+                    else
+                    {
+                        TxtNegativeCheck.Text = "○";
+                        TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
+                    }
+                }
+
                 SaveNegativePromptState();
                 _miniNegativePanel?.UpdateActiveText();
+                UpdateState();
             }
         }
 
@@ -314,8 +390,8 @@ namespace imgsaver
 
             Loaded  += MiniClipboardWindow_Loaded;
             Closed  += MiniClipboardWindow_Closed;
-            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); };
-            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); };
+            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
+            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
 
             if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
             {
@@ -380,6 +456,8 @@ namespace imgsaver
                 _useTagReplacerForMiniClip = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
                 _tagReplacerPrefix = lines.Length > 11 ? lines[11].Trim() : "PH_";
                 _autoCopyTagReplacerOutput = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
+                _autoSaveDelayEnabled = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
+                if (lines.Length > 15 && int.TryParse(lines[15].Trim(), out int delaySec)) _autoSaveDelaySeconds = delaySec;
 
                 if (lines.Length < 4) return;
 
@@ -563,6 +641,7 @@ namespace imgsaver
             ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
             _miniExtraPanel?.Close();
             _miniNegativePanel?.Close();
+            _miniAutoSavePanel?.Close();
             _netTimer?.Stop();
             _globalHook?.Dispose();
             if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
@@ -760,7 +839,14 @@ namespace imgsaver
                 _hasNegativePrompt &&
                 !string.IsNullOrWhiteSpace(TxtTitle.Text))
             {
-                SaveDirectly();
+                if (_autoSaveDelayEnabled && _autoSaveDelaySeconds > 0)
+                {
+                    StartAutoSaveCountdown();
+                }
+                else
+                {
+                    SaveDirectly();
+                }
             }
         }
 
@@ -822,8 +908,57 @@ namespace imgsaver
             UpdateState();
         }
 
+        private void StartAutoSaveCountdown()
+        {
+            if (_autoSaveCountdownTimer != null)
+            {
+                _autoSaveCountdownTimer.Stop();
+            }
+            else
+            {
+                _autoSaveCountdownTimer = new DispatcherTimer();
+                _autoSaveCountdownTimer.Interval = TimeSpan.FromSeconds(1);
+                _autoSaveCountdownTimer.Tick += AutoSaveCountdownTimer_Tick;
+            }
+
+            _autoSaveRemainingSeconds = _autoSaveDelaySeconds;
+            _autoSaveCountdownTimer.Start();
+            UpdateButtonCountdownText();
+        }
+
+        private void AutoSaveCountdownTimer_Tick(object? sender, EventArgs e)
+        {
+            _autoSaveRemainingSeconds--;
+            if (_autoSaveRemainingSeconds <= 0)
+            {
+                ResetCountdownButtonText();
+                SaveDirectly();
+            }
+            else
+            {
+                UpdateButtonCountdownText();
+            }
+        }
+
+        private void UpdateButtonCountdownText()
+        {
+            string baseText = FindResource("Btn_Save_To_Disk") as string ?? "SAVE TO DISK";
+            BtnSEO.Content = $"{baseText} ({_autoSaveRemainingSeconds}s)";
+        }
+
+        private void ResetCountdownButtonText()
+        {
+            if (_autoSaveCountdownTimer != null)
+            {
+                _autoSaveCountdownTimer.Stop();
+                _autoSaveCountdownTimer = null;
+            }
+            BtnSEO.SetResourceReference(System.Windows.Controls.Button.ContentProperty, "Btn_Save_To_Disk");
+        }
+
         private void SaveDirectly()
         {
+            ResetCountdownButtonText();
             if (_isSaving) return;
             string savePath = "";
             foreach (Window w in System.Windows.Application.Current.Windows) if (w is MainWindow mw) savePath = mw.SavePath;
@@ -901,6 +1036,7 @@ namespace imgsaver
 
         private void ResetState()
         {
+            ResetCountdownButtonText();
             _hasImage = false; _hasPositivePrompt = false; _capturedImages.Clear(); _positivePrompt = "";
             if (!IsNegativeLocked) { _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○"; TxtNegativeCheck.Foreground = System.Windows.Media.Brushes.Gray; }
             UpdateImagePreviews();
@@ -924,6 +1060,7 @@ namespace imgsaver
         private void BtnLockDescription_Click(object sender, RoutedEventArgs e) => IsDescriptionLocked = !IsDescriptionLocked;
         private void BtnExtraMenuPageOne_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 0;
         private void BtnExtraMenuPageTwo_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 1;
+        private void BtnExtraMenuPageThree_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 2;
         private bool TrySetMiniExtraTemplate(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
@@ -1338,6 +1475,9 @@ namespace imgsaver
                 return;
             }
 
+            _miniNegativePanel?.Hide();
+            _miniAutoSavePanel?.Hide();
+
             if (_miniExtraPanel == null || !_miniExtraPanel.IsLoaded)
             {
                 _miniExtraPanel = new MiniExtraPanel();
@@ -1349,18 +1489,7 @@ namespace imgsaver
             _miniExtraPanel.Activate();
         }
 
-        /// <summary>
-        /// Keeps the compact panel snapped to the bottom-right of MiniClipboard.
-        /// The panel top-left starts at MiniClipboard's (right+4, bottom-overlap so it peeks out under).
-        /// </summary>
-        private void RepositionExtraPanel()
-        {
-            if (_miniExtraPanel == null) return;
-
-            // Snap: right edge of MiniClip + small gap, aligned to bottom of title bar
-            _miniExtraPanel.Left = this.Left + this.ActualWidth - 8;
-            _miniExtraPanel.Top  = this.Top  + 22; // just below the title bar
-        }
+        private void RepositionExtraPanel() => RepositionAttachedPanel(_miniExtraPanel);
 
         // ─── Mini Negative Presets Panel (attached to left side) ─────────
 
@@ -1374,6 +1503,9 @@ namespace imgsaver
                 return;
             }
 
+            _miniExtraPanel?.Hide();
+            _miniAutoSavePanel?.Hide();
+
             if (_miniNegativePanel == null || !_miniNegativePanel.IsLoaded)
             {
                 _miniNegativePanel = new MiniNegativePanel(this);
@@ -1385,15 +1517,43 @@ namespace imgsaver
             _miniNegativePanel.Activate();
         }
 
-        private void RepositionNegativePanel()
+        private void BtnToggleDescriptionVisibility_Click(object sender, RoutedEventArgs e)
         {
-            if (_miniNegativePanel == null) return;
+            IsDescriptionVisible = !IsDescriptionVisible;
+        }
 
-            // Snap: left edge of MiniClip - negative panel width + 8, aligned to top + 22
-            double panelWidth = _miniNegativePanel.Width;
-            if (double.IsNaN(panelWidth) || panelWidth == 0) panelWidth = 230;
-            _miniNegativePanel.Left = this.Left - panelWidth + 8;
-            _miniNegativePanel.Top  = this.Top  + 22;
+        private MiniAutoSavePanel? _miniAutoSavePanel;
+
+        private void BtnToggleAutoSavePanel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_miniAutoSavePanel != null && _miniAutoSavePanel.IsVisible)
+            {
+                _miniAutoSavePanel.Hide();
+                return;
+            }
+
+            _miniExtraPanel?.Hide();
+            _miniNegativePanel?.Hide();
+
+            if (_miniAutoSavePanel == null || !_miniAutoSavePanel.IsLoaded)
+            {
+                _miniAutoSavePanel = new MiniAutoSavePanel(this);
+                _miniAutoSavePanel.Closed += (s, ev) => _miniAutoSavePanel = null;
+            }
+
+            RepositionAutoSavePanel();
+            _miniAutoSavePanel.Show();
+            _miniAutoSavePanel.Activate();
+        }
+
+        private void RepositionAutoSavePanel() => RepositionAttachedPanel(_miniAutoSavePanel);
+        private void RepositionNegativePanel() => RepositionAttachedPanel(_miniNegativePanel);
+
+        private void RepositionAttachedPanel(Window? panel)
+        {
+            if (panel == null) return;
+            panel.Left = this.Left + this.ActualWidth + 4;
+            panel.Top = this.Top;
         }
     }
 }

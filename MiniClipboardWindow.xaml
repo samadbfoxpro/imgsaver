@@ -296,7 +296,11 @@
                 <Grid Grid.Row="4" Margin="0,8,0,0">
                     <Grid.Style>
                         <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDescriptionVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsCompactMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
@@ -567,7 +571,7 @@
                             </Style>
                         </Grid.Style>
 
-                        <UniformGrid Columns="3" Rows="3">
+                        <UniformGrid Columns="3" Rows="2">
                             <Button x:Name="BtnAutoExtraCopyStatus" Height="28" Margin="2" Cursor="Arrow" IsHitTestVisible="False" ToolTip="Auto Copy EX status">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -593,21 +597,6 @@
                                 </Button.Template>
                             </Button>
 
-                            <Button x:Name="BtnBrowserQuickPaste" Click="BtnBrowserQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Browser-only Ctrl trigger: Ctrl+A, then Ctrl+V">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Br_Paste}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-
                             <Button x:Name="BtnManualExtraCopy" Click="BtnManualExtraCopy_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Manual EX from current clipboard">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -618,25 +607,6 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
                                             </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-
-                            <Button x:Name="BtnSaveBasePrompt" Click="BtnSaveBasePrompt_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Save as Base Prompt">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Base_Pr}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
-                                            </Trigger>
-                                            <DataTrigger Binding="{Binding IsSaveBasePromptEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                                                <Setter TargetName="txt" Property="Foreground" Value="#89D185"/>
-                                                <Setter TargetName="bd" Property="BorderBrush" Value="#89D185"/>
-                                            </DataTrigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>
@@ -667,6 +637,89 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
                                             </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnToggleAutoSavePanel" Click="BtnToggleAutoSavePanel_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Open Auto-Save Panel">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Auto_Sv}" FontSize="9" FontWeight="Bold" Foreground="#FFD21F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </UniformGrid>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <UniformGrid Columns="3" Rows="1">
+                            <Button x:Name="BtnBrowserQuickPaste" Click="BtnBrowserQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Browser-only Ctrl trigger: Ctrl+A, then Ctrl+V">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Br_Paste}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnSaveBasePrompt" Click="BtnSaveBasePrompt_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Save as Base Prompt">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Base_Pr}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsSaveBasePromptEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter TargetName="txt" Property="Foreground" Value="#89D185"/>
+                                                <Setter TargetName="bd" Property="BorderBrush" Value="#89D185"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnToggleDescriptionVisibility" Click="BtnToggleDescriptionVisibility_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Toggle Notes / Description Row Visibility">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Toggle_Dsc}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsDescriptionVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter TargetName="txt" Property="Foreground" Value="#00FFFF"/>
+                                                <Setter TargetName="bd" Property="BorderBrush" Value="#00FFFF"/>
+                                            </DataTrigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>
@@ -708,6 +761,27 @@
                                             <Setter TargetName="dot" Property="Fill" Value="#AAAAAA"/>
                                         </Trigger>
                                         <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+                                            <Setter TargetName="dot" Property="Width" Value="10"/>
+                                            <Setter TargetName="dot" Property="Height" Value="10"/>
+                                            <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- Touch friendly page 3 dot -->
+                        <Button Click="BtnExtraMenuPageThree_Click" Width="26" Height="26" Margin="4,0" Cursor="Hand" ToolTip="Page 3" Background="Transparent" BorderThickness="0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Grid Background="Transparent">
+                                        <Ellipse x:Name="dot" Width="8" Height="8" Fill="#555555" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="dot" Property="Fill" Value="#AAAAAA"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
                                             <Setter TargetName="dot" Property="Width" Value="10"/>
                                             <Setter TargetName="dot" Property="Height" Value="10"/>
                                             <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>

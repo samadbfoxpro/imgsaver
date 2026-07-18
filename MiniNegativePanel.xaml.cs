@@ -117,11 +117,6 @@ namespace imgsaver
                 {
                     _parent.NegativePrompt = preset.Content;
                     _parent.IsNegativeLocked = true;
-                    // Trigger UI checkmark update
-                    _parent.TxtNegativeCheck.Text = "✓";
-                    _parent.TxtNegativeCheck.Foreground = new System.Windows.Media.SolidColorBrush(
-                        (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
-                    
                     UpdateActiveText();
                 }
             }

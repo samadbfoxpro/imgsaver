@@ -59,7 +59,9 @@
     <sys:String x:Key="Lbl_Lock_Sfx">LOCK SFX</sys:String>
     <sys:String x:Key="Lbl_Lock_Ttl">LOCK TTL</sys:String>
     <sys:String x:Key="Lbl_Lock_Dsc">LOCK DSC</sys:String>
+    <sys:String x:Key="Lbl_Toggle_Dsc">NOTES</sys:String>
     <sys:String x:Key="Lbl_Auto_Ex">AUTO EX</sys:String>
+    <sys:String x:Key="Lbl_Auto_Sv">AUTO SV</sys:String>
     <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>
     <sys:String x:Key="Lbl_Br_Paste">BR PASTE</sys:String>
     <sys:String x:Key="Lbl_Man_Ex">MAN EX</sys:String>
@@ -73,6 +75,8 @@
     <sys:String x:Key="Lbl_Title">Title:</sys:String>
     <sys:String x:Key="Btn_Confirm_Extra">✔ Confirm Extra</sys:String>
     <sys:String x:Key="Btn_Save_To_List">💾 Save to List</sys:String>
+    <sys:String x:Key="Chk_Autosave_Delay">Delay Auto-Save</sys:String>
+    <sys:String x:Key="Lbl_Delay_Sec">Delay (sec):</sys:String>
 
     <!-- PromptTaggerWindow -->
     <sys:String x:Key="Lbl_PromptTagger_Title">Prompt Tagger &amp; Diff</sys:String>

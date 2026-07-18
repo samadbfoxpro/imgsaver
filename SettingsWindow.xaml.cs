@@ -55,6 +55,8 @@ namespace imgsaver
                     ChkUseTagReplacerForMiniClip.IsChecked = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
                     TxtTagReplacerPrefix.Text = lines.Length > 11 ? lines[11].Trim() : "PH_";
                     ChkAutoCopyTagReplacerOutput.IsChecked = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
+                    ChkAutoSaveDelay.IsChecked = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
+                    TxtAutoSaveDelaySeconds.Text = lines.Length > 15 ? lines[15].Trim() : "10";
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
@@ -111,6 +113,9 @@ namespace imgsaver
                 string tagReplacerPrefix = TxtTagReplacerPrefix.Text.Trim();
                 if (string.IsNullOrEmpty(tagReplacerPrefix)) tagReplacerPrefix = "PH_";
                 string autoCopyTagReplacerOutput = (ChkAutoCopyTagReplacerOutput.IsChecked == true).ToString().ToLower();
+                string autoSaveDelayEnabled = (ChkAutoSaveDelay.IsChecked == true).ToString().ToLower();
+                string autoSaveDelaySeconds = TxtAutoSaveDelaySeconds.Text.Trim();
+                if (string.IsNullOrEmpty(autoSaveDelaySeconds)) autoSaveDelaySeconds = "10";
                 string galleryPath = TxtGalleryPath.Text.Trim();
                 if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
 
@@ -137,7 +142,9 @@ namespace imgsaver
                     useTagReplacer,
                     tagReplacerPrefix,
                     selectedLang,
-                    autoCopyTagReplacerOutput
+                    autoCopyTagReplacerOutput,
+                    autoSaveDelayEnabled,
+                    autoSaveDelaySeconds
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);

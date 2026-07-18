@@ -1,0 +1,66 @@
+<Window x:Class="imgsaver.MiniAutoSavePanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Auto-Save Settings"
+        Width="230"
+        SizeToContent="Height"
+        Background="Transparent"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        Topmost="True"
+        ShowInTaskbar="False">
+
+    <Border CornerRadius="10"
+            BorderThickness="1"
+            BorderBrush="{StaticResource BorderBrush}"
+            Background="{StaticResource BackgroundBrush}"
+            Opacity="0.98">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.45" Color="#000000"/>
+        </Border.Effect>
+
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- Title Row -->
+                <RowDefinition Height="Auto"/>  <!-- Main Controls Row -->
+            </Grid.RowDefinitions>
+
+            <!-- Title -->
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <TextBlock Text="{DynamicResource Lbl_MiniClip_Autosave}" FontWeight="Bold" FontSize="11" Foreground="#FFD21F" VerticalAlignment="Center"/>
+                <Button Content="✕" HorizontalAlignment="Right" Click="BtnClose_Click" Width="18" Height="18" 
+                        Background="Transparent" BorderThickness="0" Foreground="#556677" Cursor="Hand" FontSize="9"/>
+            </Grid>
+
+            <!-- Controls -->
+            <StackPanel Grid.Row="1">
+                <!-- Enable Auto-Save -->
+                <CheckBox x:Name="ChkEnabled" Content="{DynamicResource Chk_Autosave_Enabled}" 
+                          Foreground="#CCDFF0" Margin="0,0,0,8" VerticalContentAlignment="Center" FontSize="10" Checked="SettingChanged" Unchecked="SettingChanged"/>
+
+                <!-- Threshold (Collect before save) -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <TextBlock Text="{DynamicResource Lbl_Collect_Before_Save}" FontSize="9.5" Foreground="#8899A9" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="TxtThreshold" Width="40" Height="22" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                             FontSize="10" Padding="2,0" Background="#252E3E" Foreground="#CCDFF0" BorderBrush="#2A3A4A" BorderThickness="1"
+                             TextChanged="SettingChanged"/>
+                </StackPanel>
+
+                <Border Height="1" Background="#2A3A4A" Opacity="0.3" Margin="0,0,0,10"/>
+
+                <!-- Enable Delay -->
+                <CheckBox x:Name="ChkDelay" Content="{DynamicResource Chk_Autosave_Delay}" 
+                          Foreground="#CCDFF0" Margin="0,0,0,8" VerticalContentAlignment="Center" FontSize="10" Checked="SettingChanged" Unchecked="SettingChanged"/>
+
+                <!-- Delay seconds -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="{DynamicResource Lbl_Delay_Sec}" FontSize="9.5" Foreground="#8899A9" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="TxtDelaySeconds" Width="40" Height="22" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
+                             FontSize="10" Padding="2,0" Background="#252E3E" Foreground="#CCDFF0" BorderBrush="#2A3A4A" BorderThickness="1"
+                             TextChanged="SettingChanged"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

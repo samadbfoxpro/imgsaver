@@ -375,8 +375,8 @@ namespace imgsaver
                     if (!window.imgsaver_miniClipImageButtonsHooked) {
                         const MIN_IMAGE_SIZE = 360;
                         const MIN_VISIBLE_SIZE = 80;
-                        const BUTTON_WIDTH = 92;
-                        const BUTTON_HEIGHT = 38;
+                        const BUTTON_WIDTH = 32;
+                        const BUTTON_HEIGHT = 32;
                         // img -> { btn, onEnter, onLeave }
                         const buttons = window.imgsaver_miniClipButtonsMap = new Map();
                         let hideTimer = null;
@@ -391,7 +391,7 @@ namespace imgsaver
                             } catch (e) { return false; }
                         };
 
-                        const importIconSvg = '<svg width=""15"" height=""15"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"" style=""flex:none""><path d=""M12 3v10.5"" stroke=""currentColor"" stroke-width=""2"" stroke-linecap=""round""/><path d=""M7.5 10.5 12 15l4.5-4.5"" stroke=""currentColor"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round""/><path d=""M4.5 17.5v1.8c0 .94.76 1.7 1.7 1.7h11.6c.94 0 1.7-.76 1.7-1.7v-1.8"" stroke=""currentColor"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round""/></svg>';
+                        const importIconSvg = '<svg width=""16"" height=""16"" viewBox=""0 0 24 24"" fill=""none"" xmlns=""http://www.w3.org/2000/svg"" style=""flex:none""><path d=""M12 3v10.5"" stroke=""currentColor"" stroke-width=""2.2"" stroke-linecap=""round""/><path d=""M7.5 10.5 12 15l4.5-4.5"" stroke=""currentColor"" stroke-width=""2.2"" stroke-linecap=""round"" stroke-linejoin=""round""/><path d=""M4.5 17.5v1.8c0 .94.76 1.7 1.7 1.7h11.6c.94 0 1.7-.76 1.7-1.7v-1.8"" stroke=""currentColor"" stroke-width=""2.2"" stroke-linecap=""round"" stroke-linejoin=""round""/></svg>';
 
                         const isElementSane = el => {
                             const style = getComputedStyle(el);
@@ -476,7 +476,7 @@ namespace imgsaver
                             btn.dataset.imgsaverMiniClipImportButton = 'true';
                             btn.title = 'Import to Mini Clip';
                             btn.setAttribute('aria-label', 'Import to Mini Clip');
-                            btn.innerHTML = importIconSvg + '<span style=""font:600 11.5px/1 -apple-system,Segoe UI,system-ui,sans-serif;letter-spacing:.2px"">Mini Clip</span>';
+                            btn.innerHTML = importIconSvg;
                             const coarse = isCoarsePointer();
                             btn.style.cssText = [
                                 'position:fixed',
@@ -490,13 +490,13 @@ namespace imgsaver
                                 'display:flex',
                                 'align-items:center',
                                 'justify-content:center',
-                                'gap:6px',
+                                'gap:0',
                                 'box-shadow:0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.2) inset',
                                 'backdrop-filter:blur(7px)',
                                 'opacity:' + (coarse ? '.92' : '0'),
                                 'cursor:pointer',
                                 'touch-action:manipulation',
-                                'padding:0 12px 0 10px',
+                                'padding:0',
                                 'user-select:none',
                                 'transform:' + (coarse ? 'scale(1) translateY(0)' : 'scale(.92) translateY(2px)'),
                                 'transform-origin:center',
