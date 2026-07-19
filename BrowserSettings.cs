@@ -27,6 +27,7 @@ namespace imgsaver
 
         // Minimum image dimensions for import to Mini Clipboard
         public bool AutoImportImagesToMiniClip { get; set; } = true;
+        public bool EnableEmbeddedMiniClip { get; set; } = false;
         public bool ShowMiniClipImageImportButtons { get; set; } = false;
         public bool ReplaceMiniClipImageOnImport { get; set; } = false;
         public bool ShowFloatingRecordPlayer { get; set; } = false;

@@ -6,10 +6,10 @@ namespace imgsaver
 {
     public partial class MiniAutoSavePanel : Window
     {
-        private readonly MiniClipboardWindow _parent;
+        private readonly IMiniClipHost _parent;
         private bool _isUpdatingUI = false;
 
-        public MiniAutoSavePanel(MiniClipboardWindow parent)
+        public MiniAutoSavePanel(IMiniClipHost parent)
         {
             InitializeComponent();
             _parent = parent;

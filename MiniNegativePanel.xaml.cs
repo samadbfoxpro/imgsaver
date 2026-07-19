@@ -27,13 +27,13 @@ namespace imgsaver
         }
 
         private ObservableCollection<NegativePreset> _presets = new ObservableCollection<NegativePreset>();
-        private MiniClipboardWindow? _parent;
+        private IMiniClipHost? _parent;
 
-        public MiniNegativePanel(MiniClipboardWindow parent)
+        public MiniNegativePanel(IMiniClipHost parent)
         {
             InitializeComponent();
             _parent = parent;
-            this.Owner = parent;
+            if (parent is Window win) this.Owner = win;
             
             LoadPresets();
             LstPresets.ItemsSource = _presets;

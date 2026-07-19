@@ -129,6 +129,10 @@ namespace imgsaver
         {
             _currentSettings = BrowserSettings.Load();
             SyncDownloadProxySettings();
+            if (EmbeddedMiniClip != null)
+            {
+                EmbeddedMiniClip.Visibility = _currentSettings.EnableEmbeddedMiniClip ? Visibility.Visible : Visibility.Collapsed;
+            }
             if (!_currentSettings.AutoHideStatus)
             {
                 StatusOverlay.Visibility = Visibility.Visible;

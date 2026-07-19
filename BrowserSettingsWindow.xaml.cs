@@ -50,6 +50,7 @@ namespace imgsaver
             ChkReplaceMiniClipImageOnImport.IsChecked = settings.ReplaceMiniClipImageOnImport;
             ChkShowFloatingRecordPlayer.IsChecked = settings.ShowFloatingRecordPlayer;
             ChkShowQuickPasteButton.IsChecked = settings.ShowQuickPasteButton;
+            ChkEnableEmbeddedMiniClip.IsChecked = settings.EnableEmbeddedMiniClip;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
 
             if (settings.ProxyMode == "off") CmbProxyMode.SelectedIndex = 1;
@@ -266,6 +267,7 @@ namespace imgsaver
             settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
             settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
             settings.ShowQuickPasteButton = ChkShowQuickPasteButton.IsChecked == true;
+            settings.EnableEmbeddedMiniClip = ChkEnableEmbeddedMiniClip.IsChecked == true;
             settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
 
             settings.ProxyMode = (CmbProxyMode.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "system";

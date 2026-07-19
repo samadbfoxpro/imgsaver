@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace imgsaver
 {
-    public partial class MiniClipboardWindow : Window, IMiniClipHost
+    public partial class BrowserMiniClipControl : System.Windows.Controls.UserControl, IMiniClipHost
     {
         private class CapturedImageInfo
         {
@@ -105,7 +105,7 @@ namespace imgsaver
         private bool _isManualExtraCopyRunning = false;
 
         public static readonly DependencyProperty IsDisabledProperty =
-            DependencyProperty.Register("IsDisabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsDisabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsDisabled
         {
@@ -114,7 +114,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsCompactModeProperty =
-            DependencyProperty.Register("IsCompactMode", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsCompactMode", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsCompactMode
         {
@@ -123,12 +123,12 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsNegativeLockedProperty =
-            DependencyProperty.Register("IsNegativeLocked", typeof(bool), typeof(MiniClipboardWindow), 
+            DependencyProperty.Register("IsNegativeLocked", typeof(bool), typeof(BrowserMiniClipControl), 
                 new PropertyMetadata(false, OnIsNegativeLockedChanged));
 
         private static void OnIsNegativeLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is MiniClipboardWindow window)
+            if (d is BrowserMiniClipControl window)
             {
                 window.SaveNegativePromptState();
             }
@@ -141,7 +141,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsDescriptionVisibleProperty =
-            DependencyProperty.Register("IsDescriptionVisible", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsDescriptionVisible", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsDescriptionVisible
         {
@@ -150,7 +150,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsAdditionalTitleVisibleProperty =
-            DependencyProperty.Register("IsAdditionalTitleVisible", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsAdditionalTitleVisible", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsAdditionalTitleVisible
         {
@@ -159,7 +159,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsAdditionalTitleLockedProperty =
-            DependencyProperty.Register("IsAdditionalTitleLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsAdditionalTitleLocked", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsAdditionalTitleLocked
         {
@@ -168,7 +168,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsTitleLockedProperty =
-            DependencyProperty.Register("IsTitleLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsTitleLocked", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsTitleLocked
         {
@@ -177,7 +177,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsExtraMenuOpenProperty =
-            DependencyProperty.Register("IsExtraMenuOpen", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsExtraMenuOpen", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsExtraMenuOpen
         {
@@ -186,7 +186,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty ExtraMenuPageProperty =
-            DependencyProperty.Register("ExtraMenuPage", typeof(int), typeof(MiniClipboardWindow), new PropertyMetadata(0));
+            DependencyProperty.Register("ExtraMenuPage", typeof(int), typeof(BrowserMiniClipControl), new PropertyMetadata(0));
 
         public int ExtraMenuPage
         {
@@ -195,11 +195,11 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsAdditionalTitleEnabledProperty =
-            DependencyProperty.Register("IsAdditionalTitleEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false, OnIsAdditionalTitleEnabledChanged));
+            DependencyProperty.Register("IsAdditionalTitleEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false, OnIsAdditionalTitleEnabledChanged));
 
         private static void OnIsAdditionalTitleEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
+            if (d is BrowserMiniClipControl window && (bool)e.NewValue == false)
             {
                 window.AdditionalTitle = "";
             }
@@ -212,7 +212,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty AdditionalTitleProperty =
-            DependencyProperty.Register("AdditionalTitle", typeof(string), typeof(MiniClipboardWindow), new PropertyMetadata(""));
+            DependencyProperty.Register("AdditionalTitle", typeof(string), typeof(BrowserMiniClipControl), new PropertyMetadata(""));
 
         public string AdditionalTitle
         {
@@ -221,7 +221,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsAutoFillEnabledProperty =
-            DependencyProperty.Register("IsAutoFillEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsAutoFillEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsAutoFillEnabled
         {
@@ -230,7 +230,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsSaveBasePromptEnabledProperty =
-            DependencyProperty.Register("IsSaveBasePromptEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsSaveBasePromptEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsSaveBasePromptEnabled
         {
@@ -239,11 +239,11 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsDescriptionEnabledProperty =
-            DependencyProperty.Register("IsDescriptionEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false, OnIsDescriptionEnabledChanged));
+            DependencyProperty.Register("IsDescriptionEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false, OnIsDescriptionEnabledChanged));
 
         private static void OnIsDescriptionEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
+            if (d is BrowserMiniClipControl window && (bool)e.NewValue == false)
             {
                 window.DescriptionText = "";
             }
@@ -256,7 +256,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty DescriptionTextProperty =
-            DependencyProperty.Register("DescriptionText", typeof(string), typeof(MiniClipboardWindow), new PropertyMetadata(""));
+            DependencyProperty.Register("DescriptionText", typeof(string), typeof(BrowserMiniClipControl), new PropertyMetadata(""));
 
         public string DescriptionText
         {
@@ -265,7 +265,7 @@ namespace imgsaver
         }
 
         public static readonly DependencyProperty IsDescriptionLockedProperty =
-            DependencyProperty.Register("IsDescriptionLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+            DependencyProperty.Register("IsDescriptionLocked", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
 
         public bool IsDescriptionLocked
         {
@@ -388,26 +388,18 @@ namespace imgsaver
         private const int WM_DRAWCLIPBOARD = 0x0308;
         private const int WM_CHANGECBCHAIN = 0x030D;
 
-        public MiniClipboardWindow()
+        public BrowserMiniClipControl()
         {
             InitializeComponent();
-            LanguageManager.ApplyWindowLanguage(this);
+            // LanguageManager.ApplyWindowLanguage(this);
             
             TouchRightClickHelper.Register(TxtTitle);
             TouchRightClickHelper.Register(TxtAdditionalTitle);
             TouchRightClickHelper.Register(TxtDescription);
 
             Loaded  += MiniClipboardWindow_Loaded;
-            Closed  += MiniClipboardWindow_Closed;
-            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
-            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
-
-            if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
-            {
-                IsAdditionalTitleEnabled = true;
-                AdditionalTitle = ExtraFloatBridge.LastConfirmedTitle;
-            }
-            ExtraFloatBridge.ExtraTitleConfirmed += OnExtraTitleConfirmed;
+            Unloaded  += MiniClipboardWindow_Closed;
+            SizeChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
         }
 
         private void OnExtraTitleConfirmed(string title)
@@ -422,22 +414,89 @@ namespace imgsaver
         private void MiniClipboardWindow_Loaded(object sender, RoutedEventArgs e)
         {
             SetIconsAtRuntime();
-            var helper = new WindowInteropHelper(this);
-            _hwndSource = HwndSource.FromHwnd(helper.Handle);
-            _hwndSource?.AddHook(WndProc);
-            _ignoreNextClipboardChange = true;
-            _nextClipboardViewer = SetClipboardViewer(helper.Handle);
+            LoadNegativePromptState();
+            
+            if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
+            {
+                IsAdditionalTitleEnabled = true;
+                AdditionalTitle = ExtraFloatBridge.LastConfirmedTitle;
+            }
+
+            var settings = BrowserSettings.Load();
+            if (settings.EnableEmbeddedMiniClip)
+            {
+                ActivateMonitoring();
+            }
+        }
+
+        private bool _isMonitoringActive = false;
+
+        public void ActivateMonitoring()
+        {
+            if (_isMonitoringActive) return;
+            
+            var window = Window.GetWindow(this);
+            if (window == null) return;
+
+            _isMonitoringActive = true;
+            try
+            {
+                var helper = new WindowInteropHelper(window);
+                _hwndSource = HwndSource.FromHwnd(helper.Handle);
+                _hwndSource?.AddHook(WndProc);
+                _ignoreNextClipboardChange = true;
+                _nextClipboardViewer = SetClipboardViewer(helper.Handle);
+
+                try
+                {
+                    _globalHook = new GlobalHook();
+                    _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
+                }
+                catch { }
+
+                ExtraFloatBridge.ExtraTitleConfirmed += OnExtraTitleConfirmed;
+                StartNetMonitoring();
+                RefreshAutoImport();
+            }
+            catch { }
+        }
+
+        public void DeactivateMonitoring()
+        {
+            if (!_isMonitoringActive) return;
+            _isMonitoringActive = false;
 
             try
             {
-                _globalHook = new GlobalHook();
-                _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
+                ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
+                _miniExtraPanel?.Close();
+                _miniNegativePanel?.Close();
+                _miniAutoSavePanel?.Close();
+                _miniExtraPanel = null;
+                _miniNegativePanel = null;
+                _miniAutoSavePanel = null;
+                _netTimer?.Stop();
+                _globalHook?.Dispose();
+                _globalHook = null;
+                if (_autoImportWatcher != null)
+                {
+                    _autoImportWatcher.EnableRaisingEvents = false;
+                    _autoImportWatcher.Dispose();
+                    _autoImportWatcher = null;
+                }
+                if (_hwndSource != null)
+                {
+                    var window = Window.GetWindow(this);
+                    if (window != null)
+                    {
+                        var helper = new WindowInteropHelper(window);
+                        ChangeClipboardChain(helper.Handle, _nextClipboardViewer);
+                    }
+                    _hwndSource.RemoveHook(WndProc);
+                    _hwndSource = null;
+                }
             }
             catch { }
-
-            StartNetMonitoring();
-            RefreshAutoImport();
-            LoadNegativePromptState();
         }
 
         public void RefreshAutoImport()
@@ -647,19 +706,7 @@ namespace imgsaver
 
         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
         {
-            ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
-            _miniExtraPanel?.Close();
-            _miniNegativePanel?.Close();
-            _miniAutoSavePanel?.Close();
-            _netTimer?.Stop();
-            _globalHook?.Dispose();
-            if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
-            if (_hwndSource != null)
-            {
-                var helper = new WindowInteropHelper(this);
-                ChangeClipboardChain(helper.Handle, _nextClipboardViewer);
-                _hwndSource.RemoveHook(WndProc);
-            }
+            DeactivateMonitoring();
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -786,7 +833,7 @@ namespace imgsaver
                         {
                             TxtTitle.Text = rawText.Trim();
                             TxtTitle.IsEnabled = true;
-                            this.Activate();
+                            TxtTitle.IsEnabled = true;
                             TxtTitle.Focus();
                             UpdateState();
                             CheckAutoSaveTrigger();
@@ -837,7 +884,7 @@ namespace imgsaver
         {
             TxtTitle.IsEnabled = true;
             BtnSEO.IsEnabled = _capturedImages.Count > 0 && _hasPositivePrompt && _hasNegativePrompt;
-            if (_hasPositivePrompt && _hasNegativePrompt && !IsCompactMode) { this.Activate(); TxtTitle.Focus(); }
+            if (_hasPositivePrompt && _hasNegativePrompt && !IsCompactMode) { TxtTitle.Focus(); }
         }
 
         private void CheckAutoSaveTrigger()
@@ -866,10 +913,10 @@ namespace imgsaver
             {
                 var border = new Border
                 {
-                    Width = 70,
-                    Height = 70,
-                    CornerRadius = new CornerRadius(4),
-                    Margin = new Thickness(2),
+                    Width = 44,
+                    Height = 36,
+                    CornerRadius = new CornerRadius(3),
+                    Margin = new Thickness(2,0,2,0),
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Tag = i.ToString(),
                     Background = System.Windows.Media.Brushes.Black,
@@ -1100,8 +1147,8 @@ namespace imgsaver
             BtnSEO.IsEnabled = false;
         }
 
-        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 1) DragMove(); }
-        private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
+        private void BtnClose_Click(object sender, RoutedEventArgs e) { }
         private void BtnLockNegative_Click(object sender, RoutedEventArgs e)
         {
             IsNegativeLocked = !IsNegativeLocked;
@@ -1494,7 +1541,7 @@ namespace imgsaver
                         if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
                         if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
                     }
-                    ClipboardMetadata.Clear(); this.Activate(); if (!IsCompactMode) TxtTitle.Focus();
+                    ClipboardMetadata.Clear(); if (!IsCompactMode) TxtTitle.Focus();
                     CheckAutoSaveTrigger();
                 }
             }));
@@ -1609,9 +1656,41 @@ namespace imgsaver
 
         private void RepositionAttachedPanel(Window? panel)
         {
-            if (panel == null) return;
-            panel.Left = this.Left + this.ActualWidth + 4;
-            panel.Top = this.Top;
+            if (panel == null || !this.IsLoaded) return;
+            try 
+            {
+                var window = Window.GetWindow(this);
+                if (window == null) return;
+
+                // Use PointToScreen to get correct screen coordinates regardless of maximized state
+                var screenPt = this.PointToScreen(new System.Windows.Point(0, 0));
+
+                // Get DPI scaling factors
+                double dpiX = 1.0;
+                double dpiY = 1.0;
+                var source = PresentationSource.FromVisual(this);
+                if (source != null && source.CompositionTarget != null)
+                {
+                    dpiX = source.CompositionTarget.TransformToDevice.M11;
+                    dpiY = source.CompositionTarget.TransformToDevice.M22;
+                }
+
+                // Convert physical pixels to device-independent pixels (DIPs)
+                double controlLeftInDips = screenPt.X / dpiX;
+                double controlTopInDips = screenPt.Y / dpiY;
+
+                panel.Measure(new System.Windows.Size(panel.Width, double.PositiveInfinity));
+                double panelHeight = panel.DesiredSize.Height > 0 ? panel.DesiredSize.Height : 250;
+
+                // Position the panel above this control, aligned with the right side
+                double panelLeft = controlLeftInDips + this.ActualWidth - panel.Width - 10;
+                double panelTop = controlTopInDips - panelHeight - 6;
+
+                panel.Left = panelLeft;
+                panel.Top = panelTop;
+                panel.Owner = window; // Ensure it stays on top of the main window
+            } 
+            catch {}
         }
     }
 }
