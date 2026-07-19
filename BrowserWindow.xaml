@@ -77,7 +77,7 @@
                         <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
 
-                    <TextBox x:Name="TxtUrl" Grid.Column="5" Width="460" Height="36" Padding="10,0" VerticalContentAlignment="Center" 
+                    <TextBox x:Name="TxtUrl" Grid.Column="5" Height="36" Padding="10,0" VerticalContentAlignment="Center" 
                              FontSize="14" KeyDown="TxtUrl_KeyDown" 
                              Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}"/>
 

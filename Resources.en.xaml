@@ -60,6 +60,7 @@
     <sys:String x:Key="Lbl_Lock_Ttl">LOCK TTL</sys:String>
     <sys:String x:Key="Lbl_Lock_Dsc">LOCK DSC</sys:String>
     <sys:String x:Key="Lbl_Toggle_Dsc">NOTES</sys:String>
+    <sys:String x:Key="Lbl_Toggle_Sfx">SUFFIX</sys:String>
     <sys:String x:Key="Lbl_Auto_Ex">AUTO EX</sys:String>
     <sys:String x:Key="Lbl_Auto_Sv">AUTO SV</sys:String>
     <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>

@@ -149,6 +149,15 @@ namespace imgsaver
             set { SetValue(IsDescriptionVisibleProperty, value); }
         }
 
+        public static readonly DependencyProperty IsAdditionalTitleVisibleProperty =
+            DependencyProperty.Register("IsAdditionalTitleVisible", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+
+        public bool IsAdditionalTitleVisible
+        {
+            get { return (bool)GetValue(IsAdditionalTitleVisibleProperty); }
+            set { SetValue(IsAdditionalTitleVisibleProperty, value); }
+        }
+
         public static readonly DependencyProperty IsAdditionalTitleLockedProperty =
             DependencyProperty.Register("IsAdditionalTitleLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
 
@@ -908,13 +917,11 @@ namespace imgsaver
             UpdateState();
         }
 
+        private bool _isCountdownPaused = false;
+
         private void StartAutoSaveCountdown()
         {
-            if (_autoSaveCountdownTimer != null)
-            {
-                _autoSaveCountdownTimer.Stop();
-            }
-            else
+            if (_autoSaveCountdownTimer == null)
             {
                 _autoSaveCountdownTimer = new DispatcherTimer();
                 _autoSaveCountdownTimer.Interval = TimeSpan.FromSeconds(1);
@@ -922,7 +929,29 @@ namespace imgsaver
             }
 
             _autoSaveRemainingSeconds = _autoSaveDelaySeconds;
-            _autoSaveCountdownTimer.Start();
+
+            if (BtnPauseCountdown != null)
+            {
+                BtnPauseCountdown.IsEnabled = true;
+            }
+
+            if (_isCountdownPaused)
+            {
+                _autoSaveCountdownTimer.Stop();
+                if (BtnPauseCountdown != null)
+                {
+                    BtnPauseCountdown.Content = "▶";
+                }
+            }
+            else
+            {
+                if (BtnPauseCountdown != null)
+                {
+                    BtnPauseCountdown.Content = "⏸";
+                }
+                _autoSaveCountdownTimer.Start();
+            }
+
             UpdateButtonCountdownText();
         }
 
@@ -954,6 +983,30 @@ namespace imgsaver
                 _autoSaveCountdownTimer = null;
             }
             BtnSEO.SetResourceReference(System.Windows.Controls.Button.ContentProperty, "Btn_Save_To_Disk");
+            _isCountdownPaused = false;
+            if (BtnPauseCountdown != null)
+            {
+                BtnPauseCountdown.Content = "⏸";
+                BtnPauseCountdown.IsEnabled = false;
+            }
+        }
+
+        private void BtnPauseCountdown_Click(object sender, RoutedEventArgs e)
+        {
+            if (_autoSaveCountdownTimer == null) return;
+
+            if (_isCountdownPaused)
+            {
+                _autoSaveCountdownTimer.Start();
+                _isCountdownPaused = false;
+                BtnPauseCountdown.Content = "⏸";
+            }
+            else
+            {
+                _autoSaveCountdownTimer.Stop();
+                _isCountdownPaused = true;
+                BtnPauseCountdown.Content = "▶";
+            }
         }
 
         private void SaveDirectly()
@@ -1520,6 +1573,11 @@ namespace imgsaver
         private void BtnToggleDescriptionVisibility_Click(object sender, RoutedEventArgs e)
         {
             IsDescriptionVisible = !IsDescriptionVisible;
+        }
+
+        private void BtnToggleAdditionalTitleVisibility_Click(object sender, RoutedEventArgs e)
+        {
+            IsAdditionalTitleVisible = !IsAdditionalTitleVisible;
         }
 
         private MiniAutoSavePanel? _miniAutoSavePanel;

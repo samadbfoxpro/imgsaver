@@ -60,6 +60,7 @@
     <sys:String x:Key="Lbl_Lock_Ttl">قفل عنوان</sys:String>
     <sys:String x:Key="Lbl_Lock_Dsc">قفل توضیح</sys:String>
     <sys:String x:Key="Lbl_Toggle_Dsc">توضیحات</sys:String>
+    <sys:String x:Key="Lbl_Toggle_Sfx">پسوند</sys:String>
     <sys:String x:Key="Lbl_Auto_Ex">AUTO EX</sys:String>
     <sys:String x:Key="Lbl_Auto_Sv">ذخیره خودکار</sys:String>
     <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>

@@ -75,7 +75,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center" ToolTip="{Binding Content}">
+                                    <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="10.5" Foreground="#CCDFF0"/>
                                         <TextBlock Text="{Binding ShortContent}" FontSize="8.5" Foreground="#667788" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>

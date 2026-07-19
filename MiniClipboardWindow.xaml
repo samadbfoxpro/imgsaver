@@ -58,19 +58,12 @@
                                FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,5,0" IsHitTestVisible="False"/>
 
                     <!-- Compact Network Speed Display -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0">
-                        <Border Background="#1089D185" BorderBrush="#2089D185" BorderThickness="1" CornerRadius="3" Padding="3,1" Margin="0,0,3,0">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="↓" FontSize="9" Foreground="{StaticResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,1,0" Opacity="0.7"/>
-                                <TextBlock x:Name="TxtDownloadSpeed" Text="0.0K" FontSize="8.5" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="#10F14C4C" BorderBrush="#20F14C4C" BorderThickness="1" CornerRadius="3" Padding="3,1">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="↑" FontSize="9" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Center" Margin="0,0,1,0" Opacity="0.7"/>
-                                <TextBlock x:Name="TxtUploadSpeed" Text="0.0K" FontSize="8.5" FontWeight="Bold" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0">
+                        <TextBlock Text="↓" FontSize="10" Foreground="{StaticResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <TextBlock x:Name="TxtDownloadSpeed" Text="0.0 KB" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+ 
+                        <TextBlock Text="↑" FontSize="10" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <TextBlock x:Name="TxtUploadSpeed" Text="0.0 KB" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <!-- Control Buttons -->
@@ -260,7 +253,11 @@
                 <Grid Grid.Row="3" Margin="0,8,0,0">
                     <Grid.Style>
                         <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsAdditionalTitleVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsCompactMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
@@ -344,17 +341,18 @@
                         </Style>
                     </Grid.Style>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
  
                     <Button x:Name="BtnReset" Grid.Column="0" Content="✕"
-                            Click="BtnReset_Click" Height="34" FontSize="16"
+                            Click="BtnReset_Click" Width="30" Height="34" FontSize="12"
                             ToolTip="Clear All" Cursor="Hand">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="border" Background="#33E81123" BorderBrush="#E81123" BorderThickness="1" CornerRadius="6">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="#E81123"/>
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" TextElement.Foreground="#E81123"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -368,19 +366,40 @@
  
                     <Button x:Name="BtnSEO" Grid.Column="1" Content="{DynamicResource Btn_Save_To_Disk}"
                             Click="BtnSEO_Click" Height="34" FontSize="11" FontWeight="Bold"
-                            Margin="8,0,0,0" IsEnabled="False"
+                            Margin="6,0,0,0" IsEnabled="False"
                             ToolTip="Save to target directory (Ctrl + S)" Cursor="Hand">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="border" Background="#0E639C" CornerRadius="6">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White"/>
+                                <Border x:Name="border" Background="#2D2D2D" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="6">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="#2ECC71"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#1177BB"/>
+                                        <Setter TargetName="border" Property="Background" Value="#3D3D3D"/>
                                     </Trigger>
                                     <Trigger Property="IsEnabled" Value="False">
-                                        <Setter TargetName="border" Property="Opacity" Value="0.3"/>
+                                        <Setter TargetName="border" Property="Opacity" Value="0.25"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+ 
+                    <Button x:Name="BtnPauseCountdown" Grid.Column="2" Content="⏸"
+                            Click="BtnPauseCountdown_Click" Width="30" Height="34" FontSize="12"
+                            Margin="6,0,0,0" ToolTip="Pause / Resume Auto-Save countdown" Cursor="Hand"
+                            Visibility="Visible" IsEnabled="False">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="border" Background="#2D2D2D" BorderBrush="#444" BorderThickness="1" CornerRadius="6">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="#AAA"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#3D3D3D"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="border" Property="Opacity" Value="0.25"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -670,8 +689,7 @@
                                 </Style.Triggers>
                             </Style>
                         </Grid.Style>
-
-                        <UniformGrid Columns="3" Rows="1">
+                               <UniformGrid Columns="3" Rows="2">
                             <Button x:Name="BtnBrowserQuickPaste" Click="BtnBrowserQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Browser-only Ctrl trigger: Ctrl+A, then Ctrl+V">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -686,7 +704,7 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
-
+ 
                             <Button x:Name="BtnSaveBasePrompt" Click="BtnSaveBasePrompt_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Save as Base Prompt">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -705,7 +723,7 @@
                                     </ControlTemplate>
                                 </Button.Template>
                             </Button>
-
+ 
                             <Button x:Name="BtnToggleDescriptionVisibility" Click="BtnToggleDescriptionVisibility_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Toggle Notes / Description Row Visibility">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -717,6 +735,25 @@
                                                 <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
                                             </Trigger>
                                             <DataTrigger Binding="{Binding IsDescriptionVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter TargetName="txt" Property="Foreground" Value="#00FFFF"/>
+                                                <Setter TargetName="bd" Property="BorderBrush" Value="#00FFFF"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnToggleAdditionalTitleVisibility" Click="BtnToggleAdditionalTitleVisibility_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Toggle Suffix Title Visibility">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Toggle_Sfx}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsAdditionalTitleVisible, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                                 <Setter TargetName="txt" Property="Foreground" Value="#00FFFF"/>
                                                 <Setter TargetName="bd" Property="BorderBrush" Value="#00FFFF"/>
                                             </DataTrigger>
