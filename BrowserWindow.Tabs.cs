@@ -301,6 +301,20 @@ namespace imgsaver
                     pin.Click += (_, _) => TogglePinnedTab(tabItem);
                     menu.Items.Add(pin);
 
+                    var splitItem = new MenuItem
+                    {
+                        Header = state.IsSplitView ? "Close Split View" : "Split View / Dual Screen"
+                    };
+                    splitItem.Click += (_, _) => ToggleSplitView(tabItem);
+                    menu.Items.Add(splitItem);
+
+                    if (state.IsSplitView)
+                    {
+                        var unsplitItem = new MenuItem { Header = "Move Right Side to New Tab" };
+                        unsplitItem.Click += (_, _) => UnsplitSecondaryToNewTab(tabItem, moveLeft: false);
+                        menu.Items.Add(unsplitItem);
+                    }
+
                     var moveLeft = new MenuItem { Header = "Move Tab Left", IsEnabled = BrowserTabs.Items.IndexOf(tabItem) > 0 };
                     moveLeft.Click += (_, _) => MoveTab(tabItem, -1);
                     var moveRight = new MenuItem { Header = "Move Tab Right", IsEnabled = BrowserTabs.Items.IndexOf(tabItem) < BrowserTabs.Items.Count - 1 };
@@ -372,6 +386,16 @@ namespace imgsaver
             public WebView2? PrimaryWebView { get; set; }
             public WebView2? ActiveWebView { get; set; }
             public bool IsPinned { get; set; }
+
+            // Split View Properties
+            public bool IsSplitView { get; set; }
+            public WebView2? SecondaryWebView { get; set; }
+            public Grid? SplitContainer { get; set; }
+            public Border? LeftPaneBorder { get; set; }
+            public Border? RightPaneBorder { get; set; }
+            public System.Windows.Controls.Primitives.Popup? LeftHeaderPopup { get; set; }
+            public System.Windows.Controls.Primitives.Popup? RightHeaderPopup { get; set; }
+            public int ActivePaneIndex { get; set; } = 0; // 0 = Left (Primary), 1 = Right (Secondary)
         }
 
         private void SaveSession()
@@ -460,6 +484,16 @@ namespace imgsaver
             }
             UpdateStopButtonState();
             UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem);
+
+            foreach (var s in _tabStates.Values)
+            {
+                if (s.IsSplitView)
+                {
+                    bool isThisTabSelected = (s.Tab == BrowserTabs.SelectedItem);
+                    if (s.LeftHeaderPopup != null) s.LeftHeaderPopup.IsOpen = isThisTabSelected;
+                    if (s.RightHeaderPopup != null) s.RightHeaderPopup.IsOpen = isThisTabSelected;
+                }
+            }
         }
 
         private async void BtnNewTab_Click(object? sender, RoutedEventArgs e) => await AddNewTab();
@@ -488,6 +522,16 @@ namespace imgsaver
         {
             if (TryGetTabState(tab, out var state))
             {
+                if (state.IsSplitView && state.SecondaryWebView != null)
+                {
+                    if (state.SecondaryWebView.CoreWebView2 != null)
+                    {
+                        _coreWebViewTabMap.Remove(state.SecondaryWebView.CoreWebView2);
+                        state.SecondaryWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
+                    }
+                    state.SecondaryWebView.Dispose();
+                }
+
                 if (state.PrimaryWebView?.CoreWebView2 != null)
                 {
                     _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
@@ -520,6 +564,568 @@ namespace imgsaver
         private void BtnReload_Click(object? sender, RoutedEventArgs e) => GetCurrentBrowser()?.Reload();
         private void BtnGo_Click(object? sender, RoutedEventArgs e) => Navigate();
         private void TxtUrl_KeyDown(object? sender, System.Windows.Input.KeyEventArgs e) { if (e.Key == Key.Enter) Navigate(); }
+
+        public async void ToggleSplitView(TabItem? targetTab = null, string? secondaryUrl = null)
+        {
+            var tabItem = targetTab ?? (BrowserTabs.SelectedItem as TabItem);
+            if (tabItem == null || !TryGetTabState(tabItem, out var state)) return;
+
+            if (state.IsSplitView)
+            {
+                UnsplitSecondaryToNewTab(tabItem, moveLeft: false);
+                return;
+            }
+
+            if (state.PrimaryWebView == null) return;
+
+            WebView2? existingSecondaryWebView = null;
+
+            // If user has another open tab and didn't specify secondaryUrl, merge the other tab's live WebView2 into split view
+            if (string.IsNullOrWhiteSpace(secondaryUrl) && BrowserTabs.Items.Count > 1)
+            {
+                int currentIndex = BrowserTabs.Items.IndexOf(tabItem);
+                int otherIndex = (currentIndex == 0) ? 1 : currentIndex - 1;
+                if (otherIndex >= 0 && otherIndex < BrowserTabs.Items.Count)
+                {
+                    var otherTab = BrowserTabs.Items[otherIndex] as TabItem;
+                    if (otherTab != null && TryGetTabState(otherTab, out var otherState) && otherState.PrimaryWebView != null)
+                    {
+                        existingSecondaryWebView = otherState.PrimaryWebView;
+                        DetachFromParent(existingSecondaryWebView);
+                        otherTab.Content = null;
+
+                        _tabHeaderMap.Remove(otherTab);
+                        _tabNetworkStats.Remove(otherTab);
+                        _tabStates.Remove(otherTab);
+                        _internalNewTabs.Remove(otherTab);
+                        BrowserTabs.Items.Remove(otherTab);
+                    }
+                }
+            }
+
+            state.IsSplitView = true;
+
+            WebView2 secondaryWebView = existingSecondaryWebView ?? new WebView2();
+            state.SecondaryWebView = secondaryWebView;
+
+            // Build SplitContainer Grid FIRST so secondaryWebView is attached to the Visual Tree
+            var splitGrid = new Grid();
+            splitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            splitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Pixel) });
+            splitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Create Left Pane (WebView fills 100%)
+            var leftPaneGrid = new Grid();
+
+            DetachFromParent(state.PrimaryWebView);
+            tabItem.Content = null; // Clear logical child
+            leftPaneGrid.Children.Add(state.PrimaryWebView);
+
+            var leftBorder = new Border
+            {
+                BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(4),
+                Margin = new Thickness(2),
+                Child = leftPaneGrid
+            };
+            Grid.SetColumn(leftBorder, 0);
+            splitGrid.Children.Add(leftBorder);
+            state.LeftPaneBorder = leftBorder;
+
+            var leftPopup = CreatePaneHeaderPopup(leftBorder,
+                onSwap: () => SwapSplitPanes(tabItem),
+                onNewTab: () => UnsplitSecondaryToNewTab(tabItem, moveLeft: true),
+                onClose: () => CloseSplitView(tabItem, keepLeft: false));
+            state.LeftHeaderPopup = leftPopup;
+
+            // Divider Splitter
+            var splitter = new GridSplitter
+            {
+                Width = 6,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Background = (System.Windows.Media.Brush)FindResource("BorderBrush"),
+                Cursor = System.Windows.Input.Cursors.SizeWE
+            };
+            Grid.SetColumn(splitter, 1);
+            splitGrid.Children.Add(splitter);
+
+            // Create Right Pane (WebView fills 100%)
+            var rightPaneGrid = new Grid();
+
+            DetachFromParent(secondaryWebView);
+            rightPaneGrid.Children.Add(secondaryWebView);
+
+            var rightBorder = new Border
+            {
+                BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(4),
+                Margin = new Thickness(2),
+                Child = rightPaneGrid
+            };
+            Grid.SetColumn(rightBorder, 2);
+            splitGrid.Children.Add(rightBorder);
+            state.RightPaneBorder = rightBorder;
+
+            var rightPopup = CreatePaneHeaderPopup(rightBorder,
+                onSwap: () => SwapSplitPanes(tabItem),
+                onNewTab: () => UnsplitSecondaryToNewTab(tabItem, moveLeft: false),
+                onClose: () => CloseSplitView(tabItem, keepLeft: true));
+            state.RightHeaderPopup = rightPopup;
+
+            // Mouse down and focus listeners for active pane switching
+            leftBorder.PreviewMouseDown += (s, e) => SetActivePane(tabItem, 0);
+            leftPaneGrid.PreviewMouseDown += (s, e) => SetActivePane(tabItem, 0);
+            if (state.PrimaryWebView != null)
+            {
+                state.PrimaryWebView.GotFocus += (s, e) => SetActivePane(tabItem, 0);
+                state.PrimaryWebView.GotKeyboardFocus += (s, e) => SetActivePane(tabItem, 0);
+                state.PrimaryWebView.PreviewMouseDown += (s, e) => SetActivePane(tabItem, 0);
+            }
+
+            rightBorder.PreviewMouseDown += (s, e) => SetActivePane(tabItem, 1);
+            rightPaneGrid.PreviewMouseDown += (s, e) => SetActivePane(tabItem, 1);
+            if (state.SecondaryWebView != null)
+            {
+                state.SecondaryWebView.GotFocus += (s, e) => SetActivePane(tabItem, 1);
+                state.SecondaryWebView.GotKeyboardFocus += (s, e) => SetActivePane(tabItem, 1);
+                state.SecondaryWebView.PreviewMouseDown += (s, e) => SetActivePane(tabItem, 1);
+            }
+
+            state.SplitContainer = splitGrid;
+            tabItem.Content = splitGrid;
+
+            // Initialize secondary WebView if it was newly created
+            if (existingSecondaryWebView == null)
+            {
+                await _envLock.WaitAsync();
+                try
+                {
+                    if (_environment == null)
+                    {
+                        var options = new CoreWebView2EnvironmentOptions();
+                        var browserArguments = new List<string>
+                        {
+                            $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
+                            $"--disk-cache-size={ChromiumDiskCacheBytes}",
+                            "--aggressive-cache-discard=false",
+                            "--disable-features=BackForwardCacheMemoryControls",
+                            $"--proxy-server=\"http://127.0.0.1:{ProxyBridge.Port}\""
+                        };
+                        options.AdditionalBrowserArguments = string.Join(" ", browserArguments);
+                        _environment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
+                    }
+                }
+                finally { _envLock.Release(); }
+
+                try
+                {
+                    await secondaryWebView.EnsureCoreWebView2Async(_environment);
+                    if (secondaryWebView.CoreWebView2 != null)
+                    {
+                        _coreWebViewTabMap[secondaryWebView.CoreWebView2] = tabItem;
+                        secondaryWebView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
+                        secondaryWebView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
+                        secondaryWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
+                        secondaryWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                        secondaryWebView.CoreWebView2.Settings.IsScriptEnabled = true;
+
+                        secondaryWebView.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
+                        secondaryWebView.CoreWebView2.WebResourceRequested += CoreWebView2_WebResourceRequested;
+                        secondaryWebView.CoreWebView2.WebResourceResponseReceived += CoreWebView2_WebResourceResponseReceived;
+                        secondaryWebView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+                        secondaryWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+                        secondaryWebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+                        secondaryWebView.CoreWebView2.ContextMenuRequested += CoreWebView2_ContextMenuRequested;
+                        InjectSnippetHelperScript(secondaryWebView);
+
+                        secondaryWebView.NavigationStarting += (s, e) =>
+                        {
+                            if (state.ActiveWebView == secondaryWebView)
+                            {
+                                SetTabLoadingState(tabItem, true);
+                            }
+                        };
+
+                        secondaryWebView.NavigationCompleted += (s, e) =>
+                        {
+                            if (state.ActiveWebView == secondaryWebView)
+                            {
+                                SetTabLoadingState(tabItem, false);
+                                UpdateStopButtonState();
+                                UpdateTabStatusOverlay(tabItem);
+                            }
+                        };
+
+                        secondaryWebView.SourceChanged += (s, e) =>
+                        {
+                            if (state.ActiveWebView == secondaryWebView && BrowserTabs.SelectedItem == tabItem)
+                            {
+                                if (TxtUrl != null) TxtUrl.Text = secondaryWebView.Source?.ToString() ?? "";
+                            }
+                        };
+
+                        ApplyBrowserSettingsTo(secondaryWebView);
+
+                        if (string.IsNullOrWhiteSpace(secondaryUrl))
+                        {
+                            secondaryWebView.CoreWebView2.NavigateToString(GetNewTabPageHtml());
+                        }
+                        else
+                        {
+                            secondaryWebView.CoreWebView2.Navigate(secondaryUrl);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to initialize secondary WebView2: {ex.Message}");
+                }
+            }
+            else
+            {
+                if (secondaryWebView.CoreWebView2 != null)
+                {
+                    _coreWebViewTabMap[secondaryWebView.CoreWebView2] = tabItem;
+                }
+            }
+
+            SetActivePane(tabItem, 0);
+        }
+
+        private System.Windows.Controls.Primitives.Popup CreatePaneHeaderPopup(FrameworkElement placementTarget, Action onSwap, Action onNewTab, Action onClose)
+        {
+            var segoeFont = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
+
+            var toolsPanel = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(1, 1, 1, 1)
+            };
+
+            var btnSwap = new System.Windows.Controls.Button
+            {
+                ToolTip = "Swap Left and Right Panes",
+                Width = 22, Height = 20,
+                Margin = new Thickness(1, 0, 1, 0),
+                Padding = new Thickness(0),
+                Style = (Style)FindResource("SecondaryButtonStyle"),
+                Content = new TextBlock
+                {
+                    Text = "\uE8AB",
+                    FontFamily = segoeFont,
+                    FontSize = 10,
+                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            btnSwap.Click += (s, e) => onSwap();
+            toolsPanel.Children.Add(btnSwap);
+
+            var btnNewTab = new System.Windows.Controls.Button
+            {
+                ToolTip = "Open as Standalone Tab",
+                Width = 22, Height = 20,
+                Margin = new Thickness(1, 0, 1, 0),
+                Padding = new Thickness(0),
+                Style = (Style)FindResource("SecondaryButtonStyle"),
+                Content = new TextBlock
+                {
+                    Text = "\uE8A7",
+                    FontFamily = segoeFont,
+                    FontSize = 10,
+                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            btnNewTab.Click += (s, e) => onNewTab();
+            toolsPanel.Children.Add(btnNewTab);
+
+            var btnClose = new System.Windows.Controls.Button
+            {
+                ToolTip = "Close Split View",
+                Width = 22, Height = 20,
+                Margin = new Thickness(1, 0, 2, 0),
+                Padding = new Thickness(0),
+                Style = (Style)FindResource("TitleBarCloseButtonStyle"),
+                Content = new TextBlock
+                {
+                    Text = "\uE711",
+                    FontFamily = segoeFont,
+                    FontSize = 10,
+                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            btnClose.Click += (s, e) => onClose();
+            toolsPanel.Children.Add(btnClose);
+
+            var badgeBorder = new Border
+            {
+                Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush"),
+                BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush"),
+                BorderThickness = new Thickness(1, 0, 0, 1),
+                CornerRadius = new CornerRadius(0, 0, 0, 8),
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Child = toolsPanel
+            };
+
+            var popup = new System.Windows.Controls.Primitives.Popup
+            {
+                PlacementTarget = placementTarget,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Custom,
+                AllowsTransparency = true,
+                IsOpen = true,
+                StaysOpen = true,
+                Child = badgeBorder
+            };
+
+            popup.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
+            {
+                return new[] { new System.Windows.Controls.Primitives.CustomPopupPlacement(new System.Windows.Point(targetSize.Width - popupSize.Width - 1, 1), System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal) };
+            };
+
+            return popup;
+        }
+
+        private void SetActivePane(TabItem tabItem, int paneIndex)
+        {
+            if (!TryGetTabState(tabItem, out var state) || !state.IsSplitView) return;
+
+            state.ActivePaneIndex = paneIndex;
+            var activeBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x7A, 0xCC)); // Modern Blue Accent
+            var normalBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
+
+            if (paneIndex == 0)
+            {
+                state.ActiveWebView = state.PrimaryWebView;
+                if (state.LeftPaneBorder != null) state.LeftPaneBorder.BorderBrush = activeBrush;
+                if (state.RightPaneBorder != null) state.RightPaneBorder.BorderBrush = normalBrush;
+            }
+            else
+            {
+                state.ActiveWebView = state.SecondaryWebView;
+                if (state.LeftPaneBorder != null) state.LeftPaneBorder.BorderBrush = normalBrush;
+                if (state.RightPaneBorder != null) state.RightPaneBorder.BorderBrush = activeBrush;
+            }
+
+            if (BrowserTabs.SelectedItem == tabItem)
+            {
+                var activeBrowser = GetCurrentBrowser();
+                if (activeBrowser != null && TxtUrl != null)
+                {
+                    TxtUrl.Text = activeBrowser.Source?.ToString() ?? "";
+                }
+                UpdateStopButtonState();
+                UpdateTabStatusOverlay(tabItem);
+            }
+        }
+
+        private void CloseSplitView(TabItem tabItem, bool keepLeft = true)
+        {
+            if (!TryGetTabState(tabItem, out var state) || !state.IsSplitView) return;
+
+            if (!keepLeft && state.SecondaryWebView != null)
+            {
+                var oldPrimary = state.PrimaryWebView;
+                state.PrimaryWebView = state.SecondaryWebView;
+                state.SecondaryWebView = oldPrimary;
+            }
+
+            if (state.SplitContainer != null)
+            {
+                state.SplitContainer.Children.Clear();
+                state.SplitContainer = null;
+            }
+
+            if (state.SecondaryWebView != null)
+            {
+                if (state.SecondaryWebView.CoreWebView2 != null)
+                {
+                    _coreWebViewTabMap.Remove(state.SecondaryWebView.CoreWebView2);
+                    state.SecondaryWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
+                }
+                state.SecondaryWebView.Dispose();
+                state.SecondaryWebView = null;
+            }
+
+            if (state.LeftHeaderPopup != null)
+            {
+                state.LeftHeaderPopup.IsOpen = false;
+                state.LeftHeaderPopup = null;
+            }
+            if (state.RightHeaderPopup != null)
+            {
+                state.RightHeaderPopup.IsOpen = false;
+                state.RightHeaderPopup = null;
+            }
+
+            state.LeftPaneBorder = null;
+            state.RightPaneBorder = null;
+            state.IsSplitView = false;
+            state.ActivePaneIndex = 0;
+            state.ActiveWebView = state.PrimaryWebView;
+
+            if (state.PrimaryWebView != null)
+            {
+                DetachFromParent(state.PrimaryWebView);
+                tabItem.Content = state.PrimaryWebView;
+            }
+
+            if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null && state.PrimaryWebView?.Source != null)
+            {
+                TxtUrl.Text = state.PrimaryWebView.Source.ToString();
+            }
+            UpdateStopButtonState();
+            UpdateTabStatusOverlay(tabItem);
+        }
+
+        private void SwapSplitPanes(TabItem tabItem)
+        {
+            if (!TryGetTabState(tabItem, out var state) || !state.IsSplitView) return;
+
+            var tempWeb = state.PrimaryWebView;
+            state.PrimaryWebView = state.SecondaryWebView;
+            state.SecondaryWebView = tempWeb;
+
+            if (state.LeftPaneBorder?.Child is Grid leftGrid && state.RightPaneBorder?.Child is Grid rightGrid)
+            {
+                if (state.SecondaryWebView != null) DetachFromParent(state.SecondaryWebView);
+                if (state.PrimaryWebView != null) DetachFromParent(state.PrimaryWebView);
+
+                if (state.PrimaryWebView != null)
+                {
+                    Grid.SetRow(state.PrimaryWebView, 1);
+                    leftGrid.Children.Add(state.PrimaryWebView);
+                }
+
+                if (state.SecondaryWebView != null)
+                {
+                    Grid.SetRow(state.SecondaryWebView, 1);
+                    rightGrid.Children.Add(state.SecondaryWebView);
+                }
+            }
+
+            SetActivePane(tabItem, state.ActivePaneIndex == 0 ? 1 : 0);
+        }
+
+        private void UnsplitSecondaryToNewTab(TabItem tabItem, bool moveLeft)
+        {
+            if (!TryGetTabState(tabItem, out var state) || !state.IsSplitView) return;
+
+            var targetWebView = moveLeft ? state.PrimaryWebView : state.SecondaryWebView;
+            var remainingWebView = moveLeft ? state.SecondaryWebView : state.PrimaryWebView;
+
+            if (targetWebView == null || remainingWebView == null) return;
+
+            // Remove WebView controls from SplitContainer without disposing targetWebView
+            if (state.LeftPaneBorder?.Child is Grid leftGrid) leftGrid.Children.Clear();
+            if (state.RightPaneBorder?.Child is Grid rightGrid) rightGrid.Children.Clear();
+
+            if (state.SplitContainer != null)
+            {
+                state.SplitContainer.Children.Clear();
+                state.SplitContainer = null;
+            }
+
+            DetachFromParent(targetWebView);
+            DetachFromParent(remainingWebView);
+
+            if (state.LeftHeaderPopup != null)
+            {
+                state.LeftHeaderPopup.IsOpen = false;
+                state.LeftHeaderPopup = null;
+            }
+            if (state.RightHeaderPopup != null)
+            {
+                state.RightHeaderPopup.IsOpen = false;
+                state.RightHeaderPopup = null;
+            }
+
+            // Left tab keeps remainingWebView as its primary content
+            state.PrimaryWebView = remainingWebView;
+            state.SecondaryWebView = null;
+            state.LeftPaneBorder = null;
+            state.RightPaneBorder = null;
+            state.IsSplitView = false;
+            state.ActivePaneIndex = 0;
+            state.ActiveWebView = remainingWebView;
+            tabItem.Content = remainingWebView;
+
+            if (remainingWebView.CoreWebView2 != null)
+            {
+                string icon = GetIconForUrl(remainingWebView.Source?.ToString());
+                string title = remainingWebView.CoreWebView2.DocumentTitle ?? "Tab";
+                UpdateTabHeader(tabItem, icon, title);
+            }
+
+            // Move targetWebView into a brand NEW TabItem live!
+            var newTabItem = new TabItem();
+            var headerText = new TextBlock
+            {
+                Text = "* Loading...",
+                MaxWidth = 140,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var loadingBadge = new Border
+            {
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0xFF, 0xC4, 0x00)),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(6, 1, 6, 1),
+                Margin = new Thickness(6, 0, 0, 0),
+                Visibility = Visibility.Collapsed,
+                Child = new TextBlock
+                {
+                    Text = "Loading",
+                    FontSize = 10,
+                    Foreground = System.Windows.Media.Brushes.Black,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            var headerPanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            headerPanel.Children.Add(headerText);
+            headerPanel.Children.Add(loadingBadge);
+
+            newTabItem.Header = headerPanel;
+            newTabItem.ContextMenu = CreateTabContextMenu(newTabItem);
+            newTabItem.Content = targetWebView;
+
+            _tabHeaderMap[newTabItem] = (headerText, loadingBadge);
+            _tabStates[newTabItem] = new BrowserTabState
+            {
+                Tab = newTabItem,
+                PrimaryWebView = targetWebView,
+                ActiveWebView = targetWebView
+            };
+
+            if (targetWebView.CoreWebView2 != null)
+            {
+                _coreWebViewTabMap[targetWebView.CoreWebView2] = newTabItem;
+                string icon = GetIconForUrl(targetWebView.Source?.ToString());
+                string title = targetWebView.CoreWebView2.DocumentTitle ?? "Tab";
+                UpdateTabHeader(newTabItem, icon, title);
+            }
+
+            int insertIndex = BrowserTabs.Items.IndexOf(tabItem) + 1;
+            if (insertIndex >= 0 && insertIndex <= BrowserTabs.Items.Count)
+                BrowserTabs.Items.Insert(insertIndex, newTabItem);
+            else
+                BrowserTabs.Items.Add(newTabItem);
+
+            SaveSession();
+            UpdateStopButtonState();
+            UpdateTabStatusOverlay(tabItem);
+        }
 
         private void Navigate()
         {

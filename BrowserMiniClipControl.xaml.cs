@@ -760,14 +760,32 @@ namespace imgsaver
 
                 if (IsAutoFillEnabled && ClipboardMetadata.IsValid())
                 {
+                    bool isCharValid = !string.IsNullOrWhiteSpace(ClipboardMetadata.CharacterName) &&
+                                       !ClipboardMetadata.CharacterName.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
+                    bool isBaseValid = !string.IsNullOrWhiteSpace(ClipboardMetadata.BasePromptName) &&
+                                       !ClipboardMetadata.BasePromptName.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
                     if (ClipboardMetadata.PreserveMiniClipTitle)
                     {
-                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.CharacterName; }
+                        if (isCharValid && !IsAdditionalTitleLocked)
+                        {
+                            IsAdditionalTitleEnabled = true;
+                            AdditionalTitle = ClipboardMetadata.CharacterName;
+                        }
                     }
                     else
                     {
-                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
-                        if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
+                        if (isCharValid && !IsTitleLocked)
+                        {
+                            TxtTitle.Text = ClipboardMetadata.CharacterName;
+                        }
+
+                        if (isBaseValid && !IsAdditionalTitleLocked)
+                        {
+                            IsAdditionalTitleEnabled = true;
+                            AdditionalTitle = ClipboardMetadata.BasePromptName;
+                        }
                     }
                     ClipboardMetadata.Clear();
                 }
@@ -1767,14 +1785,32 @@ namespace imgsaver
             System.Threading.Tasks.Task.Delay(150).ContinueWith(_ => Dispatcher.Invoke(() => {
                 if (ClipboardMetadata.IsValid())
                 {
+                    bool isCharValid = !string.IsNullOrWhiteSpace(ClipboardMetadata.CharacterName) &&
+                                       !ClipboardMetadata.CharacterName.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
+                    bool isBaseValid = !string.IsNullOrWhiteSpace(ClipboardMetadata.BasePromptName) &&
+                                       !ClipboardMetadata.BasePromptName.Equals("Unknown", StringComparison.OrdinalIgnoreCase);
+
                     if (ClipboardMetadata.PreserveMiniClipTitle)
                     {
-                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.CharacterName; }
+                        if (isCharValid && !IsAdditionalTitleLocked)
+                        {
+                            IsAdditionalTitleEnabled = true;
+                            AdditionalTitle = ClipboardMetadata.CharacterName;
+                        }
                     }
                     else
                     {
-                        if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
-                        if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
+                        if (isCharValid && !IsTitleLocked)
+                        {
+                            TxtTitle.Text = ClipboardMetadata.CharacterName;
+                        }
+
+                        if (isBaseValid && !IsAdditionalTitleLocked)
+                        {
+                            IsAdditionalTitleEnabled = true;
+                            AdditionalTitle = ClipboardMetadata.BasePromptName;
+                        }
                     }
                     ClipboardMetadata.Clear();
                     UpdateState();

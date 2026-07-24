@@ -806,8 +806,10 @@ namespace imgsaver
                 try
                 {
                     System.Windows.Clipboard.SetText(outputText);
-                    string characterName = _currentPersona?.ShortName ?? "Unknown";
-                    string promptName = _currentPrompt?.Name ?? "Unknown";
+                    string characterName = _currentPersona?.ShortName ?? "";
+                    if (characterName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) characterName = "";
+                    string promptName = _isPromptLocked ? "" : (_currentPrompt?.Name ?? "");
+                    if (promptName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) promptName = "";
                     ClipboardMetadata.Set(characterName, promptName, preserveMiniClipTitle);
                     ShowCopyFeedback();
                 }
@@ -851,8 +853,10 @@ namespace imgsaver
                 try
                 {
                     System.Windows.Clipboard.SetText(outputText);
-                    string extraName = _currentExtra?.ShortName ?? "Unknown";
-                    string promptName = _currentExtraPrompt?.Name ?? "Unknown";
+                    string extraName = _currentExtra?.ShortName ?? "";
+                    if (extraName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) extraName = "";
+                    string promptName = _isExtraPromptLocked ? "" : (_currentExtraPrompt?.Name ?? "");
+                    if (promptName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) promptName = "";
                     ClipboardMetadata.Set(extraName, promptName, preserveMiniClipTitle);
                     ShowExtraCopyFeedback();
                 }
@@ -1018,8 +1022,10 @@ namespace imgsaver
             {
                 System.Windows.Clipboard.SetText(outputText);
                 string characterName = TxtCurrentCharacterName?.Text ?? "";
-                string promptName = TxtCurrentPromptName?.Text ?? "";
+                if (characterName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) characterName = "";
+                string promptName = _isPromptLocked ? "" : (TxtCurrentPromptName?.Text ?? "");
                 if (promptName.StartsWith("Source: ")) promptName = promptName.Replace("Source: ", "").Trim();
+                if (promptName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) promptName = "";
                 ClipboardMetadata.Set(characterName, promptName);
                 ShowCopyFeedback();
             }
@@ -1034,8 +1040,10 @@ namespace imgsaver
             {
                 System.Windows.Clipboard.SetText(outputText);
                 string extraName = TxtCurrentExtraName?.Text ?? "";
-                string promptName = TxtCurrentExtraPromptName?.Text ?? "";
+                if (extraName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) extraName = "";
+                string promptName = _isExtraPromptLocked ? "" : (TxtCurrentExtraPromptName?.Text ?? "");
                 if (promptName.StartsWith("Source: ")) promptName = promptName.Replace("Source: ", "").Trim();
+                if (promptName.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) promptName = "";
                 ClipboardMetadata.Set(extraName, promptName);
                 ShowExtraCopyFeedback();
             }

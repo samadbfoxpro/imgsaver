@@ -649,17 +649,7 @@ namespace imgsaver
             return false;
         }
 
-        private async Task AddToDownloadManagerAsync(string uri, string? fileName = null, Dictionary<string, string>? requestHeaders = null)
-        {
-            try
-            {
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    _downloadService.AddDownload(uri, fileName, requestHeaders);
-                });
-            }
-            catch { }
-        }
+
 
         private async Task<Dictionary<string, string>?> GetDownloadHeadersAsync(CoreWebView2? coreWebView2, string uri)
         {
@@ -747,23 +737,9 @@ namespace imgsaver
             return $"download_{Guid.NewGuid():N}.bin";
         }
 
-        private async void CoreWebView2_DownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
+        private void CoreWebView2_DownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
         {
-            try
-            {
-                e.Handled = true;
-                string uri = e.DownloadOperation.Uri;
-                if (_handledDownloadUris.Contains(uri) || _downloadService.HasDownload(uri))
-                    return;
-
-                _handledDownloadUris.Add(uri);
-                string fileName = !string.IsNullOrWhiteSpace(e.ResultFilePath)
-                    ? Path.GetFileName(e.ResultFilePath)
-                    : GetDownloadFileName(uri);
-                var headers = await GetDownloadHeadersAsync(sender as CoreWebView2, uri);
-                await AddToDownloadManagerAsync(uri, fileName, headers);
-            }
-            catch { }
+            // Standard browser download handling (unhandled)
         }
 
         private bool IsHostNoCached(string uri)
@@ -1125,20 +1101,7 @@ namespace imgsaver
                 base.Dispose(disposing);
             }
         }
-        private void BtnDownloadManager_Click(object? sender, RoutedEventArgs e)
-        {
-            if (_downloadManagerWindow == null || !_downloadManagerWindow.IsLoaded)
-            {
-                _downloadManagerWindow = new DownloadManagerWindow(_downloadService);
-                _downloadManagerWindow.Owner = this;
-                _downloadManagerWindow.Show();
-            }
-            else
-            {
-                _downloadManagerWindow.Focus();
-                _downloadManagerWindow.WindowState = WindowState.Normal;
-            }
-        }
+
 
         private async void BtnBrowserSettings_Click(object? sender, RoutedEventArgs e)
         {

@@ -33,7 +33,7 @@
             </Grid.RowDefinitions>
 
             <!-- Title Bar -->
-            <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Border x:Name="TitleBarBorder" Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
                         <TextBlock Text="🌐 Dataset Browser" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,12,0"/>
@@ -100,6 +100,9 @@
                         <Button x:Name="BtnClearSiteData" Width="36" Height="36" Margin="4,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnClearSiteData_Click" ToolTip="Clear data for this site" Padding="0">
                             <TextBlock Text="&#xE894;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
+                        <Button x:Name="BtnSplitView" Width="36" Height="36" Margin="4,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnSplitView_Click" ToolTip="Split View / Dual Screen (Ctrl+Shift+S)" Padding="0">
+                            <TextBlock Text="&#xE740;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
                         <Button x:Name="BtnBrowserRecord" Width="36" Height="36" Margin="4,0,0,0"
                                 Style="{StaticResource SecondaryButtonStyle}" ToolTip="Record browser mouse and keyboard" Click="BtnBrowserRecord_Click" Padding="0">
                             <TextBlock x:Name="TxtBrowserRecordIcon" Text="●" Foreground="{StaticResource ForegroundBrush}" FontSize="17" VerticalAlignment="Center" HorizontalAlignment="Center"/>
@@ -107,10 +110,6 @@
                         <Button x:Name="BtnBrowserPlayRec" Width="36" Height="36" Margin="4,0,0,0"
                                 Style="{StaticResource SecondaryButtonStyle}" ToolTip="Play browser recording" Click="BtnBrowserPlayRec_Click" Padding="0">
                             <TextBlock Text="▶" Foreground="{StaticResource ForegroundBrush}" FontSize="17" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnDownloadManager" Width="36" Height="36" Margin="4,0,0,0" 
-                                Style="{StaticResource SecondaryButtonStyle}" ToolTip="Download Manager" Click="BtnDownloadManager_Click" Padding="0">
-                            <TextBlock Text="📥" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
                         <Button x:Name="BtnBrowserSettings" Width="36" Height="36" Margin="4,0,0,0" 
                                 Style="{StaticResource SecondaryButtonStyle}" ToolTip="Browser Settings" Click="BtnBrowserSettings_Click" Padding="0">

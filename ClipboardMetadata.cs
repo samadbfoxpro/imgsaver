@@ -30,7 +30,7 @@ namespace imgsaver
 
         public static bool IsValid()
         {
-            return !string.IsNullOrEmpty(CharacterName) &&
+            return (!string.IsNullOrEmpty(CharacterName) || !string.IsNullOrEmpty(BasePromptName)) &&
                    (DateTime.Now - LastUpdated).TotalSeconds < 5;
         }
 

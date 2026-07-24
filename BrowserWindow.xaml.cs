@@ -57,10 +57,6 @@ namespace imgsaver
         private readonly InputRecorder _browserInputRecorder = new InputRecorder();
         private string _lastRequestUrl = "";
 
-        // Download Manager
-        private DownloadManagerService _downloadService = null!;
-        private DownloadManagerWindow? _downloadManagerWindow;
-
         // Environment for this profile window
         private CoreWebView2Environment? _environment;
         private readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
@@ -88,7 +84,6 @@ namespace imgsaver
             InitializeComponent();
 
             InitializeStatusTimer();
-            InitializeDownloadService();
             RefreshSettings();
             SaveCurrentProxySettings(); // Initialize proxy tracking
             RefreshBookmarksUI();
@@ -99,7 +94,13 @@ namespace imgsaver
 
             InitializeTabs();
             this.PreviewKeyDown += BrowserWindow_PreviewKeyDown;
-            this.Loaded += (s, e) => UpdateProfileUIBadge();
+            this.Loaded += (s, e) =>
+            {
+                UpdateProfileUIBadge();
+                var handle = new WindowInteropHelper(this).Handle;
+                var hwndSource = HwndSource.FromHwnd(handle);
+                hwndSource?.AddHook(WndProc);
+            };
         }
 
         private void UpdateProfileUIBadge()
@@ -145,28 +146,25 @@ namespace imgsaver
             }
         }
 
-        private void InitializeDownloadService()
-        {
-            _downloadService = new DownloadManagerService();
-            SyncDownloadProxySettings();
-        }
-
         private void BrowserWindow_StateChanged(object? sender, EventArgs e)
         {
             if (this.WindowState == WindowState.Maximized) 
             {
-                var windowInteropHelper = new System.Windows.Interop.WindowInteropHelper(this);
-                var currentScreen = System.Windows.Forms.Screen.FromHandle(windowInteropHelper.Handle);
-                
-                this.MaxHeight = currentScreen.WorkingArea.Height + 16;
-                this.MaxWidth = currentScreen.WorkingArea.Width + 16;
-                MainBorder.Margin = new Thickness(8); 
+                this.MaxHeight = double.PositiveInfinity;
+                this.MaxWidth = double.PositiveInfinity;
+                MainBorder.Margin = new Thickness(0);
+                MainBorder.CornerRadius = new CornerRadius(0);
+                MainBorder.BorderThickness = new Thickness(0);
+                if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(0);
             }
             else 
             {
                 this.MaxHeight = double.PositiveInfinity;
                 this.MaxWidth = double.PositiveInfinity;
-                MainBorder.Margin = new Thickness(0); 
+                MainBorder.Margin = new Thickness(0);
+                MainBorder.CornerRadius = new CornerRadius(8);
+                MainBorder.BorderThickness = new Thickness(1);
+                if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(8, 8, 0, 0);
             }
         }
 
@@ -233,9 +231,20 @@ namespace imgsaver
         private void BtnMinimize_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void BtnMaximize_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
+        private void BtnSplitView_Click(object? sender, RoutedEventArgs e)
+        {
+            ToggleSplitView();
+        }
+
         private async void BrowserWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if (e.Key == System.Windows.Input.Key.D && 
+            if (e.Key == System.Windows.Input.Key.S && 
+                (System.Windows.Input.Keyboard.Modifiers & (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift)) == (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift))
+            {
+                e.Handled = true;
+                ToggleSplitView();
+            }
+            else if (e.Key == System.Windows.Input.Key.D && 
                 (System.Windows.Input.Keyboard.Modifiers & (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Alt)) == (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Alt))
             {
                 e.Handled = true;
@@ -321,5 +330,83 @@ namespace imgsaver
             }
         }
 
+        private const int WM_GETMINMAXINFO = 0x0024;
+        private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr handle, uint flags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int x;
+            public int y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO
+        {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public int dwFlags;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int left;
+            public int top;
+            public int right;
+            public int bottom;
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_GETMINMAXINFO)
+            {
+                WmGetMinMaxInfo(hwnd, lParam);
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
+        {
+            try
+            {
+                MINMAXINFO mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO))!;
+                IntPtr monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                if (monitor != IntPtr.Zero)
+                {
+                    MONITORINFO monitorInfo = new MONITORINFO();
+                    monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+                    if (GetMonitorInfo(monitor, ref monitorInfo))
+                    {
+                        RECT rcWorkArea = monitorInfo.rcWork;
+                        RECT rcMonitorArea = monitorInfo.rcMonitor;
+                        mmi.ptMaxPosition.x = Math.Abs(rcWorkArea.left - rcMonitorArea.left);
+                        mmi.ptMaxPosition.y = Math.Abs(rcWorkArea.top - rcMonitorArea.top);
+                        mmi.ptMaxSize.x = Math.Abs(rcWorkArea.right - rcWorkArea.left);
+                        mmi.ptMaxSize.y = Math.Abs(rcWorkArea.bottom - rcWorkArea.top);
+                    }
+                }
+                Marshal.StructureToPtr(mmi, lParam, true);
+            }
+            catch { }
+        }
     }
 }

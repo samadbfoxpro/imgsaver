@@ -628,7 +628,12 @@ namespace imgsaver
                                 setTimeout(() => location.reload(), 500);
                             }
                         }, true);
-                    }
+                    }window.addEventListener('mousedown', function() {
+    try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage({ type: 'focus_pane' }); } catch(e){}
+}, true);
+window.addEventListener('focus', function() {
+    try { if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage({ type: 'focus_pane' }); } catch(e){}
+}, true);
 
                   } catch (imgsaverTopLevelErr) {
                       try {
@@ -685,12 +690,6 @@ namespace imgsaver
 
         private void SyncDownloadProxySettings()
         {
-            if (_downloadService == null || _currentSettings == null) return;
-            _downloadService.UpdateProxySettings(
-                _currentSettings.ProxyMode ?? "system",
-                _currentSettings.ProxyType ?? "http",
-                _currentSettings.ProxyAddress ?? "",
-                _currentSettings.ProxyPort ?? "");
         }
 
         private async void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
