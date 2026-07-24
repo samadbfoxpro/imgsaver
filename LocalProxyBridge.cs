@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 
 namespace imgsaver
 {
@@ -120,14 +121,19 @@ namespace imgsaver
                         try
                         {
                             Uri targetUri = new Uri(method.Equals("CONNECT", StringComparison.OrdinalIgnoreCase) ? $"https://{host}:{port}" : target);
-                            IWebProxy systemProxy = System.Net.Http.HttpClient.DefaultProxy;
-                            Uri proxyUri = systemProxy.GetProxy(targetUri);
-                            if (proxyUri != null && proxyUri != targetUri)
+                            
+                            // Read fresh system proxy settings each time (not cached like HttpClient.DefaultProxy)
+                            IWebProxy systemProxy = GetFreshSystemProxy();
+                            if (systemProxy != null && !systemProxy.IsBypassed(targetUri))
                             {
-                                useUpstream = true;
-                                upstreamHost = proxyUri.Host;
-                                upstreamPort = proxyUri.Port;
-                                upstreamType = "http";
+                                Uri? proxyUri = systemProxy.GetProxy(targetUri);
+                                if (proxyUri != null && proxyUri.AbsoluteUri != targetUri.AbsoluteUri)
+                                {
+                                    useUpstream = true;
+                                    upstreamHost = proxyUri.Host;
+                                    upstreamPort = proxyUri.Port;
+                                    upstreamType = proxyUri.Scheme.Contains("socks") ? "socks5" : "http";
+                                }
                             }
                         }
                         catch { }
@@ -246,6 +252,72 @@ namespace imgsaver
             catch
             {
                 // Disconnected
+            }
+        }
+        /// <summary>
+        /// Reads the current system proxy settings directly from the Windows registry (WinINET).
+        /// Unlike HttpClient.DefaultProxy which caches at startup, this reads fresh values each time,
+        /// so it picks up changes from V2Ray, Clash, Victoria, etc. immediately.
+        /// </summary>
+        private static IWebProxy? GetFreshSystemProxy()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", false);
+                if (key == null) return null;
+
+                object? proxyEnableObj = key.GetValue("ProxyEnable");
+                int proxyEnable = proxyEnableObj is int pe ? pe : 0;
+
+                if (proxyEnable == 0) return null;
+
+                string? proxyServer = key.GetValue("ProxyServer") as string;
+                if (string.IsNullOrWhiteSpace(proxyServer)) return null;
+
+                string? proxyOverride = key.GetValue("ProxyOverride") as string;
+                string[] bypassList = string.IsNullOrWhiteSpace(proxyOverride)
+                    ? Array.Empty<string>()
+                    : proxyOverride.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                // Handle protocol-specific proxy format like "http=host:port;https=host:port;socks=host:port"
+                if (proxyServer.Contains("="))
+                {
+                    // Try to find https or http entry
+                    string? bestProxy = null;
+                    foreach (var entry in proxyServer.Split(';'))
+                    {
+                        var trimmed = entry.Trim();
+                        if (trimmed.StartsWith("https=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            bestProxy = trimmed.Substring(6);
+                            break;
+                        }
+                        if (trimmed.StartsWith("http=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            bestProxy = trimmed.Substring(5);
+                        }
+                        if (bestProxy == null && trimmed.StartsWith("socks=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            bestProxy = trimmed.Substring(6);
+                        }
+                    }
+                    if (string.IsNullOrWhiteSpace(bestProxy)) return null;
+                    proxyServer = bestProxy;
+                }
+
+                // Ensure it has a scheme
+                if (!proxyServer.Contains("://"))
+                    proxyServer = "http://" + proxyServer;
+
+                var proxy = new WebProxy(new Uri(proxyServer));
+                if (bypassList.Length > 0)
+                    proxy.BypassList = bypassList;
+
+                return proxy;
+            }
+            catch
+            {
+                return null;
             }
         }
     }
