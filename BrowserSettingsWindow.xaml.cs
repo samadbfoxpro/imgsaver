@@ -24,7 +24,7 @@ namespace imgsaver
         public bool RequestClearData { get; private set; }
         public bool RequestDeleteLoginData => ChkDeleteLoginData.IsChecked == true && RequestClearData;
 
-        private readonly string _permanentCacheFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_cache");
+        private readonly string _permanentCacheFolder = ProfileManager.SharedCacheFolder;
         private readonly List<CachedSiteItem> _cachedSites = new();
         private FrameworkElement? _activePanel;
         private System.Windows.Controls.Button? _activeNavButton;

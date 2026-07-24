@@ -15,16 +15,55 @@ namespace imgsaver
         private readonly ObservableCollection<SelectableExtra> _extras = new();
         private readonly System.Collections.Generic.HashSet<int> _activeTouchIds = new();
 
+        private static bool _lastUseCustomText = false;
+        private static bool _lastUseTaggerValues = false;
+        private static string _lastCustomText = "";
+        private static string _lastCustomModeTitle = "";
+        private static string? _lastTaggerModeTitle = null;
+
         public MiniExtraPanel()
         {
             InitializeComponent();
             LanguageManager.ApplyWindowLanguage(this);
             
             TouchRightClickHelper.Register(TxtCustomText);
-            TouchRightClickHelper.Register(TxtCustomTitle);
+            TouchRightClickHelper.Register(TxtCustomModeTitle);
+            TouchRightClickHelper.Register(TxtTaggerModeTitle);
             TouchRightClickHelper.Register(TxtTaggerValues);
 
+            this.PreviewMouseWheel += MiniExtraPanel_PreviewMouseWheel;
+
             Loaded += MiniExtraPanel_Loaded;
+        }
+
+        private void MiniExtraPanel_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (BorderExtraList.Visibility == Visibility.Visible)
+            {
+                var scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(BorderExtraList);
+                if (scrollViewer != null)
+                {
+                    if (e.Delta < 0)
+                        scrollViewer.LineDown();
+                    else
+                        scrollViewer.LineUp();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild) return typedChild;
+                var result = FindVisualChild<T>(child);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private void MiniExtraPanel_Loaded(object sender, RoutedEventArgs e)
@@ -33,10 +72,21 @@ namespace imgsaver
             RefreshExtraList();
 
             TxtTaggerValues.Text = PromptTaggerStore.ManualValues;
-            if (!string.IsNullOrEmpty(PromptTaggerStore.ManualTitle))
+            
+            if (_lastTaggerModeTitle != null)
             {
-                TxtCustomTitle.Text = PromptTaggerStore.ManualTitle;
+                TxtTaggerModeTitle.Text = _lastTaggerModeTitle;
             }
+            else if (!string.IsNullOrEmpty(PromptTaggerStore.ManualTitle))
+            {
+                TxtTaggerModeTitle.Text = PromptTaggerStore.ManualTitle;
+            }
+
+            TxtCustomModeTitle.Text = _lastCustomModeTitle;
+
+            TxtCustomText.Text = _lastCustomText;
+            ChkUseCustomText.IsChecked = _lastUseCustomText;
+            ChkUseTaggerValues.IsChecked = _lastUseTaggerValues;
         }
 
         // ──────────────────────── List management ────────────────────────
@@ -128,7 +178,7 @@ namespace imgsaver
         private void BtnSaveToLibrary_Click(object sender, RoutedEventArgs e)
         {
             string text  = TxtCustomText.Text?.Trim() ?? "";
-            string title = TxtCustomTitle.Text?.Trim() ?? "";
+            string title = TxtCustomModeTitle.Text?.Trim() ?? "";
 
             if (string.IsNullOrWhiteSpace(text))  { Warn("Enter custom Extra text first.");   return; }
             if (string.IsNullOrWhiteSpace(title)) { Warn("Enter a title for the Extra first."); return; }
@@ -144,7 +194,7 @@ namespace imgsaver
                 if (added != null) added.IsSelected = true;
 
                 TxtCustomText.Text  = "";
-                TxtCustomTitle.Text = "";
+                TxtCustomModeTitle.Text = "";
             }
             catch (Exception ex) { Warn("Error saving Extra: " + ex.Message); }
         }
@@ -157,7 +207,7 @@ namespace imgsaver
             {
                 finalText = TxtCustomText.Text?.Trim() ?? "";
                 if (string.IsNullOrWhiteSpace(finalText)) { Warn("Enter your custom Extra text first."); return; }
-                string ct = TxtCustomTitle.Text?.Trim() ?? "";
+                string ct = TxtCustomModeTitle.Text?.Trim() ?? "";
                 finalTitle = string.IsNullOrWhiteSpace(ct) ? "Custom Extra" : ct;
                 PromptTaggerStore.UseManualValuesMode = false;
                 PromptTaggerStore.Save();
@@ -165,7 +215,7 @@ namespace imgsaver
             else if (ChkUseTaggerValues.IsChecked == true)
             {
                 string valuesText = TxtTaggerValues.Text?.Trim() ?? "";
-                string ct = TxtCustomTitle.Text?.Trim() ?? "";
+                string ct = TxtTaggerModeTitle.Text?.Trim() ?? "";
                 finalTitle = string.IsNullOrWhiteSpace(ct) ? "Tagger Prompt" : ct;
 
                 // Save values & title & mode to store
@@ -215,9 +265,8 @@ namespace imgsaver
                 if (selected.Count == 0) { Warn("Select at least one Extra from the list."); return; }
 
                 finalText  = string.Join(", ", selected.Select(x => x.Text).Where(t => !string.IsNullOrWhiteSpace(t)));
-                string ct  = TxtCustomTitle.Text?.Trim() ?? "";
                 string com = string.Join(" + ", selected.Select(x => x.ShortName).Where(n => !string.IsNullOrWhiteSpace(n)));
-                finalTitle = string.IsNullOrWhiteSpace(ct) ? com : ct;
+                finalTitle = com;
                 if (selected.Count == 1) extraId = selected[0].Extra.Id ?? "";
                 PromptTaggerStore.UseManualValuesMode = false;
                 PromptTaggerStore.Save();
@@ -241,10 +290,22 @@ namespace imgsaver
 
         // ──────────────────────── Helper ─────────────────────────────────
 
+        private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
         private void Warn(string msg)
         {
             try { CustomMessageBox.Show(msg, "Extra Panel", MessageBoxButton.OK, MessageBoxImage.Warning); }
             catch { System.Windows.MessageBox.Show(msg, "Extra Panel"); }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _lastUseCustomText = ChkUseCustomText.IsChecked == true;
+            _lastUseTaggerValues = ChkUseTaggerValues.IsChecked == true;
+            _lastCustomText = TxtCustomText.Text ?? "";
+            _lastCustomModeTitle = TxtCustomModeTitle.Text ?? "";
+            _lastTaggerModeTitle = TxtTaggerModeTitle.Text ?? "";
+            base.OnClosed(e);
         }
     }
 }

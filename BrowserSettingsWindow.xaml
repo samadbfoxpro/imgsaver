@@ -181,7 +181,7 @@
                                         <CheckBox x:Name="ChkShowFloatingRecordPlayer" Content="Show floating browser recording player" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowQuickPasteButton" Content="Show BR Paste button on input fields" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkEnableEmbeddedMiniClip" Content="Enable embedded Mini Clip at bottom of browser" Margin="0,0,0,14"/>
-                                        <CheckBox x:Name="ChkAutoHideStatus" Content="Auto-hide Status Bar" Margin="0,0,0,0"/>
+                                        <CheckBox x:Name="ChkAutoHideStatus" Content="Hide Status Bar" Margin="0,0,0,0"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>

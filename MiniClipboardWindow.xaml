@@ -231,23 +231,44 @@
 
 
                 <!-- Main Title -->
-                <TextBox x:Name="TxtTitle" Grid.Row="2"
-                         FontSize="12" Height="30" Padding="8,0"
-                         VerticalContentAlignment="Center" 
-                         Tag="Enter Title..."
-                         IsEnabled="False"
-                         KeyDown="TxtTitle_KeyDown"
-                         ToolTip="Main Title (Enter to save)">
-                    <TextBox.Style>
-                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Grid Grid.Row="2">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsCompactMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBox.Style>
-                </TextBox>
+                    </Grid.Style>
+                    <TextBox x:Name="TxtTitle"
+                             FontSize="12" Height="30" Padding="8,0"
+                             VerticalContentAlignment="Center" 
+                             Tag="Enter Title..."
+                             IsEnabled="True"
+                             KeyDown="TxtTitle_KeyDown"
+                             ToolTip="Main Title (Enter to save)"/>
+                    <TextBlock x:Name="TxtTitleHint"
+                               Text="{Binding Tag, ElementName=TxtTitle}"
+                               Foreground="{StaticResource ForegroundMutedBrush}"
+                               Opacity="0.6"
+                               FontSize="12"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               IsHitTestVisible="False"
+                               FontStyle="Italic">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Hidden"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=TxtTitle}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
 
                 <!-- Additional Title Row -->
                 <Grid Grid.Row="3" Margin="0,8,0,0">
@@ -364,21 +385,24 @@
                         </Button.Template>
                     </Button>
  
-                    <Button x:Name="BtnSEO" Grid.Column="1" Content="{DynamicResource Btn_Save_To_Disk}"
+                    <Button x:Name="BtnSEO" Grid.Column="1" Content="Save"
                             Click="BtnSEO_Click" Height="34" FontSize="11" FontWeight="Bold"
                             Margin="6,0,0,0" IsEnabled="False"
                             ToolTip="Save to target directory (Ctrl + S)" Cursor="Hand">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="border" Background="#2D2D2D" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="6">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="#2ECC71"/>
+                                <Border x:Name="border" Background="#145A32" BorderBrush="#2ECC71" BorderThickness="1.2" CornerRadius="6">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#3D3D3D"/>
+                                        <Setter TargetName="border" Property="Background" Value="#114B29"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#0D3A1F"/>
                                     </Trigger>
                                     <Trigger Property="IsEnabled" Value="False">
-                                        <Setter TargetName="border" Property="Opacity" Value="0.25"/>
+                                        <Setter TargetName="border" Property="Opacity" Value="0.3"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>

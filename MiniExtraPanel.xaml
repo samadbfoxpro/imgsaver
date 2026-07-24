@@ -22,15 +22,38 @@
 
         <Grid Margin="10,10,10,10">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>  <!-- Row 0: Mode toggles -->
-                <RowDefinition Height="Auto"/>  <!-- Row 1: Search -->
-                <RowDefinition Height="Auto" MinHeight="120"/>  <!-- Row 2: List / Custom / Tagger Values -->
-                <RowDefinition Height="Auto"/>  <!-- Row 3: Title override -->
-                <RowDefinition Height="Auto"/>  <!-- Row 4: Confirm -->
+                <RowDefinition Height="Auto"/>  <!-- Row 0: Title & Close -->
+                <RowDefinition Height="Auto"/>  <!-- Row 1: Mode toggles -->
+                <RowDefinition Height="Auto"/>  <!-- Row 2: Search -->
+                <RowDefinition Height="Auto" MinHeight="120"/>  <!-- Row 3: List / Custom / Tagger Values -->
+                <RowDefinition Height="Auto"/>  <!-- Row 4: Title override -->
+                <RowDefinition Height="Auto"/>  <!-- Row 5: Confirm -->
             </Grid.RowDefinitions>
 
+            <!-- Title & Close Row -->
+            <Grid Grid.Row="0" Margin="2,0,0,8">
+                <TextBlock Text="Extra Options" FontWeight="Bold" FontSize="11" Foreground="#00E5FF" VerticalAlignment="Center"/>
+                <Button Content="✕" HorizontalAlignment="Right" Click="BtnClose_Click" Width="20" Height="20" 
+                        Background="#25E81123" BorderBrush="#E81123" BorderThickness="1" Foreground="#FF5555" Cursor="Hand" FontSize="10" FontWeight="Bold"
+                        ToolTip="Close">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#E81123"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
             <!-- Mode toggle checkboxes -->
-            <WrapPanel Grid.Row="0" Margin="2,0,0,7">
+            <WrapPanel Grid.Row="1" Margin="2,0,0,7">
                 <CheckBox x:Name="ChkUseCustomText"
                           Content="{DynamicResource Lbl_Custom_Text}"
                           Foreground="#8899AA" FontSize="10"
@@ -45,7 +68,7 @@
             </WrapPanel>
 
             <!-- Search row -->
-            <Grid x:Name="GridSearch" Grid.Row="1" Margin="0,0,0,6">
+            <Grid x:Name="GridSearch" Grid.Row="2" Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -79,14 +102,14 @@
             </Grid>
 
             <!-- Extras list -->
-            <Border x:Name="BorderExtraList" Grid.Row="2"
+            <Border x:Name="BorderExtraList" Grid.Row="3"
                     Background="#141920" CornerRadius="5"
                     BorderBrush="#2A3A4A" BorderThickness="1"
                     MinHeight="120" MaxHeight="260">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ListBox x:Name="LstExtras" Background="Transparent" BorderThickness="0"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             Focusable="False">
+                <ListBox x:Name="LstExtras" Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         Focusable="False">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
@@ -127,22 +150,33 @@
                             </Style>
                         </ListBox.ItemContainerStyle>
                     </ListBox>
-                </ScrollViewer>
             </Border>
 
             <!-- Custom text area (hidden by default) -->
-            <Grid x:Name="GridCustomText" Grid.Row="2" Visibility="Collapsed" MinHeight="120">
+            <Grid x:Name="GridCustomText" Grid.Row="3" Visibility="Collapsed" Height="140">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <TextBox x:Name="TxtCustomText" Grid.Row="0"
+                
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource Lbl_Title}" FontSize="10" VerticalAlignment="Center" Foreground="#556677" Margin="2,0,6,0"/>
+                    <TextBox x:Name="TxtCustomModeTitle" Grid.Column="1" FontSize="10.5" Height="22" Padding="5,1" VerticalContentAlignment="Center" Foreground="#CCDFF0" Background="#252E3E" BorderBrush="#2A3A4A" BorderThickness="1" ToolTip="Optional title override"/>
+                </Grid>
+
+                <TextBox x:Name="TxtCustomText" Grid.Row="1"
                          AcceptsReturn="True" TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         MaxWidth="200"
                          Padding="6,4" VerticalContentAlignment="Top"
                          Foreground="#CCDFF0" Background="#141920"
                          BorderBrush="#2A3A4A" BorderThickness="1"
-                         MinHeight="90"
                          ToolTip="Enter your custom Extra text">
                     <TextBox.ContextMenu>
                         <ContextMenu>
@@ -154,7 +188,7 @@
                         </ContextMenu>
                     </TextBox.ContextMenu>
                 </TextBox>
-                <Button x:Name="BtnSaveToLibrary" Grid.Row="1" Content="{DynamicResource Btn_Save_To_List}"
+                <Button x:Name="BtnSaveToLibrary" Grid.Row="2" Content="{DynamicResource Btn_Save_To_List}"
                         Margin="0,5,0,0" Height="24" FontSize="10" FontWeight="SemiBold"
                         Click="BtnSaveToLibrary_Click"
                         Cursor="Hand"
@@ -181,17 +215,28 @@
                 </Button>
             </Grid>
 
-            <!-- Tagger Values area (hidden by default, in Row 2) -->
-            <Grid x:Name="GridTaggerValues" Grid.Row="2" Visibility="Collapsed" MinHeight="120">
+            <!-- Tagger Values area (hidden by default, in Row 3) -->
+            <Grid x:Name="GridTaggerValues" Grid.Row="3" Visibility="Collapsed" Height="140">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="{DynamicResource Lbl_Replacement_Values_Label}" FontSize="9" Foreground="#556677" Margin="2,0,0,4"/>
-                <TextBox x:Name="TxtTaggerValues" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto" Padding="6,4" VerticalContentAlignment="Top"
+                
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{DynamicResource Lbl_Title}" FontSize="10" VerticalAlignment="Center" Foreground="#556677" Margin="2,0,6,0"/>
+                    <TextBox x:Name="TxtTaggerModeTitle" Grid.Column="1" FontSize="10.5" Height="22" Padding="5,1" VerticalContentAlignment="Center" Foreground="#CCDFF0" Background="#252E3E" BorderBrush="#2A3A4A" BorderThickness="1" ToolTip="Optional title override"/>
+                </Grid>
+
+                <TextBlock Grid.Row="1" Text="{DynamicResource Lbl_Replacement_Values_Label}" FontSize="9" Foreground="#556677" Margin="2,0,0,4"/>
+                <TextBox x:Name="TxtTaggerValues" Grid.Row="2" AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         MaxWidth="200" Padding="6,4" VerticalContentAlignment="Top"
                          Foreground="#CCDFF0" Background="#141920" BorderBrush="#2A3A4A" BorderThickness="1"
-                         MinHeight="95"
                          ToolTip="Enter replacement values separated by commas">
                     <TextBox.ContextMenu>
                         <ContextMenu>
@@ -205,23 +250,8 @@
                 </TextBox>
             </Grid>
 
-            <!-- Optional title override -->
-            <Grid Grid.Row="3" Margin="0,7,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="{DynamicResource Lbl_Title}" FontSize="10" VerticalAlignment="Center"
-                           Foreground="#556677" Margin="2,0,6,0"/>
-                <TextBox x:Name="TxtCustomTitle" Grid.Column="1" FontSize="10.5" Height="22"
-                         Padding="5,1" VerticalContentAlignment="Center"
-                         Foreground="#CCDFF0" Background="#252E3E"
-                         BorderBrush="#2A3A4A" BorderThickness="1"
-                         ToolTip="Optional title override"/>
-            </Grid>
-
             <!-- Confirm button -->
-            <Button x:Name="BtnConfirm" Grid.Row="4"
+            <Button x:Name="BtnConfirm" Grid.Row="5"
                     Content="{DynamicResource Btn_Confirm_Extra}"
                     Height="30" Margin="0,8,0,0"
                     FontSize="11" FontWeight="Bold"

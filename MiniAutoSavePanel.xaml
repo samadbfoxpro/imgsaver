@@ -29,8 +29,23 @@
             <!-- Title -->
             <Grid Grid.Row="0" Margin="0,0,0,10">
                 <TextBlock Text="{DynamicResource Lbl_MiniClip_Autosave}" FontWeight="Bold" FontSize="11" Foreground="#FFD21F" VerticalAlignment="Center"/>
-                <Button Content="✕" HorizontalAlignment="Right" Click="BtnClose_Click" Width="18" Height="18" 
-                        Background="Transparent" BorderThickness="0" Foreground="#556677" Cursor="Hand" FontSize="9"/>
+                <Button Content="✕" HorizontalAlignment="Right" Click="BtnClose_Click" Width="20" Height="20" 
+                        Background="#25E81123" BorderBrush="#E81123" BorderThickness="1" Foreground="#FF5555" Cursor="Hand" FontSize="10" FontWeight="Bold"
+                        ToolTip="Close">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#E81123"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
             </Grid>
 
             <!-- Controls -->

@@ -52,7 +52,7 @@ namespace imgsaver
             await _envLock.WaitAsync();
             try
             {
-                _sharedEnvironment = null;
+                _environment = null;
             }
             finally { _envLock.Release(); }
 
@@ -184,7 +184,7 @@ namespace imgsaver
                 await _envLock.WaitAsync();
                 try
                 {
-                    if (_sharedEnvironment == null)
+                    if (_environment == null)
                     {
                         var options = new CoreWebView2EnvironmentOptions();
                         var browserArguments = new List<string>
@@ -198,13 +198,13 @@ namespace imgsaver
                         // Always route through our local proxy bridge to support dynamic runtime configuration
                         browserArguments.Add($"--proxy-server=\"http://127.0.0.1:{ProxyBridge.Port}\"");
                         options.AdditionalBrowserArguments = string.Join(" ", browserArguments);
-                        _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
+                        _environment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
                     }
                 }
                 finally { _envLock.Release(); }
 
                 // Ensure CoreWebView2 is initialized before using it
-                await webView.EnsureCoreWebView2Async(_sharedEnvironment);
+                await webView.EnsureCoreWebView2Async(_environment);
 
                 if (webView.CoreWebView2 == null) throw new Exception("CoreWebView2 initialization failed");
                 _coreWebViewTabMap[webView.CoreWebView2] = tabItem;

@@ -47,6 +47,36 @@ namespace imgsaver
             catch { }
         }
 
+        public static bool TryGetSelection(out LastExtraSelection? selection, out string errorMessage)
+        {
+            selection = null;
+            errorMessage = "";
+
+            try
+            {
+                if (!File.Exists(FilePath))
+                {
+                    errorMessage = "Select an Extra in Persona Injector once, then try again.";
+                    return false;
+                }
+
+                var json = File.ReadAllText(FilePath);
+                selection = JsonConvert.DeserializeObject<LastExtraSelection>(json);
+                if (selection == null || string.IsNullOrWhiteSpace(selection.Text))
+                {
+                    errorMessage = "The saved Extra selection is empty.";
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+                return false;
+            }
+        }
+
         public static bool TryGetText(out string extraText, out string errorMessage)
         {
             extraText = "";

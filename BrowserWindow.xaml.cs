@@ -36,8 +36,9 @@ namespace imgsaver
 {
     public partial class BrowserWindow : Window
     {
-        private readonly string _userDataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "browser_profile");
-        private readonly string _permanentCacheFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_cache");
+        public BrowserProfile CurrentProfile { get; private set; }
+        private readonly string _userDataFolder;
+        private readonly string _permanentCacheFolder;
         private const long MaxDiskCacheItemBytes = 512L * 1024L * 1024L;
         private const long ChromiumDiskCacheBytes = 4L * 1024L * 1024L * 1024L;
         private BrowserSettings _currentSettings = null!;
@@ -60,9 +61,9 @@ namespace imgsaver
         private DownloadManagerService _downloadService = null!;
         private DownloadManagerWindow? _downloadManagerWindow;
 
-        // Shared environment to ensure all tabs use the same profile/settings
-        private static CoreWebView2Environment? _sharedEnvironment;
-        private static readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
+        // Environment for this profile window
+        private CoreWebView2Environment? _environment;
+        private readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
 
         // Track previous proxy settings to detect changes
         private string _previousProxyAddress = "";
@@ -75,8 +76,14 @@ namespace imgsaver
 
         public static LocalProxyBridge ProxyBridge { get; } = new LocalProxyBridge();
 
-        public BrowserWindow()
+        public BrowserWindow(BrowserProfile? profile = null)
         {
+            CurrentProfile = profile ?? ProfileManager.GetActiveProfile();
+
+            ProfileManager.SetActiveProfile(CurrentProfile);
+            _userDataFolder = ProfileManager.GetUserDataFolder(CurrentProfile);
+            _permanentCacheFolder = ProfileManager.GetCacheFolder(CurrentProfile);
+
             ProxyBridge.Start();
             InitializeComponent();
 
@@ -85,12 +92,57 @@ namespace imgsaver
             RefreshSettings();
             SaveCurrentProxySettings(); // Initialize proxy tracking
             RefreshBookmarksUI();
+            UpdateProfileUIBadge();
 
             this.StateChanged += BrowserWindow_StateChanged;
             _browserInputRecorder.OnStopRequested += StopBrowserRecordingAndSave;
 
             InitializeTabs();
             this.PreviewKeyDown += BrowserWindow_PreviewKeyDown;
+            this.Loaded += (s, e) => UpdateProfileUIBadge();
+        }
+
+        private void UpdateProfileUIBadge()
+        {
+            try
+            {
+                if (CurrentProfile != null && BtnAccountProfile != null)
+                {
+                    BtnAccountProfile.ApplyTemplate();
+                    var iconBlock = BtnAccountProfile.Template.FindName("TxtProfileIcon", BtnAccountProfile) as TextBlock;
+                    var nameBlock = BtnAccountProfile.Template.FindName("TxtProfileName", BtnAccountProfile) as TextBlock;
+                    var border = BtnAccountProfile.Template.FindName("bd", BtnAccountProfile) as Border;
+
+                    if (iconBlock != null) iconBlock.Text = CurrentProfile.Icon;
+                    if (nameBlock != null) nameBlock.Text = CurrentProfile.Name;
+
+                    if (border != null && !string.IsNullOrEmpty(CurrentProfile.ColorHex))
+                    {
+                        try
+                        {
+                            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(CurrentProfile.ColorHex);
+                            border.BorderBrush = new System.Windows.Media.SolidColorBrush(color);
+                        }
+                        catch { }
+                    }
+
+                    BtnAccountProfile.ToolTip = $"Active Account Profile: {CurrentProfile.Name}\nClick to switch or launch another account profile.";
+                }
+            }
+            catch { }
+        }
+
+        private void BtnAccountProfile_Click(object sender, RoutedEventArgs e)
+        {
+            var selector = new ProfileSelectionWindow();
+            if (selector.ShowDialog() == true && selector.SelectedProfile != null)
+            {
+                if (selector.SelectedProfile.Id == CurrentProfile.Id)
+                    return;
+
+                var newBrowser = new BrowserWindow(selector.SelectedProfile);
+                newBrowser.Show();
+            }
         }
 
         private void InitializeDownloadService()
@@ -133,7 +185,13 @@ namespace imgsaver
             {
                 EmbeddedMiniClip.Visibility = _currentSettings.EnableEmbeddedMiniClip ? Visibility.Visible : Visibility.Collapsed;
             }
-            if (!_currentSettings.AutoHideStatus)
+            if (_currentSettings.AutoHideStatus)
+            {
+                StatusOverlay.Visibility = Visibility.Collapsed;
+                StatusOverlay.Opacity = 0;
+                _statusFadeTimer?.Stop();
+            }
+            else
             {
                 StatusOverlay.Visibility = Visibility.Visible;
                 StatusOverlay.Opacity = 1;

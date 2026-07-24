@@ -123,18 +123,112 @@ namespace imgsaver
                 _globalHook?.Dispose();
                 _remoteServer?.Stop();
                 _fileShareServer?.Stop();
+                CleanupSystemTrayIcon();
                 System.Windows.Application.Current.Shutdown();
             };
             Closing += MainWindow_Closing;
             InitInputRecorderPlayer();
             LoadAndApplyServerStates();
+            InitializeSystemTrayIcon();
+        }
+
+        private WinForms.NotifyIcon? _notifyIcon;
+
+        private void InitializeSystemTrayIcon()
+        {
+            try
+            {
+                _notifyIcon = new WinForms.NotifyIcon();
+                
+                try
+                {
+                    string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+                    if (File.Exists(exePath))
+                    {
+                        _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath) ?? System.Drawing.SystemIcons.Application;
+                    }
+                    else
+                    {
+                        _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                    }
+                }
+                catch
+                {
+                    _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                }
+
+                _notifyIcon.Text = "imgsaver - Dataset & Prompt Assistant";
+                _notifyIcon.Visible = true;
+
+                var contextMenu = new WinForms.ContextMenuStrip();
+
+                var itemOpenMain = new WinForms.ToolStripMenuItem("📱 Open Main Window");
+                itemOpenMain.Click += (s, e) => Dispatcher.Invoke(() => ShowAndActivateMainWindow());
+
+                var itemOpenBrowser = new WinForms.ToolStripMenuItem("🌐 Open Browser");
+                itemOpenBrowser.Click += (s, e) => Dispatcher.Invoke(() => BtnBrowser_Click(this, new RoutedEventArgs()));
+
+                var itemOpenMiniClip = new WinForms.ToolStripMenuItem("📋 Open Mini Clipboard");
+                itemOpenMiniClip.Click += (s, e) => Dispatcher.Invoke(() => BtnMiniClipboard_Click(this, new RoutedEventArgs()));
+
+                var itemOpenGallery = new WinForms.ToolStripMenuItem("🖼️ Open Gallery");
+                itemOpenGallery.Click += (s, e) => Dispatcher.Invoke(() => BtnGallery_Click(this, new RoutedEventArgs()));
+
+                var itemExit = new WinForms.ToolStripMenuItem("❌ Exit / Close App");
+                itemExit.Click += (s, e) => Dispatcher.Invoke(() => ExitApplicationFromTray());
+
+                contextMenu.Items.Add(itemOpenMain);
+                contextMenu.Items.Add(itemOpenBrowser);
+                contextMenu.Items.Add(itemOpenMiniClip);
+                contextMenu.Items.Add(itemOpenGallery);
+                contextMenu.Items.Add(new WinForms.ToolStripSeparator());
+                contextMenu.Items.Add(itemExit);
+
+                _notifyIcon.ContextMenuStrip = contextMenu;
+                _notifyIcon.DoubleClick += (s, e) => Dispatcher.Invoke(() => ShowAndActivateMainWindow());
+            }
+            catch { }
+        }
+
+        private void ShowAndActivateMainWindow()
+        {
+            this.Show();
+            if (this.WindowState == WindowState.Minimized)
+                this.WindowState = WindowState.Normal;
+            this.Activate();
+        }
+
+        private void ExitApplicationFromTray()
+        {
+            _isShuttingDown = true;
+            CleanupSystemTrayIcon();
+            System.Windows.Application.Current.Shutdown();
+        }
+
+        private void CleanupSystemTrayIcon()
+        {
+            try
+            {
+                if (_notifyIcon != null)
+                {
+                    _notifyIcon.Visible = false;
+                    _notifyIcon.Dispose();
+                    _notifyIcon = null;
+                }
+            }
+            catch { }
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (CustomMessageBox.Show("Are you sure you want to exit?", "Confirm Exit", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            if (!_isShuttingDown)
             {
                 e.Cancel = true;
+                this.Hide();
+            }
+            else
+            {
+                CleanupSystemTrayIcon();
             }
         }
 
@@ -381,7 +475,29 @@ namespace imgsaver
 
         private void BtnBrowser_Click(object sender, RoutedEventArgs e)
         {
-            if (_browserWindow == null || !_browserWindow.IsLoaded) _browserWindow = new BrowserWindow();
+            if (_browserWindow == null || !_browserWindow.IsLoaded)
+            {
+                BrowserProfile? profileToUse = null;
+                if (ProfileManager.AlwaysAskAccountOnStartup)
+                {
+                    var selector = new ProfileSelectionWindow();
+                    if (selector.ShowDialog() == true && selector.SelectedProfile != null)
+                    {
+                        profileToUse = selector.SelectedProfile;
+                    }
+                    else
+                    {
+                        // User cancelled profile selection dialog! Do NOT open browser window!
+                        return;
+                    }
+                }
+                else
+                {
+                    profileToUse = ProfileManager.GetActiveProfile();
+                }
+
+                _browserWindow = new BrowserWindow(profileToUse);
+            }
             _browserWindow.Show();
             _browserWindow.Activate();
         }

@@ -153,24 +153,46 @@
             </StackPanel>
 
             <!-- 2: Main Title TextBox -->
-            <TextBox x:Name="TxtTitle" Grid.Column="2"
-                     FontSize="11" Height="28" Padding="6,0"
-                     VerticalContentAlignment="Center" Margin="4,0"
-                     Tag="Enter Title..."
-                     IsEnabled="False"
-                     KeyDown="TxtTitle_KeyDown"
-                     ToolTip="Main Title (Enter to save)"
-                     VerticalAlignment="Center">
-                <TextBox.Style>
-                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Grid Grid.Column="2" Margin="4,0" VerticalAlignment="Center">
+                <Grid.Style>
+                    <Style TargetType="Grid">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCompactMode, ElementName=Root}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </TextBox.Style>
-            </TextBox>
+                </Grid.Style>
+                <TextBox x:Name="TxtTitle"
+                         FontSize="11" Height="28" Padding="6,0" MinWidth="120" MaxWidth="220" HorizontalAlignment="Left"
+                         VerticalContentAlignment="Center"
+                         Tag="Enter Title..."
+                         IsEnabled="True"
+                         KeyDown="TxtTitle_KeyDown"
+                         TextChanged="TxtTitle_TextChanged"
+                         ToolTip="Main Title (Enter to save)"/>
+                <TextBlock x:Name="TxtTitleHint"
+                           Text="{Binding Tag, ElementName=TxtTitle}"
+                           Foreground="{StaticResource ForegroundMutedBrush}"
+                           Opacity="0.6"
+                           FontSize="11"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           IsHitTestVisible="False"
+                           FontStyle="Italic">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Hidden"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text, ElementName=TxtTitle}" Value="">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
 
             <!-- 3: Suffix (Additional Title) -->
             <Grid Grid.Column="3" Margin="4,0" VerticalAlignment="Center">
@@ -267,6 +289,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <Button x:Name="BtnReset" Grid.Column="0" Content="✕"
@@ -287,21 +310,24 @@
                     </Button.Template>
                 </Button>
 
-                <Button x:Name="BtnSEO" Grid.Column="1" Content="{DynamicResource Btn_Save_To_Disk}"
-                        Click="BtnSEO_Click" Height="28" Width="70" FontSize="10" FontWeight="Bold"
+                <Button x:Name="BtnSEO" Grid.Column="1" Content="Save"
+                        Click="BtnSEO_Click" Height="28" Width="88" FontSize="11" FontWeight="Bold"
                         Margin="4,0" IsEnabled="False"
                         ToolTip="Save to target directory (Ctrl + S)" Cursor="Hand" VerticalAlignment="Center">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="border" Background="#2D2D2D" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="4">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="#2ECC71"/>
+                            <Border x:Name="border" Background="#145A32" BorderBrush="#2ECC71" BorderThickness="1.2" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="border" Property="Background" Value="#3D3D3D"/>
+                                    <Setter TargetName="border" Property="Background" Value="#114B29"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#0D3A1F"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="border" Property="Opacity" Value="0.25"/>
+                                    <Setter TargetName="border" Property="Opacity" Value="0.3"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -324,6 +350,28 @@
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter TargetName="border" Property="Opacity" Value="0.25"/>
                                 </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <Button x:Name="BtnDisable" Grid.Column="3"
+                        Click="BtnDisable_Click" Width="26" Height="28" FontSize="9" Margin="4,0,0,0"
+                        ToolTip="Disable/Enable Monitoring" Cursor="Hand" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="#2D2D2D" BorderBrush="#444" BorderThickness="1" CornerRadius="4">
+                                <TextBlock x:Name="txt" Text="||" Foreground="#AAA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding IsDisabled, ElementName=Root}" Value="True">
+                                    <Setter TargetName="txt" Property="Text" Value="▶"/>
+                                    <Setter TargetName="txt" Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+                                    <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource ErrorBrush}"/>
+                                </DataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Button.Template>
@@ -744,6 +792,18 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
+
+            <!-- Smooth Hover Large Image Preview Popup -->
+            <Popup x:Name="ImagePreviewPopup" AllowsTransparency="True" Placement="Top" StaysOpen="True" PopupAnimation="None">
+                <Border x:Name="BorderLargePreview" Background="#181C24" BorderBrush="#00E5FF" BorderThickness="1.5" CornerRadius="8" Padding="6" Opacity="0">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.75" Color="#000000"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Image x:Name="ImgLargePreview" MaxWidth="240" MaxHeight="240" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </StackPanel>
+                </Border>
+            </Popup>
 
             <!-- Hidden/Unused but required text elements for logic (so it compiles cleanly) -->
             <TextBlock x:Name="titleText" Visibility="Collapsed"/>

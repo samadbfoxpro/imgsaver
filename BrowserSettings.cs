@@ -12,6 +12,7 @@ namespace imgsaver
         public bool LoadMedia { get; set; } = true;
         public bool EnableJavaScript { get; set; } = true;
         public bool MuteAudio { get; set; } = false;
+        public bool EnableEmbeddedMiniClip { get; set; } = false;
         public bool AutoHideStatus { get; set; } = true;
         public string LastUrl { get; set; } = "";
         public List<string> OpenTabs { get; set; } = new List<string>();
@@ -25,9 +26,7 @@ namespace imgsaver
         public string ProxyPort { get; set; } = "";
         public string ProxyMode { get; set; } = "system"; // "off", "custom", "system"
 
-        // Minimum image dimensions for import to Mini Clipboard
         public bool AutoImportImagesToMiniClip { get; set; } = true;
-        public bool EnableEmbeddedMiniClip { get; set; } = false;
         public bool ShowMiniClipImageImportButtons { get; set; } = false;
         public bool ReplaceMiniClipImageOnImport { get; set; } = false;
         public bool ShowFloatingRecordPlayer { get; set; } = false;

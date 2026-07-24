@@ -30,7 +30,6 @@ namespace imgsaver
 
         private InputPlayer _playerRec = new InputPlayer();
         private HwndSource _hwndSource;
-        private IntPtr _nextClipboardViewer;
         private GlobalHook _globalHook;
         private FileSystemWatcher _autoImportWatcher;
 
@@ -38,6 +37,7 @@ namespace imgsaver
         private bool _hasPositivePrompt = false;
         private bool _hasNegativePrompt = false;
         private bool _ignoreNextClipboardChange = true;
+        private bool _wasPuzzleComplete = false;
         private bool _ignoreNextSpiSyncClipboardText = false;
         private DateTime _lastClipboardTime = DateTime.MinValue;
         private string _lastClipboardText = "";
@@ -105,7 +105,17 @@ namespace imgsaver
         private bool _isManualExtraCopyRunning = false;
 
         public static readonly DependencyProperty IsDisabledProperty =
-            DependencyProperty.Register("IsDisabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
+            DependencyProperty.Register("IsDisabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false, OnIsDisabledChanged));
+
+        private static void OnIsDisabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is BrowserMiniClipControl control && (bool)e.NewValue == false)
+            {
+                control._ignoreNextClipboardChange = false;
+                control._lastClipboardText = "";
+                control.OnClipboardChanged();
+            }
+        }
 
         public bool IsDisabled
         {
@@ -275,6 +285,7 @@ namespace imgsaver
 
         private List<CapturedImageInfo> _capturedImages = new List<CapturedImageInfo>();
         private string _positivePrompt = "";
+        private string _basePositivePrompt = "";
         private string _negativePrompt = "";
         public string NegativePrompt
         {
@@ -377,16 +388,14 @@ namespace imgsaver
         }
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SetClipboardViewer(IntPtr hWndNewViewer);
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool AddClipboardFormatListener(IntPtr hwnd);
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool ChangeClipboardChain(IntPtr hWndRemove, IntPtr hWndNewNext);
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
-
-        private const int WM_DRAWCLIPBOARD = 0x0308;
-        private const int WM_CHANGECBCHAIN = 0x030D;
+        private const int WM_CLIPBOARDUPDATE = 0x031D;
 
         public BrowserMiniClipControl()
         {
@@ -427,6 +436,10 @@ namespace imgsaver
             {
                 ActivateMonitoring();
             }
+            else
+            {
+                DeactivateMonitoring();
+            }
         }
 
         private bool _isMonitoringActive = false;
@@ -442,10 +455,11 @@ namespace imgsaver
             try
             {
                 var helper = new WindowInteropHelper(window);
-                _hwndSource = HwndSource.FromHwnd(helper.Handle);
+                IntPtr handle = helper.EnsureHandle();
+                _hwndSource = HwndSource.FromHwnd(handle);
                 _hwndSource?.AddHook(WndProc);
                 _ignoreNextClipboardChange = true;
-                _nextClipboardViewer = SetClipboardViewer(helper.Handle);
+                AddClipboardFormatListener(handle);
 
                 try
                 {
@@ -463,7 +477,6 @@ namespace imgsaver
 
         public void DeactivateMonitoring()
         {
-            if (!_isMonitoringActive) return;
             _isMonitoringActive = false;
 
             try
@@ -490,11 +503,12 @@ namespace imgsaver
                     if (window != null)
                     {
                         var helper = new WindowInteropHelper(window);
-                        ChangeClipboardChain(helper.Handle, _nextClipboardViewer);
+                        RemoveClipboardFormatListener(helper.Handle);
                     }
                     _hwndSource.RemoveHook(WndProc);
                     _hwndSource = null;
                 }
+                ResetState();
             }
             catch { }
         }
@@ -711,16 +725,10 @@ namespace imgsaver
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            switch (msg)
+            if (msg == WM_CLIPBOARDUPDATE)
             {
-                case WM_DRAWCLIPBOARD:
-                    OnClipboardChanged();
-                    SendMessage(_nextClipboardViewer, msg, wParam, lParam);
-                    break;
-                case WM_CHANGECBCHAIN:
-                    if (wParam == _nextClipboardViewer) _nextClipboardViewer = lParam;
-                    else if (_nextClipboardViewer != IntPtr.Zero) SendMessage(_nextClipboardViewer, msg, wParam, lParam);
-                    break;
+                OnClipboardChanged();
+                handled = true;
             }
             return IntPtr.Zero;
         }
@@ -729,15 +737,17 @@ namespace imgsaver
         {
             try
             {
+                if (!BrowserSettings.Load().EnableEmbeddedMiniClip) return;
+                if (Visibility != Visibility.Visible) return;
                 if (IsDisabled) return;
                 if (_ignoreNextClipboardChange) { _ignoreNextClipboardChange = false; return; }
 
-                bool hasText = System.Windows.Clipboard.ContainsText();
+                bool hasText = SafeClipboardContainsText();
                 string rawText = "";
 
                 if (hasText)
                 {
-                    rawText = System.Windows.Clipboard.GetText();
+                    rawText = SafeClipboardGetText();
                     if (rawText == _lastClipboardText) return;
                     _lastClipboardText = rawText;
                 }
@@ -762,9 +772,9 @@ namespace imgsaver
                     ClipboardMetadata.Clear();
                 }
 
-                if (System.Windows.Clipboard.ContainsImage())
+                if (SafeClipboardContainsImage())
                 {
-                    var image = System.Windows.Clipboard.GetImage();
+                    var image = SafeClipboardGetImage();
                     if (image != null)
                     {
                         var convertedBitmap = new FormatConvertedBitmap();
@@ -820,6 +830,7 @@ namespace imgsaver
                     if (shouldCapture)
                     {
                         _miniExtraTemplate = rawText;
+                        _basePositivePrompt = rawText;
                         SetMiniExtraButtonState(true);
 
                         if (shouldAutoCopy)
@@ -833,8 +844,6 @@ namespace imgsaver
                         {
                             TxtTitle.Text = rawText.Trim();
                             TxtTitle.IsEnabled = true;
-                            TxtTitle.IsEnabled = true;
-                            TxtTitle.Focus();
                             UpdateState();
                             CheckAutoSaveTrigger();
                             return;
@@ -852,7 +861,7 @@ namespace imgsaver
 
                         if (!_hasPositivePrompt)
                         {
-                            _positivePrompt = text; _hasPositivePrompt = true;
+                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true;
                             TxtPositiveCheck.Text = "✓"; TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
                         }
                         else if (!_hasNegativePrompt && !IsNegativeLocked)
@@ -863,13 +872,13 @@ namespace imgsaver
                         }
                         else if (!IsNegativeLocked)
                         {
-                            _positivePrompt = _negativePrompt; NegativePrompt = text;
+                            _basePositivePrompt = _negativePrompt; _positivePrompt = _negativePrompt; NegativePrompt = text;
                             TxtPositiveCheck.Text = "✓"; TxtNegativeCheck.Text = "✓";
                             IsNegativeLocked = true; // Auto-lock after receiving
                         }
                         else if (IsNegativeLocked)
                         {
-                            _positivePrompt = text; _hasPositivePrompt = true;
+                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true;
                             TxtPositiveCheck.Text = "✓";
                         }
                         UpdateState();
@@ -880,11 +889,51 @@ namespace imgsaver
             catch { }
         }
 
+        private void UpdateTitleWatermarkHint()
+        {
+            if (TxtTitle == null) return;
+            if (!string.IsNullOrEmpty(MiniClipHistory.LastSavedTitle))
+            {
+                TxtTitle.Tag = $"Last: {MiniClipHistory.LastSavedTitle}";
+            }
+            else
+            {
+                TxtTitle.Tag = "Enter Title...";
+            }
+        }
+
         private void UpdateState()
         {
             TxtTitle.IsEnabled = true;
+            UpdateTitleWatermarkHint();
             BtnSEO.IsEnabled = _capturedImages.Count > 0 && _hasPositivePrompt && _hasNegativePrompt;
-            if (_hasPositivePrompt && _hasNegativePrompt && !IsCompactMode) { TxtTitle.Focus(); }
+
+            bool isComplete = _hasPositivePrompt && _hasNegativePrompt && !string.IsNullOrWhiteSpace(TxtTitle.Text);
+            if (isComplete)
+            {
+                if (!_wasPuzzleComplete)
+                {
+                    _wasPuzzleComplete = true;
+                    var window = Window.GetWindow(this);
+                    if (window != null)
+                    {
+                        if (window.WindowState == WindowState.Minimized)
+                        {
+                            window.WindowState = WindowState.Normal;
+                        }
+                        window.Activate();
+                        window.Focus();
+                        if (!IsCompactMode)
+                        {
+                            TxtTitle.Focus();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                _wasPuzzleComplete = false;
+            }
         }
 
         private void CheckAutoSaveTrigger()
@@ -906,11 +955,17 @@ namespace imgsaver
             }
         }
 
+        private System.Windows.Threading.DispatcherTimer? _hoverPreviewTimer;
+        private ImageSource? _currentHoverImageSource;
+        private UIElement? _currentHoverTarget;
+
         private void UpdateImagePreviews()
         {
+            HideLargePreviewPopup();
             ImageGrid.Children.Clear();
             for (int i = 0; i < _capturedImages.Count; i++)
             {
+                int index = i;
                 var border = new Border
                 {
                     Width = 44,
@@ -924,10 +979,86 @@ namespace imgsaver
                     BorderThickness = new Thickness(1)
                 };
                 border.MouseLeftButtonDown += ImagePreview_MouseLeftButtonDown;
+                border.MouseEnter += (s, e) =>
+                {
+                    if (index >= 0 && index < _capturedImages.Count)
+                    {
+                        _currentHoverImageSource = _capturedImages[index].Bitmap;
+                        _currentHoverTarget = border;
+                        StartHoverPreviewTimer();
+                    }
+                };
+                border.MouseLeave += (s, e) =>
+                {
+                    CancelHoverPreviewTimer();
+                    HideLargePreviewPopup();
+                };
                 border.Child = new System.Windows.Controls.Image { Source = _capturedImages[i].Bitmap, Stretch = Stretch.Uniform };
                 ImageGrid.Children.Add(border);
             }
             TxtNoImage.Visibility = _capturedImages.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void StartHoverPreviewTimer()
+        {
+            CancelHoverPreviewTimer();
+            _hoverPreviewTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1.5)
+            };
+            _hoverPreviewTimer.Tick += (s, e) =>
+            {
+                _hoverPreviewTimer.Stop();
+                ShowLargePreviewPopup();
+            };
+            _hoverPreviewTimer.Start();
+        }
+
+        private void CancelHoverPreviewTimer()
+        {
+            if (_hoverPreviewTimer != null)
+            {
+                _hoverPreviewTimer.Stop();
+                _hoverPreviewTimer = null;
+            }
+        }
+
+        private void ShowLargePreviewPopup()
+        {
+            if (_currentHoverTarget == null || _currentHoverImageSource == null || ImgLargePreview == null || ImagePreviewPopup == null) return;
+
+            ImgLargePreview.Source = _currentHoverImageSource;
+            ImagePreviewPopup.PlacementTarget = _currentHoverTarget;
+            ImagePreviewPopup.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+            ImagePreviewPopup.VerticalOffset = -6;
+            ImagePreviewPopup.IsOpen = true;
+
+            BorderLargePreview.BeginAnimation(UIElement.OpacityProperty, null);
+            DoubleAnimation fadeIn = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromSeconds(0.25)
+            };
+            BorderLargePreview.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        }
+
+        private void HideLargePreviewPopup()
+        {
+            CancelHoverPreviewTimer();
+            if (ImagePreviewPopup != null && ImagePreviewPopup.IsOpen && BorderLargePreview != null)
+            {
+                DoubleAnimation fadeOut = new DoubleAnimation
+                {
+                    To = 0,
+                    Duration = TimeSpan.FromSeconds(0.2)
+                };
+                fadeOut.Completed += (s, e) =>
+                {
+                    ImagePreviewPopup.IsOpen = false;
+                };
+                BorderLargePreview.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            }
         }
 
         private void TxtTitle_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -937,6 +1068,20 @@ namespace imgsaver
                 if (IsAdditionalTitleEnabled && string.IsNullOrWhiteSpace(TxtAdditionalTitle.Text)) { TxtAdditionalTitle.Focus(); return; }
                 if (BtnSEO.IsEnabled && !string.IsNullOrWhiteSpace(TxtTitle.Text)) SaveDirectly();
             }
+            else if (e.Key == Key.Up || ((e.Key == Key.LeftShift || e.Key == Key.RightShift) && string.IsNullOrEmpty(TxtTitle.Text)))
+            {
+                if (!string.IsNullOrEmpty(MiniClipHistory.LastSavedTitle))
+                {
+                    TxtTitle.Text = MiniClipHistory.LastSavedTitle;
+                    TxtTitle.SelectionStart = TxtTitle.Text.Length;
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void TxtTitle_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateState();
         }
 
         private void BtnSEO_Click(object sender, RoutedEventArgs e) => SaveDirectly();
@@ -951,7 +1096,7 @@ namespace imgsaver
 
         private void PositivePrompt_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            _hasPositivePrompt = false; _positivePrompt = ""; TxtPositiveCheck.Text = "○";
+            _hasPositivePrompt = false; _positivePrompt = ""; _basePositivePrompt = ""; TxtPositiveCheck.Text = "○";
             TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
             UpdateState();
         }
@@ -1018,8 +1163,7 @@ namespace imgsaver
 
         private void UpdateButtonCountdownText()
         {
-            string baseText = FindResource("Btn_Save_To_Disk") as string ?? "SAVE TO DISK";
-            BtnSEO.Content = $"{baseText} ({_autoSaveRemainingSeconds}s)";
+            BtnSEO.Content = $"Save ({_autoSaveRemainingSeconds}s)";
         }
 
         private void ResetCountdownButtonText()
@@ -1029,7 +1173,7 @@ namespace imgsaver
                 _autoSaveCountdownTimer.Stop();
                 _autoSaveCountdownTimer = null;
             }
-            BtnSEO.SetResourceReference(System.Windows.Controls.Button.ContentProperty, "Btn_Save_To_Disk");
+            BtnSEO.Content = "Save";
             _isCountdownPaused = false;
             if (BtnPauseCountdown != null)
             {
@@ -1065,6 +1209,10 @@ namespace imgsaver
             if (string.IsNullOrEmpty(savePath) || !Directory.Exists(savePath)) { System.Windows.MessageBox.Show("Invalid Save Path"); return; }
 
             string title = TxtTitle.Text.Trim();
+            if (!string.IsNullOrEmpty(title))
+            {
+                MiniClipHistory.LastSavedTitle = title;
+            }
             if (IsAdditionalTitleEnabled && !string.IsNullOrWhiteSpace(AdditionalTitle)) title += " " + AdditionalTitle.Trim();
             if (string.IsNullOrEmpty(title)) { if (!IsCompactMode) TxtTitle.Focus(); return; }
 
@@ -1099,7 +1247,13 @@ namespace imgsaver
                             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(item.Bitmap)); encoder.Save(fs);
                         }
                     }
-                    string txtContent = $"Positive Prompt:\n{_positivePrompt}\n\nNegative Prompt:\n{_negativePrompt}";
+                    string basePromptCandidate = !string.IsNullOrWhiteSpace(_basePositivePrompt) ? _basePositivePrompt.Trim() : (!string.IsNullOrWhiteSpace(_miniExtraTemplate) ? _miniExtraTemplate.Trim() : "");
+                    string txtContent = $"Positive Prompt:\n{_positivePrompt}";
+                    if (!string.IsNullOrWhiteSpace(basePromptCandidate) && basePromptCandidate != _positivePrompt.Trim())
+                    {
+                        txtContent += $"\n\nBase Prompt:\n{basePromptCandidate}";
+                    }
+                    txtContent += $"\n\nNegative Prompt:\n{_negativePrompt}";
                     if (IsDescriptionEnabled && !string.IsNullOrWhiteSpace(DescriptionText))
                     {
                         txtContent += $"\n\nDescription:\n{DescriptionText.Trim()}";
@@ -1107,11 +1261,16 @@ namespace imgsaver
                     File.WriteAllText(txtPath, txtContent);
                 }
                 FlashSuccess();
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    MiniClipHistory.LastSavedTitle = title;
+                }
                 if (IsSaveBasePromptEnabled && !string.IsNullOrWhiteSpace(_positivePrompt))
                 {
                     BasePromptManager.Add(new BasePrompt { Name = !string.IsNullOrWhiteSpace(AdditionalTitle) ? AdditionalTitle.Trim() : "BP", PromptText = _positivePrompt.Trim() });
                 }
                 ResetState();
+                UpdateTitleWatermarkHint();
             }
             catch (Exception ex) { System.Windows.MessageBox.Show(ex.Message); }
             finally { _isSaving = false; }
@@ -1137,7 +1296,7 @@ namespace imgsaver
         private void ResetState()
         {
             ResetCountdownButtonText();
-            _hasImage = false; _hasPositivePrompt = false; _capturedImages.Clear(); _positivePrompt = "";
+            _hasImage = false; _hasPositivePrompt = false; _capturedImages.Clear(); _positivePrompt = ""; _basePositivePrompt = "";
             if (!IsNegativeLocked) { _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○"; TxtNegativeCheck.Foreground = System.Windows.Media.Brushes.Gray; }
             UpdateImagePreviews();
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
@@ -1145,6 +1304,8 @@ namespace imgsaver
             if (!IsAdditionalTitleLocked && !IsAdditionalTitleEnabled) AdditionalTitle = "";
             if (!IsDescriptionLocked) DescriptionText = "";
             BtnSEO.IsEnabled = false;
+            _wasPuzzleComplete = false;
+            UpdateState();
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
@@ -1183,6 +1344,10 @@ namespace imgsaver
             }
 
             _miniExtraTemplate = text;
+            if (string.IsNullOrWhiteSpace(_basePositivePrompt) || _basePositivePrompt == _positivePrompt)
+            {
+                _basePositivePrompt = text;
+            }
             SetMiniExtraButtonState(true);
             return true;
         }
@@ -1229,6 +1394,15 @@ namespace imgsaver
                 SetClipboardTextIgnoringNextChange(output);
                 TryApplyAutoExtraOutputToPositivePrompt(output);
                 SetMiniExtraButtonState(true);
+
+                if (LastExtraSelectionStore.TryGetSelection(out var lastSel, out _) && lastSel != null && !string.IsNullOrWhiteSpace(lastSel.ShortName))
+                {
+                    TxtTitle.Text = lastSel.ShortName;
+                    TxtTitle.IsEnabled = true;
+                    TxtTitle.SelectionStart = TxtTitle.Text.Length;
+                    UpdateState();
+                    CheckAutoSaveTrigger();
+                }
             }
             catch (Exception ex)
             {
@@ -1343,7 +1517,58 @@ namespace imgsaver
         {
             _ignoreNextClipboardChange = true;
             _lastClipboardText = text;
-            System.Windows.Clipboard.SetText(text);
+            for (int i = 0; i < 5; i++)
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(text);
+                    return;
+                }
+                catch
+                {
+                    System.Threading.Thread.Sleep(40);
+                }
+            }
+        }
+
+        private bool SafeClipboardContainsText()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                try { return System.Windows.Clipboard.ContainsText(); }
+                catch { System.Threading.Thread.Sleep(30); }
+            }
+            return false;
+        }
+
+        private string SafeClipboardGetText()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                try { return System.Windows.Clipboard.GetText(); }
+                catch { System.Threading.Thread.Sleep(30); }
+            }
+            return string.Empty;
+        }
+
+        private bool SafeClipboardContainsImage()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                try { return System.Windows.Clipboard.ContainsImage(); }
+                catch { System.Threading.Thread.Sleep(30); }
+            }
+            return false;
+        }
+
+        private System.Windows.Media.Imaging.BitmapSource? SafeClipboardGetImage()
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                try { return System.Windows.Clipboard.GetImage(); }
+                catch { System.Threading.Thread.Sleep(30); }
+            }
+            return null;
         }
 
         private bool TryApplyAutoExtraOutputToPositivePrompt(string rawText)
@@ -1355,6 +1580,16 @@ namespace imgsaver
             if (englishLetterCount > 0 && englishLetterCount < 5) return false;
             if (text == _positivePrompt || text == _negativePrompt) return false;
             if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt) return false;
+
+            if (string.IsNullOrWhiteSpace(_basePositivePrompt))
+            {
+                if (!string.IsNullOrWhiteSpace(_miniExtraTemplate))
+                    _basePositivePrompt = _miniExtraTemplate;
+                else if (!string.IsNullOrWhiteSpace(_positivePrompt))
+                    _basePositivePrompt = _positivePrompt;
+                else
+                    _basePositivePrompt = text;
+            }
 
             _positivePrompt = text;
             _hasPositivePrompt = true;
@@ -1541,7 +1776,8 @@ namespace imgsaver
                         if (!string.IsNullOrEmpty(ClipboardMetadata.CharacterName)) TxtTitle.Text = ClipboardMetadata.CharacterName;
                         if (!string.IsNullOrEmpty(ClipboardMetadata.BasePromptName)) { IsAdditionalTitleEnabled = true; AdditionalTitle = ClipboardMetadata.BasePromptName; }
                     }
-                    ClipboardMetadata.Clear(); if (!IsCompactMode) TxtTitle.Focus();
+                    ClipboardMetadata.Clear();
+                    UpdateState();
                     CheckAutoSaveTrigger();
                 }
             }));
@@ -1679,16 +1915,39 @@ namespace imgsaver
                 double controlLeftInDips = screenPt.X / dpiX;
                 double controlTopInDips = screenPt.Y / dpiY;
 
-                panel.Measure(new System.Windows.Size(panel.Width, double.PositiveInfinity));
-                double panelHeight = panel.DesiredSize.Height > 0 ? panel.DesiredSize.Height : 250;
+                double panelWidth = panel.Width > 0 ? panel.Width : 230;
 
-                // Position the panel above this control, aligned with the right side
-                double panelLeft = controlLeftInDips + this.ActualWidth - panel.Width - 10;
-                double panelTop = controlTopInDips - panelHeight - 6;
+                // Force layout measurement so desired height is accurate
+                panel.Measure(new System.Windows.Size(panelWidth, double.PositiveInfinity));
+
+                double realHeight = Math.Max(panel.ActualHeight, Math.Max(panel.DesiredSize.Height, 330));
+
+                // Position the panel completely above this control, with a 6px gap
+                double panelLeft = controlLeftInDips + this.ActualWidth - panelWidth - 10;
+                double panelTop = controlTopInDips - realHeight - 6;
 
                 panel.Left = panelLeft;
                 panel.Top = panelTop;
                 panel.Owner = window; // Ensure it stays on top of the main window
+
+                // Re-adjust top once WPF finishes rendering panel content
+                RoutedEventHandler? onLoaded = null;
+                onLoaded = (s, e) =>
+                {
+                    panel.Loaded -= onLoaded;
+                    try
+                    {
+                        double h = Math.Max(panel.ActualHeight, panel.DesiredSize.Height);
+                        if (h > 0)
+                        {
+                            var ptNow = this.PointToScreen(new System.Windows.Point(0, 0));
+                            double topNow = ptNow.Y / dpiY;
+                            panel.Top = topNow - h - 6;
+                        }
+                    }
+                    catch {}
+                };
+                panel.Loaded += onLoaded;
             } 
             catch {}
         }

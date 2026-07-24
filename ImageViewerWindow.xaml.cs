@@ -18,6 +18,7 @@ namespace imgsaver
         private int _currentIndex;
 
         private string _originalPositive = "";
+        private string _originalBase = "";
         private string _originalNegative = "";
         private string _originalDescription = "";
 
@@ -180,6 +181,11 @@ namespace imgsaver
             BtnEditPositive.Content = "✏️";
             BtnSavePositive.Visibility = Visibility.Collapsed;
 
+            TxtBasePrompt.Visibility = Visibility.Visible;
+            TxtBasePromptEditor.Visibility = Visibility.Collapsed;
+            BtnEditBasePrompt.Content = "✏️";
+            BtnSaveBasePrompt.Visibility = Visibility.Collapsed;
+
             TxtNegative.Visibility = Visibility.Visible;
             TxtNegativeEditor.Visibility = Visibility.Collapsed;
             BtnEditNegative.Content = "✏️";
@@ -191,6 +197,7 @@ namespace imgsaver
             BtnSaveDescription.Visibility = Visibility.Collapsed;
             
             _originalPositive = "";
+            _originalBase = "";
             _originalNegative = "";
             _originalDescription = "";
         }
@@ -214,15 +221,17 @@ namespace imgsaver
                     string content = await File.ReadAllTextAsync(txtPath);
                     if (!string.IsNullOrWhiteSpace(content))
                     {
-                        // Parse positive, negative, and description
+                        // Parse positive, base, negative, and description
                         // Run parsing on background thread to avoid freezing UI for large text files
                         await Task.Run(() => 
                         {
                             var lines = content.Split('\n');
                             string positivePrompt = "";
+                            string basePrompt = "";
                             string negativePrompt = "";
                             string description = "";
                             bool isPositive = false;
+                            bool isBase = false;
                             bool isNegative = false;
                             bool isDescription = false;
                             bool hasContent = false;
@@ -238,9 +247,9 @@ namespace imgsaver
                                 if (lowerLine.StartsWith("positive prompt"))
                                 {
                                     isPositive = true;
+                                    isBase = false;
                                     isNegative = false;
                                     isDescription = false;
-                                    // If the line has content after the header, add it
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
                                     {
@@ -248,10 +257,24 @@ namespace imgsaver
                                     }
                                     continue;
                                 }
+                                else if (lowerLine.StartsWith("base prompt"))
+                                {
+                                    isBase = true;
+                                    isPositive = false;
+                                    isNegative = false;
+                                    isDescription = false;
+                                    var colonIndex = currentLine.IndexOf(':');
+                                    if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
+                                    {
+                                        basePrompt += currentLine.Substring(colonIndex + 1).Trim() + "\n";
+                                    }
+                                    continue;
+                                }
                                 else if (lowerLine.StartsWith("negative prompt"))
                                 {
                                     isNegative = true;
                                     isPositive = false;
+                                    isBase = false;
                                     isDescription = false;
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
@@ -264,6 +287,7 @@ namespace imgsaver
                                 {
                                     isDescription = true;
                                     isPositive = false;
+                                    isBase = false;
                                     isNegative = false;
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
@@ -275,6 +299,8 @@ namespace imgsaver
 
                                 if (isPositive)
                                     positivePrompt += currentLine + "\n";
+                                else if (isBase)
+                                    basePrompt += currentLine + "\n";
                                 else if (isNegative)
                                     negativePrompt += currentLine + "\n";
                                 else if (isDescription)
@@ -285,6 +311,7 @@ namespace imgsaver
                             Dispatcher.Invoke(() =>
                             {
                                 string finalPos = positivePrompt.Trim();
+                                string finalBase = basePrompt.Trim();
                                 string finalNeg = negativePrompt.Trim();
                                 string finalDesc = description.Trim();
 
@@ -292,6 +319,17 @@ namespace imgsaver
                                 {
                                     SetInteractiveText(TxtPositive, finalPos, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
                                     hasContent = true;
+                                }
+
+                                if (!string.IsNullOrEmpty(finalBase))
+                                {
+                                    SetInteractiveText(TxtBasePrompt, finalBase, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
+                                    BasePromptGrid.Visibility = Visibility.Visible;
+                                    hasContent = true;
+                                }
+                                else
+                                {
+                                    BasePromptGrid.Visibility = Visibility.Collapsed;
                                 }
 
                                 if (!string.IsNullOrEmpty(finalNeg))
@@ -302,9 +340,6 @@ namespace imgsaver
 
                                 if (!string.IsNullOrEmpty(finalDesc))
                                 {
-                                    // Description usually isn't comma-separated keywords, but we can tokenise it blindly or just keep it as text
-                                    // User request implies "prompts" (positive/negative), but doing it for description effectively won't hurt if it has commas
-                                    // For now, let's treat description as regular text unless it looks like tags
                                     SetInteractiveText(TxtDescription, finalDesc, (System.Windows.Media.Brush)FindResource("ForegroundBrush")); 
                                     DescriptionGrid.Visibility = Visibility.Visible;
                                     hasContent = true;
@@ -317,6 +352,7 @@ namespace imgsaver
                                 if (hasContent)
                                 {
                                     _originalPositive = finalPos;
+                                    _originalBase = finalBase;
                                     _originalNegative = finalNeg;
                                     _originalDescription = finalDesc;
                                     PromptsPanel.Visibility = Visibility.Visible;
@@ -389,6 +425,16 @@ namespace imgsaver
             }
         }
 
+        private void BtnCopyBasePrompt_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(TxtBasePrompt.Text))
+            {
+                System.Windows.Clipboard.SetText(TxtBasePrompt.Text);
+                BtnCopyBasePrompt.Content = "✓";
+                Task.Delay(1500).ContinueWith(_ => Dispatcher.Invoke(() => BtnCopyBasePrompt.Content = "Copy"));
+            }
+        }
+
         private void BtnCopyNegative_Click(object sender, RoutedEventArgs e)
         {
              if (!string.IsNullOrEmpty(TxtNegative.Text) && TxtNegative.Text != "No negative prompt found.")
@@ -411,6 +457,7 @@ namespace imgsaver
         }
 
         private void BtnEditPositive_Click(object sender, RoutedEventArgs e) => ToggleEdit(TxtPositive, TxtPositiveEditor, BtnEditPositive, _originalPositive);
+        private void BtnEditBasePrompt_Click(object sender, RoutedEventArgs e) => ToggleEdit(TxtBasePrompt, TxtBasePromptEditor, BtnEditBasePrompt, _originalBase);
         private void BtnEditNegative_Click(object sender, RoutedEventArgs e) => ToggleEdit(TxtNegative, TxtNegativeEditor, BtnEditNegative, _originalNegative);
         private void BtnEditDescription_Click(object sender, RoutedEventArgs e) => ToggleEdit(TxtDescription, TxtDescriptionEditor, BtnEditDescription, _originalDescription);
 
@@ -431,6 +478,7 @@ namespace imgsaver
                 editBtn.Content = "✏️";
                 // Reset save button visibility if cancelled
                 if (editor == TxtPositiveEditor) BtnSavePositive.Visibility = Visibility.Collapsed;
+                if (editor == TxtBasePromptEditor) BtnSaveBasePrompt.Visibility = Visibility.Collapsed;
                 if (editor == TxtNegativeEditor) BtnSaveNegative.Visibility = Visibility.Collapsed;
                 if (editor == TxtDescriptionEditor) BtnSaveDescription.Visibility = Visibility.Collapsed;
                 
@@ -444,12 +492,14 @@ namespace imgsaver
             if (sender is System.Windows.Controls.TextBox editor)
             {
                 if (editor == TxtPositiveEditor) BtnSavePositive.Visibility = editor.Text != _originalPositive ? Visibility.Visible : Visibility.Collapsed;
+                else if (editor == TxtBasePromptEditor) BtnSaveBasePrompt.Visibility = editor.Text != _originalBase ? Visibility.Visible : Visibility.Collapsed;
                 else if (editor == TxtNegativeEditor) BtnSaveNegative.Visibility = editor.Text != _originalNegative ? Visibility.Visible : Visibility.Collapsed;
                 else if (editor == TxtDescriptionEditor) BtnSaveDescription.Visibility = editor.Text != _originalDescription ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
         private async void BtnSavePositive_Click(object sender, RoutedEventArgs e) => await SavePromptChange(TxtPositiveEditor.Text, "positive");
+        private async void BtnSaveBasePrompt_Click(object sender, RoutedEventArgs e) => await SavePromptChange(TxtBasePromptEditor.Text, "base");
         private async void BtnSaveNegative_Click(object sender, RoutedEventArgs e) => await SavePromptChange(TxtNegativeEditor.Text, "negative");
         private async void BtnSaveDescription_Click(object sender, RoutedEventArgs e) => await SavePromptChange(TxtDescriptionEditor.Text, "description");
 
@@ -464,11 +514,13 @@ namespace imgsaver
                 string txtPath = Path.Combine(directory, baseName + ".txt");
 
                 if (type == "positive") _originalPositive = newValue;
+                else if (type == "base") _originalBase = newValue;
                 else if (type == "negative") _originalNegative = newValue;
                 else if (type == "description") _originalDescription = newValue;
 
                 string content = "";
                 if (!string.IsNullOrWhiteSpace(_originalPositive)) content += $"Positive Prompt:\n{_originalPositive}\n\n";
+                if (!string.IsNullOrWhiteSpace(_originalBase)) content += $"Base Prompt:\n{_originalBase}\n\n";
                 if (!string.IsNullOrWhiteSpace(_originalNegative)) content += $"Negative Prompt:\n{_originalNegative}\n\n";
                 if (!string.IsNullOrWhiteSpace(_originalDescription)) content += $"Description:\n{_originalDescription}\n";
 
@@ -479,6 +531,11 @@ namespace imgsaver
                 {
                     ToggleEdit(TxtPositive, TxtPositiveEditor, BtnEditPositive, _originalPositive);
                     SetInteractiveText(TxtPositive, _originalPositive, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
+                }
+                else if (type == "base")
+                {
+                    ToggleEdit(TxtBasePrompt, TxtBasePromptEditor, BtnEditBasePrompt, _originalBase);
+                    SetInteractiveText(TxtBasePrompt, _originalBase, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
                 }
                 else if (type == "negative")
                 {

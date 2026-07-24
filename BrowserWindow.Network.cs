@@ -111,20 +111,14 @@ namespace imgsaver
             TxtDownloadUsage.Text = $"Download: {FormatBytes(stats.DownloadedBytes)}";
             TxtTotalUsage.Text = $"Total: {FormatBytes(stats.TotalBytes)}";
 
-            if (StatusOverlay.Visibility != Visibility.Visible)
-            {
-                StatusOverlay.Visibility = Visibility.Visible;
-                DoubleAnimation fadeIn = new DoubleAnimation(1, TimeSpan.FromSeconds(0.2));
-                StatusOverlay.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-            }
             if (_currentSettings.AutoHideStatus)
             {
-                _statusFadeTimer?.Stop();
-                _statusFadeTimer?.Start();
+                StatusOverlay.Visibility = Visibility.Collapsed;
+                StatusOverlay.Opacity = 0;
             }
             else
             {
-                _statusFadeTimer?.Stop();
+                StatusOverlay.Visibility = Visibility.Visible;
                 StatusOverlay.Opacity = 1;
             }
         }
@@ -800,10 +794,16 @@ namespace imgsaver
 
         private void HideStatus()
         {
-            if (!_currentSettings.AutoHideStatus) return;
-            DoubleAnimation fadeOut = new DoubleAnimation(0, TimeSpan.FromSeconds(0.5));
-            fadeOut.Completed += (s, e) => { StatusOverlay.Visibility = Visibility.Collapsed; };
-            StatusOverlay.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            if (_currentSettings.AutoHideStatus)
+            {
+                StatusOverlay.Visibility = Visibility.Collapsed;
+                StatusOverlay.Opacity = 0;
+            }
+            else
+            {
+                StatusOverlay.Visibility = Visibility.Visible;
+                StatusOverlay.Opacity = 1;
+            }
         }
 
         private void BtnSkipRequest_Click(object sender, RoutedEventArgs e)

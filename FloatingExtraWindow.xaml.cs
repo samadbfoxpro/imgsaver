@@ -68,7 +68,39 @@ namespace imgsaver
             TouchRightClickHelper.Register(TxtCustomTitle);
             TouchRightClickHelper.Register(TxtTaggerValues);
 
+            this.PreviewMouseWheel += FloatingExtraWindow_PreviewMouseWheel;
+
             Loaded += FloatingExtraWindow_Loaded;
+        }
+
+        private void FloatingExtraWindow_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (BorderExtraList.Visibility == Visibility.Visible)
+            {
+                var scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(BorderExtraList);
+                if (scrollViewer != null)
+                {
+                    if (e.Delta < 0)
+                        scrollViewer.LineDown();
+                    else
+                        scrollViewer.LineUp();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild) return typedChild;
+                var result = FindVisualChild<T>(child);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private void FloatingExtraWindow_Loaded(object sender, RoutedEventArgs e)

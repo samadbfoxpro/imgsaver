@@ -28,6 +28,10 @@ namespace imgsaver
         bool IsAdditionalTitleLocked { get; set; }
 
         int ExtraMenuPage { get; set; }
-        bool IsTitleLocked { get; set; }
+    }
+
+    public static class MiniClipHistory
+    {
+        public static string LastSavedTitle { get; set; } = string.Empty;
     }
 }

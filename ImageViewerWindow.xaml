@@ -223,6 +223,47 @@
                                 </Border>
                             </Grid>
 
+                            <!-- Base Prompt -->
+                            <Grid x:Name="BasePromptGrid" Visibility="Collapsed" Margin="0,0,0,16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Viewbox HorizontalAlignment="Left" Width="16" Height="16">
+                                        <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z" Fill="#FFD21F"/>
+                                    </Viewbox>
+                                    <TextBlock Text="BASE PROMPT" Foreground="#FFD21F" 
+                                               FontSize="11" FontWeight="Bold" Margin="24,0,0,0" VerticalAlignment="Center"/>
+
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button x:Name="BtnSaveBasePrompt" Content="✅" Click="BtnSaveBasePrompt_Click"
+                                                Visibility="Collapsed" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#27AE60" Foreground="#FFF" Margin="0,0,4,0" ToolTip="Save Changes"/>
+                                        <Button x:Name="BtnEditBasePrompt" Content="✏️" Click="BtnEditBasePrompt_Click"
+                                                HorizontalAlignment="Right" Width="26" Height="22" Padding="0" FontSize="10"
+                                                Background="#333" Foreground="#FFF" ToolTip="Edit Prompt"/>
+                                        <Button x:Name="BtnCopyBasePrompt" Content="Copy" Click="BtnCopyBasePrompt_Click"
+                                                HorizontalAlignment="Right" Padding="8,2" FontSize="10" Height="22"
+                                                Background="#333" Foreground="#FFF" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Grid.Row="1" Background="{StaticResource InputBrush}" CornerRadius="6" Padding="12" BorderBrush="#333" BorderThickness="1">
+                                    <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
+                                        <Grid>
+                                            <TextBlock x:Name="TxtBasePrompt" Text="Base prompt text..." 
+                                                       TextWrapping="Wrap" FontSize="13" LineHeight="20" Foreground="#DDD"/>
+                                            <TextBox x:Name="TxtBasePromptEditor" Visibility="Collapsed"
+                                                     TextWrapping="Wrap" AcceptsReturn="True" FontSize="13" 
+                                                     Background="Transparent" Foreground="#DDD" BorderThickness="0"
+                                                     TextChanged="PromptEditor_TextChanged"/>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+
                             <!-- Negative Prompt -->
                             <Grid Margin="0,0,0,16">
                                 <Grid.RowDefinitions>
