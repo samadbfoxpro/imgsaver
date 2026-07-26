@@ -13,6 +13,8 @@ namespace imgsaver
         public bool EnableJavaScript { get; set; } = true;
         public bool MuteAudio { get; set; } = false;
         public bool EnableEmbeddedMiniClip { get; set; } = false;
+        public bool EnableCombinerBar { get; set; } = false;
+        public bool AutoFocusMiniClip { get; set; } = true;
         public bool AutoHideStatus { get; set; } = true;
         public string LastUrl { get; set; } = "";
         public List<string> OpenTabs { get; set; } = new List<string>();

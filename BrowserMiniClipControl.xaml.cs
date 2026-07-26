@@ -296,7 +296,7 @@ namespace imgsaver
                 _hasNegativePrompt = !string.IsNullOrEmpty(_negativePrompt);
                 if (BorderNegative != null)
                 {
-                    BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
+                    BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt, isPositive: false);
                 }
 
                 if (TxtNegativeCheck != null)
@@ -319,13 +319,21 @@ namespace imgsaver
             }
         }
 
-        private string GetTruncatedTooltipText(string text)
+        private string GetTruncatedTooltipText(string text, bool isPositive = false)
         {
-            if (string.IsNullOrEmpty(text)) return "Negative Prompt (Click to clear)";
+            if (string.IsNullOrEmpty(text)) return isPositive ? "Positive Prompt (Click to clear)" : "Negative Prompt (Click to clear)";
             string cleanText = Regex.Replace(text.Replace('\r', ' ').Replace('\n', ' '), @"\s+", " ").Trim();
             var words = cleanText.Split(' ');
             if (words.Length <= 5) return cleanText;
             return string.Join(" ", words.Take(5)) + "...";
+        }
+
+        private void UpdatePositivePromptToolTip()
+        {
+            if (BorderPositive != null)
+            {
+                BorderPositive.ToolTip = GetTruncatedTooltipText(_positivePrompt, isPositive: true);
+            }
         }
 
         private string NegativePromptStatePath => DataPathManager.GetSettingsFilePath("negative_prompt_state.json");
@@ -365,7 +373,7 @@ namespace imgsaver
                         _negativePrompt = data.NegativePrompt ?? "";
                         if (BorderNegative != null)
                         {
-                            BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
+                            BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt, isPositive: false);
                         }
                         IsNegativeLocked = data.IsNegativeLocked;
                         if (!string.IsNullOrEmpty(_negativePrompt))
@@ -377,6 +385,7 @@ namespace imgsaver
                         UpdateState();
                     }
                 }
+                UpdatePositivePromptToolTip();
             }
             catch { }
         }
@@ -817,6 +826,12 @@ namespace imgsaver
                         return;
                     }
 
+                    if (Window.GetWindow(this) is BrowserWindow bw && bw.TryProcessCombinerText(rawText, out string combined))
+                    {
+                        rawText = combined;
+                        try { System.Windows.Clipboard.SetText(combined); } catch { }
+                    }
+
                     string tagPrefix = _tagReplacerPrefix;
                     if (string.IsNullOrEmpty(tagPrefix)) tagPrefix = "PH_";
                     var tagPattern = $@"\[{Regex.Escape(tagPrefix)}\d+\]";
@@ -879,7 +894,7 @@ namespace imgsaver
 
                         if (!_hasPositivePrompt)
                         {
-                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true;
+                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓"; TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
                         }
                         else if (!_hasNegativePrompt && !IsNegativeLocked)
@@ -890,13 +905,13 @@ namespace imgsaver
                         }
                         else if (!IsNegativeLocked)
                         {
-                            _basePositivePrompt = _negativePrompt; _positivePrompt = _negativePrompt; NegativePrompt = text;
+                            _basePositivePrompt = _negativePrompt; _positivePrompt = _negativePrompt; NegativePrompt = text; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓"; TxtNegativeCheck.Text = "✓";
                             IsNegativeLocked = true; // Auto-lock after receiving
                         }
                         else if (IsNegativeLocked)
                         {
-                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true;
+                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓";
                         }
                         UpdateState();
@@ -1116,6 +1131,7 @@ namespace imgsaver
         {
             _hasPositivePrompt = false; _positivePrompt = ""; _basePositivePrompt = ""; TxtPositiveCheck.Text = "○";
             TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
+            UpdatePositivePromptToolTip();
             UpdateState();
         }
 
@@ -1315,6 +1331,7 @@ namespace imgsaver
         {
             ResetCountdownButtonText();
             _hasImage = false; _hasPositivePrompt = false; _capturedImages.Clear(); _positivePrompt = ""; _basePositivePrompt = "";
+            UpdatePositivePromptToolTip();
             if (!IsNegativeLocked) { _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○"; TxtNegativeCheck.Foreground = System.Windows.Media.Brushes.Gray; }
             UpdateImagePreviews();
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
@@ -1611,6 +1628,7 @@ namespace imgsaver
 
             _positivePrompt = text;
             _hasPositivePrompt = true;
+            UpdatePositivePromptToolTip();
             TxtPositiveCheck.Text = "\u2713";
             TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
             UpdateState();

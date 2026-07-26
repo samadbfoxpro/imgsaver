@@ -111,6 +111,10 @@
                                 Style="{StaticResource SecondaryButtonStyle}" ToolTip="Play browser recording" Click="BtnBrowserPlayRec_Click" Padding="0">
                             <TextBlock Text="▶" Foreground="{StaticResource ForegroundBrush}" FontSize="17" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
+                        <Button x:Name="BtnOpenMainMiniClip" Width="36" Height="36" Margin="4,0,0,0" 
+                                Style="{StaticResource SecondaryButtonStyle}" ToolTip="Open Main Mini Clip Window" Click="BtnOpenMainMiniClip_Click" Padding="0">
+                            <TextBlock Text="📋" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
                         <Button x:Name="BtnBrowserSettings" Width="36" Height="36" Margin="4,0,0,0" 
                                 Style="{StaticResource SecondaryButtonStyle}" ToolTip="Browser Settings" Click="BtnBrowserSettings_Click" Padding="0">
                             <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
@@ -136,6 +140,7 @@
                 <TabControl x:Name="BrowserTabs" Background="Transparent" BorderThickness="0" SelectionChanged="BrowserTabs_SelectionChanged">
                     <TabControl.Resources>
                         <Style TargetType="TabItem">
+                            <Setter Property="Header" Value="New Tab"/>
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">
@@ -168,11 +173,83 @@
                 <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" ClipToBounds="False"/>
             </Grid>
 
+            <!-- Smart Prompt Combiner Toolbar -->
+            <Border x:Name="CombinerBar" Grid.Row="4" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="40" Visibility="Collapsed">
+                <Grid Margin="8,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Master Combiner Toggle -->
+                    <ToggleButton x:Name="ChkCombinerEnable" Grid.Column="0" Height="26" Padding="10,0" Margin="0,0,8,0" Cursor="Hand" ToolTip="Enable / Disable Smart Prompt Combiner" Checked="ChkCombinerEnable_Changed" Unchecked="ChkCombinerEnable_Changed">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton">
+                                <Setter Property="Background" Value="#2D2D30"/>
+                                <Setter Property="BorderBrush" Value="#454545"/>
+                                <Setter Property="Foreground" Value="#CCCCCC"/>
+                                <Setter Property="FontSize" Value="11"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Content" Value="🧩 Combiner OFF"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="border"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="1.2"
+                                                    CornerRadius="13"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <TextBlock x:Name="txtContent" 
+                                                           Text="{TemplateBinding Content}" 
+                                                           Foreground="{TemplateBinding Foreground}"
+                                                           FontSize="{TemplateBinding FontSize}"
+                                                           FontWeight="{TemplateBinding FontWeight}"
+                                                           HorizontalAlignment="Center" 
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#1A382B"/>
+                                                    <Setter Property="BorderBrush" Value="#2ECC71"/>
+                                                    <Setter Property="Foreground" Value="#2ECC71"/>
+                                                    <Setter Property="Content" Value="🧩 Combiner ON"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="border" Property="Opacity" Value="0.85"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
+
+                    <!-- Category / Folder Dropdown -->
+                    <ComboBox x:Name="CboCombinerFolders" Grid.Column="1" Height="26" Width="140" Margin="0,0,8,0" VerticalAlignment="Center" DisplayMemberPath="Name" SelectionChanged="CboCombinerFolders_SelectionChanged"/>
+
+                    <!-- Snippet Buttons ScrollViewer & WrapPanel -->
+                    <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
+                        <StackPanel x:Name="PnlCombinerButtons" Orientation="Horizontal" VerticalAlignment="Center"/>
+                    </ScrollViewer>
+
+                    <!-- Placement Rule Badge -->
+                    <Button x:Name="BtnCombinerRuleBadge" Grid.Column="3" Content="📍 After Comma #1" Style="{StaticResource SecondaryButtonStyle}" Height="26" Padding="8,0" Margin="8,0" FontSize="11" Click="BtnCombinerRuleBadge_Click" ToolTip="Click to cycle placement rule"/>
+
+                    <!-- Manager Button -->
+                    <Button x:Name="BtnOpenCombinerManager" Grid.Column="4" Content="⚙ Manager" Style="{StaticResource PrimaryButtonStyle}" Height="26" Padding="10,0" FontSize="11" Click="BtnOpenCombinerManager_Click" ToolTip="Open Prompt Combiner Manager"/>
+                </Grid>
+            </Border>
+
             <!-- Embedded MiniClip Bar -->
-            <local:BrowserMiniClipControl x:Name="EmbeddedMiniClip" Grid.Row="4" Visibility="Collapsed" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}"/>
+            <local:BrowserMiniClipControl x:Name="EmbeddedMiniClip" Grid.Row="5" Visibility="Collapsed" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}"/>
 
             <!-- Network Status Bar -->
-            <Border x:Name="StatusOverlay" Grid.Row="5" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="36" Opacity="0" Visibility="Collapsed">
+            <Border x:Name="StatusOverlay" Grid.Row="6" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="36" Opacity="0" Visibility="Collapsed">
                 <Grid Margin="10,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>

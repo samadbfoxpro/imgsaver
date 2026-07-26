@@ -122,7 +122,7 @@
     <!-- ==================== Button Styles ==================== -->
 
     <!-- Primary Button (Blue) -->
-    <Style TargetType="Button">
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}"/>
         <Setter Property="Padding" Value="16,8"/>
@@ -158,6 +158,8 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}"/>
 
     <!-- Warning Button (Yellow) -->
     <Style x:Key="WarningButtonStyle" TargetType="Button">

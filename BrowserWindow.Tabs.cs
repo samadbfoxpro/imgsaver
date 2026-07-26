@@ -490,8 +490,49 @@ namespace imgsaver
                 if (s.IsSplitView)
                 {
                     bool isThisTabSelected = (s.Tab == BrowserTabs.SelectedItem);
-                    if (s.LeftHeaderPopup != null) s.LeftHeaderPopup.IsOpen = isThisTabSelected;
-                    if (s.RightHeaderPopup != null) s.RightHeaderPopup.IsOpen = isThisTabSelected;
+                    bool shouldBeOpen = isThisTabSelected && this.IsActive && this.WindowState != WindowState.Minimized;
+                    if (s.LeftHeaderPopup != null) s.LeftHeaderPopup.IsOpen = shouldBeOpen;
+                    if (s.RightHeaderPopup != null) s.RightHeaderPopup.IsOpen = shouldBeOpen;
+                }
+            }
+        }
+
+        public void UpdateSplitViewPopupsVisibility(bool isVisible)
+        {
+            foreach (var s in _tabStates.Values)
+            {
+                if (s.IsSplitView)
+                {
+                    bool isThisTabSelected = (s.Tab == BrowserTabs.SelectedItem);
+                    bool shouldBeOpen = isVisible && isThisTabSelected && this.IsActive && this.WindowState != WindowState.Minimized;
+                    if (s.LeftHeaderPopup != null) s.LeftHeaderPopup.IsOpen = shouldBeOpen;
+                    if (s.RightHeaderPopup != null) s.RightHeaderPopup.IsOpen = shouldBeOpen;
+                }
+            }
+        }
+
+        public void RefreshSplitViewPopupsPosition()
+        {
+            if (!this.IsActive || this.WindowState == WindowState.Minimized)
+            {
+                UpdateSplitViewPopupsVisibility(false);
+                return;
+            }
+
+            foreach (var s in _tabStates.Values)
+            {
+                if (s.IsSplitView && s.Tab == BrowserTabs.SelectedItem)
+                {
+                    if (s.LeftHeaderPopup != null && s.LeftHeaderPopup.IsOpen)
+                    {
+                        s.LeftHeaderPopup.HorizontalOffset += 0.0001;
+                        s.LeftHeaderPopup.HorizontalOffset -= 0.0001;
+                    }
+                    if (s.RightHeaderPopup != null && s.RightHeaderPopup.IsOpen)
+                    {
+                        s.RightHeaderPopup.HorizontalOffset += 0.0001;
+                        s.RightHeaderPopup.HorizontalOffset -= 0.0001;
+                    }
                 }
             }
         }
@@ -561,7 +602,68 @@ namespace imgsaver
         }
         private void BtnBack_Click(object? sender, RoutedEventArgs e) { var b = GetCurrentBrowser(); if (b != null && b.CanGoBack) b.GoBack(); }
         private void BtnForward_Click(object? sender, RoutedEventArgs e) { var b = GetCurrentBrowser(); if (b != null && b.CanGoForward) b.GoForward(); }
-        private void BtnReload_Click(object? sender, RoutedEventArgs e) => GetCurrentBrowser()?.Reload();
+        private void BtnReload_Click(object? sender, RoutedEventArgs e)
+        {
+            bool isShiftOrCtrlPressed = (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0;
+            if (isShiftOrCtrlPressed)
+            {
+                HardReloadCurrentTab();
+            }
+            else
+            {
+                GetCurrentBrowser()?.Reload();
+            }
+        }
+
+        public async void HardReloadCurrentTab()
+        {
+            var browser = GetCurrentBrowser();
+            if (browser == null || browser.CoreWebView2 == null) return;
+
+            try
+            {
+                // 1) Clear local storage, session storage, service workers & cache storage via script
+                string script = @"
+                    (function() {
+                        try { localStorage.clear(); } catch(e){}
+                        try { sessionStorage.clear(); } catch(e){}
+                        try {
+                            if (navigator.serviceWorker) {
+                                navigator.serviceWorker.getRegistrations().then(regs => {
+                                    for(let reg of regs) reg.unregister();
+                                });
+                            }
+                        } catch(e){}
+                        try {
+                            if (window.caches) {
+                                caches.keys().then(names => {
+                                    for(let name of names) caches.delete(name);
+                                });
+                            }
+                        } catch(e){}
+                    })();
+                ";
+                await browser.CoreWebView2.ExecuteScriptAsync(script);
+
+                // 2) Clear Disk Cache and DOM Storage via CoreWebView2 Profile API
+                var dataKinds = CoreWebView2BrowsingDataKinds.DiskCache | 
+                                CoreWebView2BrowsingDataKinds.LocalStorage | 
+                                CoreWebView2BrowsingDataKinds.CacheStorage | 
+                                CoreWebView2BrowsingDataKinds.IndexedDb |
+                                CoreWebView2BrowsingDataKinds.WebSql;
+
+                await browser.CoreWebView2.Profile.ClearBrowsingDataAsync(dataKinds);
+
+                // 3) Reload ignoring cache
+                browser.CoreWebView2.Reload();
+                UpdateStatus("⚡ Hard Reload Executed: Cache & LocalStorage Cleared!", "Browser");
+            }
+            catch
+            {
+                browser.Reload();
+                UpdateStatus("⚡ Hard Reload Completed", "Browser");
+            }
+        }
         private void BtnGo_Click(object? sender, RoutedEventArgs e) => Navigate();
         private void TxtUrl_KeyDown(object? sender, System.Windows.Input.KeyEventArgs e) { if (e.Key == Key.Enter) Navigate(); }
 

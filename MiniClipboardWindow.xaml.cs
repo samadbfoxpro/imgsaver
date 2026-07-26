@@ -295,7 +295,7 @@ namespace imgsaver
                 _hasNegativePrompt = !string.IsNullOrEmpty(_negativePrompt);
                 if (BorderNegative != null)
                 {
-                    BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
+                    BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt, isPositive: false);
                 }
 
                 if (TxtNegativeCheck != null)
@@ -318,13 +318,21 @@ namespace imgsaver
             }
         }
 
-        private string GetTruncatedTooltipText(string text)
+        private string GetTruncatedTooltipText(string text, bool isPositive = false)
         {
-            if (string.IsNullOrEmpty(text)) return "Negative Prompt (Click to clear)";
+            if (string.IsNullOrEmpty(text)) return isPositive ? "Positive Prompt (Click to clear)" : "Negative Prompt (Click to clear)";
             string cleanText = Regex.Replace(text.Replace('\r', ' ').Replace('\n', ' '), @"\s+", " ").Trim();
             var words = cleanText.Split(' ');
             if (words.Length <= 5) return cleanText;
             return string.Join(" ", words.Take(5)) + "...";
+        }
+
+        private void UpdatePositivePromptToolTip()
+        {
+            if (BorderPositive != null)
+            {
+                BorderPositive.ToolTip = GetTruncatedTooltipText(_positivePrompt, isPositive: true);
+            }
         }
 
         private string NegativePromptStatePath => DataPathManager.GetSettingsFilePath("negative_prompt_state.json");
@@ -364,7 +372,7 @@ namespace imgsaver
                         _negativePrompt = data.NegativePrompt ?? "";
                         if (BorderNegative != null)
                         {
-                            BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt);
+                            BorderNegative.ToolTip = GetTruncatedTooltipText(_negativePrompt, isPositive: false);
                         }
                         IsNegativeLocked = data.IsNegativeLocked;
                         if (!string.IsNullOrEmpty(_negativePrompt))
@@ -376,6 +384,7 @@ namespace imgsaver
                         UpdateState();
                     }
                 }
+                UpdatePositivePromptToolTip();
             }
             catch { }
         }
@@ -447,6 +456,86 @@ namespace imgsaver
             StartNetMonitoring();
             RefreshAutoImport();
             LoadNegativePromptState();
+            UpdateCombinerToggleVisual();
+        }
+
+        private void UpdateCombinerToggleVisual()
+        {
+            if (BtnCombinerToggle == null) return;
+            var data = PromptCombinerStore.Load();
+            bool isEnabled = data != null && data.IsEnabled;
+
+            var txt = BtnCombinerToggle.Template?.FindName("txt", BtnCombinerToggle) as TextBlock;
+            var bd = BtnCombinerToggle.Template?.FindName("bd", BtnCombinerToggle) as Border;
+
+            if (txt != null)
+            {
+                txt.Foreground = isEnabled ? new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71")) : new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#888888"));
+            }
+            if (bd != null)
+            {
+                bd.BorderBrush = isEnabled ? new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71")) : new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#444444"));
+            }
+
+            BtnCombinerToggle.ToolTip = isEnabled ? "Smart Prompt Combiner: ON (Click to Disable)" : "Smart Prompt Combiner: OFF (Click to Enable)";
+        }
+
+        private void BtnCombinerToggle_Click(object sender, RoutedEventArgs e)
+        {
+            var data = PromptCombinerStore.Load();
+            if (data == null) return;
+            data.IsEnabled = !data.IsEnabled;
+            PromptCombinerStore.Save(data);
+            UpdateCombinerToggleVisual();
+
+            // Sync with BrowserWindow if open
+            try
+            {
+                foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                {
+                    if (win is BrowserWindow bw)
+                    {
+                        bw.InitializeCombiner();
+                    }
+                }
+            }
+            catch { }
+        }
+
+        public void FlashCombinerSuccess()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                UpdateCombinerToggleVisual();
+                if (BtnCombinerToggle == null) return;
+                try
+                {
+                    var txt = BtnCombinerToggle.Template?.FindName("txt", BtnCombinerToggle) as TextBlock;
+                    var bd = BtnCombinerToggle.Template?.FindName("bd", BtnCombinerToggle) as Border;
+
+                    var vividOrange = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF6A00");
+                    var normalGreen = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71");
+
+                    var borderBrush = new System.Windows.Media.SolidColorBrush(normalGreen);
+                    var textBrush = new System.Windows.Media.SolidColorBrush(normalGreen);
+
+                    if (bd != null) bd.BorderBrush = borderBrush;
+                    if (txt != null) txt.Foreground = textBrush;
+
+                    var animation = new System.Windows.Media.Animation.ColorAnimation
+                    {
+                        From = normalGreen,
+                        To = vividOrange,
+                        Duration = new Duration(TimeSpan.FromMilliseconds(250)),
+                        AutoReverse = true,
+                        RepeatBehavior = new System.Windows.Media.Animation.RepeatBehavior(3)
+                    };
+
+                    borderBrush.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, animation);
+                    textBrush.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, animation);
+                }
+                catch { }
+            });
         }
 
         public void RefreshAutoImport()
@@ -822,12 +911,58 @@ namespace imgsaver
                         int englishLetterCount = Regex.Matches(rawText, "[A-Za-z]").Count;
                         if (englishLetterCount > 0 && englishLetterCount < 5) return;
                         if (Regex.IsMatch(text.Trim(), @"^\d{4,}")) return;
+
+                        // Apply Smart Prompt Combiner if enabled
+                        try
+                        {
+                            var combinerData = PromptCombinerStore.Load();
+                            if (combinerData != null && combinerData.IsEnabled && combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Count > 0)
+                            {
+                                var activeItems = combinerData.Items
+                                    .Where(i => combinerData.ActiveItemIds.Contains(i.Id))
+                                    .Select(i => i.Text)
+                                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                                    .ToList();
+
+                                if (activeItems.Count > 0)
+                                {
+                                    string combined;
+                                    if (combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
+                                    {
+                                        combined = PromptCombinerEngine.CombinePerFolder(text, combinerData);
+                                    }
+                                    else
+                                    {
+                                        combined = PromptCombinerEngine.Combine(text, activeItems, combinerData.PlacementMode, combinerData.CommaIndex, combinerData.Separator);
+                                    }
+
+                                    if (combined != text)
+                                    {
+                                        text = combined;
+                                        SetClipboardTextIgnoringNextChange(combined);
+                                        try
+                                        {
+                                            foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                                            {
+                                                if (win is BrowserWindow bw)
+                                                {
+                                                    bw.FlashCombinerSuccess();
+                                                }
+                                            }
+                                        }
+                                        catch { }
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+
                         if (text == _positivePrompt || text == _negativePrompt) return;
                         if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt) return;
 
                         if (!_hasPositivePrompt)
                         {
-                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true;
+                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓"; TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
                         }
                         else if (!_hasNegativePrompt && !IsNegativeLocked)
@@ -838,13 +973,13 @@ namespace imgsaver
                         }
                         else if (!IsNegativeLocked)
                         {
-                            _basePositivePrompt = _negativePrompt; _positivePrompt = _negativePrompt; NegativePrompt = text;
+                            _basePositivePrompt = _negativePrompt; _positivePrompt = _negativePrompt; NegativePrompt = text; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓"; TxtNegativeCheck.Text = "✓";
                             IsNegativeLocked = true; // Auto-lock after receiving
                         }
                         else if (IsNegativeLocked)
                         {
-                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true;
+                            _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓";
                         }
                         UpdateState();
@@ -860,7 +995,23 @@ namespace imgsaver
             TxtTitle.IsEnabled = true;
             UpdateTitleWatermarkHint();
             BtnSEO.IsEnabled = _capturedImages.Count > 0 && _hasPositivePrompt && _hasNegativePrompt;
-            if (_hasPositivePrompt && _hasNegativePrompt && !IsCompactMode) { this.Activate(); TxtTitle.Focus(); }
+            if (_hasPositivePrompt && _hasNegativePrompt && !IsCompactMode)
+            {
+                try
+                {
+                    var settings = BrowserSettings.Load();
+                    if (settings.AutoFocusMiniClip)
+                    {
+                        this.Activate();
+                        TxtTitle.Focus();
+                    }
+                }
+                catch
+                {
+                    this.Activate();
+                    TxtTitle.Focus();
+                }
+            }
         }
 
         private void CheckAutoSaveTrigger()
@@ -954,6 +1105,7 @@ namespace imgsaver
             _hasPositivePrompt = false; _positivePrompt = ""; _basePositivePrompt = ""; TxtPositiveCheck.Text = "○";
             TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
             _lastClipboardText = "";
+            UpdatePositivePromptToolTip();
             UpdateState();
         }
 
@@ -1154,6 +1306,7 @@ namespace imgsaver
         {
             ResetCountdownButtonText();
             _hasImage = false; _hasPositivePrompt = false; _capturedImages.Clear(); _positivePrompt = ""; _basePositivePrompt = "";
+            UpdatePositivePromptToolTip();
             if (!IsNegativeLocked) { _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○"; TxtNegativeCheck.Foreground = System.Windows.Media.Brushes.Gray; }
             UpdateImagePreviews();
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
@@ -1449,6 +1602,7 @@ namespace imgsaver
 
             _positivePrompt = text;
             _hasPositivePrompt = true;
+            UpdatePositivePromptToolTip();
             TxtPositiveCheck.Text = "\u2713";
             TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
             UpdateState();
@@ -1650,7 +1804,21 @@ namespace imgsaver
                             AdditionalTitle = ClipboardMetadata.BasePromptName;
                         }
                     }
-                    ClipboardMetadata.Clear(); this.Activate(); if (!IsCompactMode) TxtTitle.Focus();
+                    ClipboardMetadata.Clear();
+                    try
+                    {
+                        var settings = BrowserSettings.Load();
+                        if (settings.AutoFocusMiniClip)
+                        {
+                            this.Activate();
+                            if (!IsCompactMode) TxtTitle.Focus();
+                        }
+                    }
+                    catch
+                    {
+                        this.Activate();
+                        if (!IsCompactMode) TxtTitle.Focus();
+                    }
                     CheckAutoSaveTrigger();
                 }
             }));

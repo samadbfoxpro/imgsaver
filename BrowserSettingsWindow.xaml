@@ -129,8 +129,8 @@
 
             <Border Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="Browser Settings" VerticalAlignment="Center" Margin="14,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
-                    <Button Content="X" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnCancel_Click"/>
+                    <TextBlock x:Name="TxtTitleBarHeader" Text="Browser Settings" VerticalAlignment="Center" Margin="14,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
+                    <Button Content="X" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnCancel_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </Grid>
             </Border>
 
@@ -143,20 +143,32 @@
                 <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0" Padding="18">
                     <DockPanel LastChildFill="True">
                         <StackPanel DockPanel.Dock="Top">
-                            <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,4"/>
-                            <TextBlock Text="Browser configuration and storage controls" Style="{StaticResource SettingsMutedTextStyle}" FontSize="12" Margin="0,0,0,20"/>
+                            <TextBlock x:Name="TxtSidebarHeader" Text="Settings" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,4"/>
+                            <TextBlock x:Name="TxtSidebarSubHeader" Text="Browser configuration and storage controls" Style="{StaticResource SettingsMutedTextStyle}" FontSize="12" Margin="0,0,0,16"/>
+
+                            <!-- Segmented Rectangular 2-Part Language Toggle -->
+                            <Border Background="#252526" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4" Height="32" Margin="0,0,0,16" Padding="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="BtnLangEN" Grid.Column="0" Content="English" Click="BtnLangEN_Click" Style="{StaticResource SecondaryButtonStyle}" Height="26" FontSize="11" FontWeight="Bold" Padding="0"/>
+                                    <Button x:Name="BtnLangFA" Grid.Column="1" Content="فارسی" Click="BtnLangFA_Click" Style="{StaticResource SecondaryButtonStyle}" Height="26" FontSize="11" FontWeight="Bold" Padding="0"/>
+                                </Grid>
+                            </Border>
 
                             <Button x:Name="BtnNavGeneral" Tag="GeneralPanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
-                                <TextBlock Text="General"/>
+                                <TextBlock x:Name="TxtNavGeneral" Text="General"/>
                             </Button>
                             <Button x:Name="BtnNavProxy" Tag="ProxyPanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
-                                <TextBlock Text="Proxy"/>
+                                <TextBlock x:Name="TxtNavProxy" Text="Proxy"/>
                             </Button>
                             <Button x:Name="BtnNavSiteRules" Tag="SiteRulesPanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
-                                <TextBlock Text="Site Rules"/>
+                                <TextBlock x:Name="TxtNavSiteRules" Text="Site Rules"/>
                             </Button>
                             <Button x:Name="BtnNavCache" Tag="CachePanel" Click="SidebarNav_Click" Style="{StaticResource SettingsNavButtonStyle}">
-                                <TextBlock Text="Cache Management"/>
+                                <TextBlock x:Name="TxtNavCache" Text="Cache Management"/>
                             </Button>
                         </StackPanel>
                     </DockPanel>
@@ -166,8 +178,8 @@
                     <Grid x:Name="ContentHost">
                         <ScrollViewer x:Name="GeneralPanel" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="General" Style="{StaticResource SettingsSectionTitleStyle}"/>
-                                <TextBlock Text="Content loading and browser behavior." Style="{StaticResource SettingsMutedTextStyle}" Margin="0,0,0,18"/>
+                                <TextBlock x:Name="TxtSectionGeneralTitle" Text="General" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <TextBlock x:Name="TxtSectionGeneralDesc" Text="Content loading and browser behavior." Style="{StaticResource SettingsMutedTextStyle}" Margin="0,0,0,18"/>
 
                                 <Border Style="{StaticResource SettingsPanelStyle}">
                                     <StackPanel>
@@ -181,6 +193,8 @@
                                         <CheckBox x:Name="ChkShowFloatingRecordPlayer" Content="Show floating browser recording player" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowQuickPasteButton" Content="Show BR Paste button on input fields" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkEnableEmbeddedMiniClip" Content="Enable embedded Mini Clip at bottom of browser" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkEnableCombinerBar" Content="Enable Smart Prompt Combiner toolbar at bottom of browser" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkAutoFocusMiniClip" Content="Automatically focus main Mini Clip window when capturing data" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoHideStatus" Content="Hide Status Bar" Margin="0,0,0,0"/>
                                     </StackPanel>
                                 </Border>
@@ -347,8 +361,8 @@
 
             <Border Grid.Row="2" Padding="20,14" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,8,8">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Cancel" Click="BtnCancel_Click" Width="86" Height="34" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
-                    <Button Content="Save Settings" Click="BtnSave_Click" Width="122" Height="34" FontWeight="SemiBold"/>
+                    <Button x:Name="BtnCancel" Content="Cancel" Click="BtnCancel_Click" Width="86" Height="34" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnSave" Content="Save Settings" Click="BtnSave_Click" Width="122" Height="34" FontWeight="SemiBold"/>
                 </StackPanel>
             </Border>
         </Grid>

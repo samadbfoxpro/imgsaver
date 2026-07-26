@@ -90,6 +90,10 @@ namespace imgsaver
             UpdateProfileUIBadge();
 
             this.StateChanged += BrowserWindow_StateChanged;
+            this.Activated += (s, e) => UpdateSplitViewPopupsVisibility(true);
+            this.Deactivated += (s, e) => UpdateSplitViewPopupsVisibility(false);
+            this.LocationChanged += (s, e) => RefreshSplitViewPopupsPosition();
+            this.SizeChanged += (s, e) => RefreshSplitViewPopupsPosition();
             _browserInputRecorder.OnStopRequested += StopBrowserRecordingAndSave;
 
             InitializeTabs();
@@ -97,6 +101,7 @@ namespace imgsaver
             this.Loaded += (s, e) =>
             {
                 UpdateProfileUIBadge();
+                InitializeCombiner();
                 var handle = new WindowInteropHelper(this).Handle;
                 var hwndSource = HwndSource.FromHwnd(handle);
                 hwndSource?.AddHook(WndProc);
@@ -148,6 +153,16 @@ namespace imgsaver
 
         private void BrowserWindow_StateChanged(object? sender, EventArgs e)
         {
+            if (this.WindowState == WindowState.Minimized)
+            {
+                UpdateSplitViewPopupsVisibility(false);
+            }
+            else
+            {
+                if (this.IsActive) UpdateSplitViewPopupsVisibility(true);
+                RefreshSplitViewPopupsPosition();
+            }
+
             if (this.WindowState == WindowState.Maximized) 
             {
                 this.MaxHeight = double.PositiveInfinity;
@@ -182,6 +197,15 @@ namespace imgsaver
             if (EmbeddedMiniClip != null)
             {
                 EmbeddedMiniClip.Visibility = _currentSettings.EnableEmbeddedMiniClip ? Visibility.Visible : Visibility.Collapsed;
+            }
+            if (CombinerBar != null)
+            {
+                bool showCombiner = _currentSettings.EnableCombinerBar;
+                CombinerBar.Visibility = showCombiner ? Visibility.Visible : Visibility.Collapsed;
+                if (showCombiner)
+                {
+                    InitializeCombiner();
+                }
             }
             if (_currentSettings.AutoHideStatus)
             {
@@ -219,6 +243,41 @@ namespace imgsaver
             else if (e.LeftButton == MouseButtonState.Pressed) this.DragMove();
         }
 
+        private void BtnOpenMainMiniClip_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                MiniClipboardWindow? miniClip = null;
+                foreach (Window w in System.Windows.Application.Current.Windows)
+                {
+                    if (w is MiniClipboardWindow mc && mc.IsLoaded)
+                    {
+                        miniClip = mc;
+                        break;
+                    }
+                }
+
+                if (miniClip == null)
+                {
+                    miniClip = new MiniClipboardWindow();
+                    miniClip.Show();
+                }
+                else
+                {
+                    if (miniClip.WindowState == WindowState.Minimized)
+                    {
+                        miniClip.WindowState = WindowState.Normal;
+                    }
+                    miniClip.Show();
+                    miniClip.Activate();
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show("Error opening Mini Clip: " + ex.Message, "Error");
+            }
+        }
+
         private void BtnClose_Click(object? sender, RoutedEventArgs e) => this.Close();
         protected override void OnClosed(EventArgs e)
         {
@@ -238,7 +297,20 @@ namespace imgsaver
 
         private async void BrowserWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if (e.Key == System.Windows.Input.Key.S && 
+            // Ctrl+F5, Shift+F5, Ctrl+Shift+R or Ctrl+R for Hard Reload (Force Refresh & Clear Storage Cache)
+            if ((e.Key == Key.F5 && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0) ||
+                (e.Key == Key.R && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)) ||
+                (e.Key == Key.R && (Keyboard.Modifiers & ModifierKeys.Control) != 0 && (Keyboard.Modifiers & ModifierKeys.Alt) != 0))
+            {
+                e.Handled = true;
+                HardReloadCurrentTab();
+            }
+            else if (e.Key == Key.F5)
+            {
+                e.Handled = true;
+                GetCurrentBrowser()?.Reload();
+            }
+            else if (e.Key == System.Windows.Input.Key.S && 
                 (System.Windows.Input.Keyboard.Modifiers & (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift)) == (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift))
             {
                 e.Handled = true;

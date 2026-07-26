@@ -107,7 +107,7 @@
             <!-- 1: Prompts Status Pills -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0">
                 <!-- POS Pill -->
-                <Border Background="{StaticResource SurfaceBrush}"
+                <Border x:Name="BorderPositive" Background="{StaticResource SurfaceBrush}"
                         CornerRadius="4" Padding="6,4" Margin="0,0,4,0" Height="28"
                         Cursor="Hand" MouseLeftButtonDown="PositivePrompt_MouseLeftButtonDown"
                         ToolTip="Positive Prompt (Click to clear)" VerticalAlignment="Center">
@@ -164,8 +164,10 @@
                     </Style>
                 </Grid.Style>
                 <TextBox x:Name="TxtTitle"
-                         FontSize="11" Height="28" Padding="6,0" MinWidth="120" MaxWidth="220" HorizontalAlignment="Left"
+                         FontSize="11" Height="28" Padding="4,0" MinWidth="120" MaxWidth="220" HorizontalAlignment="Left"
                          VerticalContentAlignment="Center"
+                         TextAlignment="Right"
+                         FlowDirection="RightToLeft"
                          Tag="Enter Title..."
                          IsEnabled="True"
                          KeyDown="TxtTitle_KeyDown"
@@ -176,9 +178,9 @@
                            Foreground="{StaticResource ForegroundMutedBrush}"
                            Opacity="0.6"
                            FontSize="11"
-                           Margin="8,0,0,0"
+                           Margin="0,0,8,0"
                            VerticalAlignment="Center"
-                           HorizontalAlignment="Left"
+                           HorizontalAlignment="Right"
                            IsHitTestVisible="False"
                            FontStyle="Italic">
                     <TextBlock.Style>
@@ -219,6 +221,8 @@
                          Text="{Binding AdditionalTitle, ElementName=Root, UpdateSourceTrigger=PropertyChanged}"
                          FontSize="11" Height="28" Padding="4,0"
                          VerticalContentAlignment="Center"
+                         TextAlignment="Right"
+                         FlowDirection="RightToLeft"
                          ToolTip="Additional Suffix (Auto-appended)"
                          KeyDown="AdditionalTitle_KeyDown">
                     <TextBox.Style>

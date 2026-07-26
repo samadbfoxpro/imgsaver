@@ -184,7 +184,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}"
+                    <Border x:Name="BorderPositive" Grid.Column="0" Background="{StaticResource SurfaceBrush}"
                             CornerRadius="6" Padding="6,8" Margin="0,0,4,0"
                             Cursor="Hand" MouseLeftButtonDown="PositivePrompt_MouseLeftButtonDown"
                             ToolTip="Positive Prompt (Click to clear)">
@@ -226,9 +226,7 @@
                             </Button>
                         </Grid>
                     </Border>
-
                 </Grid>
-
 
                 <!-- Main Title -->
                 <Grid Grid.Row="2">
@@ -243,8 +241,10 @@
                     </Grid.Style>
                     <TextBox x:Name="TxtTitle"
                              FontSize="12" Height="30" Padding="8,0"
-                             VerticalContentAlignment="Center" 
-                             Tag="Enter Title..."
+                             VerticalContentAlignment="Center"
+                             TextAlignment="Right"
+                             FlowDirection="RightToLeft"
+                             Tag="عنوان اصلی..."
                              IsEnabled="True"
                              KeyDown="TxtTitle_KeyDown"
                              ToolTip="Main Title (Enter to save)"/>
@@ -253,7 +253,8 @@
                                Foreground="{StaticResource ForegroundMutedBrush}"
                                Opacity="0.6"
                                FontSize="12"
-                               Margin="10,0,0,0"
+                               Margin="0,0,10,0"
+                               HorizontalAlignment="Right"
                                VerticalAlignment="Center"
                                IsHitTestVisible="False"
                                FontStyle="Italic">
@@ -290,11 +291,13 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <CheckBox IsChecked="{Binding IsAdditionalTitleEnabled, RelativeSource={RelativeSource AncestorType=Window}}"
-                              VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Enable Suffix Title"/>
+                               VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Enable Suffix Title"/>
                     <TextBox Grid.Column="1" x:Name="TxtAdditionalTitle" 
                              Text="{Binding AdditionalTitle, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
                              FontSize="11" Height="26" Padding="6,0"
                              VerticalContentAlignment="Center"
+                             TextAlignment="Right"
+                             FlowDirection="RightToLeft"
                              ToolTip="Additional Suffix (Auto-appended)"
                              KeyDown="AdditionalTitle_KeyDown">
                         <TextBox.Style>
@@ -781,6 +784,21 @@
                                                 <Setter TargetName="txt" Property="Foreground" Value="#00FFFF"/>
                                                 <Setter TargetName="bd" Property="BorderBrush" Value="#00FFFF"/>
                                             </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnCombinerToggle" Click="BtnCombinerToggle_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Toggle Smart Prompt Combiner (ON / OFF)">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="🧩 COMB" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Button.Template>

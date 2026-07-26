@@ -28,6 +28,7 @@ namespace imgsaver
         private readonly List<CachedSiteItem> _cachedSites = new();
         private FrameworkElement? _activePanel;
         private System.Windows.Controls.Button? _activeNavButton;
+        private bool _isPersianLanguage = false;
 
         public BrowserSettingsWindow()
         {
@@ -36,6 +37,100 @@ namespace imgsaver
             LoadCachedSites();
             CmbCacheSort.SelectedIndex = 0;
             ShowPanel(GeneralPanel, BtnNavGeneral, false);
+            ApplyLanguage();
+        }
+
+        private void BtnLangEN_Click(object sender, RoutedEventArgs e)
+        {
+            _isPersianLanguage = false;
+            ApplyLanguage();
+        }
+
+        private void BtnLangFA_Click(object sender, RoutedEventArgs e)
+        {
+            _isPersianLanguage = true;
+            ApplyLanguage();
+        }
+
+        private void ApplyLanguage()
+        {
+            var activeBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0E639C"));
+            var activeForeground = System.Windows.Media.Brushes.White;
+            var inactiveBrush = System.Windows.Media.Brushes.Transparent;
+            var inactiveForeground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#AAAAAA"));
+
+            if (_isPersianLanguage)
+            {
+                BtnLangFA.Background = activeBrush;
+                BtnLangFA.Foreground = activeForeground;
+                BtnLangEN.Background = inactiveBrush;
+                BtnLangEN.Foreground = inactiveForeground;
+
+                TxtTitleBarHeader.Text = "تنظیمات مرورگر";
+                TxtSidebarHeader.Text = "تنظیمات";
+                TxtSidebarSubHeader.Text = "پیکربندی مرورگر و مدیریت حافظه";
+
+                TxtNavGeneral.Text = "عمومی";
+                TxtNavProxy.Text = "پراکسی";
+                TxtNavSiteRules.Text = "قوانین سایت‌ها";
+                TxtNavCache.Text = "مدیریت حافظه کش";
+
+                TxtSectionGeneralTitle.Text = "عمومی";
+                TxtSectionGeneralDesc.Text = "بارگیری محتوا و رفتار مرورگر.";
+
+                ChkLoadImages.Content = "بارگیری تصاویر";
+                ChkLoadMedia.Content = "بارگیری ویدیو و صوت";
+                ChkEnableJS.Content = "فعال‌سازی جاوا اسکریپت";
+                ChkMuteAudio.Content = "بی‌صدا کردن صدای مرورگر";
+                ChkAutoImportImagesToMiniClip.Content = "ایمپورت خودکار تصاویر مرورگر به مینی کلیپ";
+                ChkShowMiniClipImageImportButtons.Content = "نمایش دکمه ایمپورت مینی کلیپ روی تصاویر بزرگ";
+                ChkReplaceMiniClipImageOnImport.Content = "جایگزینی تصویر فعلی مینی کلیپ هنگام ایمپورت از مرورگر";
+                ChkShowFloatingRecordPlayer.Content = "نمایش پلیر شناور ضبط ویدیو مرورگر";
+                ChkShowQuickPasteButton.Content = "نمایش دکمه پیست BR روی کادرهای ورودی";
+                ChkEnableEmbeddedMiniClip.Content = "فعال‌سازی مینی کلیپ داخلی در پایین مرورگر";
+                ChkEnableCombinerBar.Content = "فعال‌سازی نوار ترکیب هوشمند پرامپت (Combiner) در پایین مرورگر";
+                ChkAutoFocusMiniClip.Content = "فوکوس اتوماتیک به پنجره اصلی مینی کلیپ هنگام دریافت داده‌ها";
+                ChkAutoHideStatus.Content = "مخفی کردن نوار وضعیت پایین مرورگر";
+
+                BtnCancel.Content = "انصراف";
+                BtnSave.Content = "ذخیره تنظیمات";
+            }
+            else
+            {
+                BtnLangEN.Background = activeBrush;
+                BtnLangEN.Foreground = activeForeground;
+                BtnLangFA.Background = inactiveBrush;
+                BtnLangFA.Foreground = inactiveForeground;
+
+                TxtTitleBarHeader.Text = "Browser Settings";
+                TxtSidebarHeader.Text = "Settings";
+                TxtSidebarSubHeader.Text = "Browser configuration and storage controls";
+
+                TxtNavGeneral.Text = "General";
+                TxtNavProxy.Text = "Proxy";
+                TxtNavSiteRules.Text = "Site Rules";
+                TxtNavCache.Text = "Cache Management";
+
+                TxtSectionGeneralTitle.Text = "General";
+                TxtSectionGeneralDesc.Text = "Content loading and browser behavior.";
+
+                ChkLoadImages.Content = "Load Images";
+                ChkLoadMedia.Content = "Load Video and Audio Media";
+                ChkEnableJS.Content = "Enable JavaScript";
+                ChkMuteAudio.Content = "Mute Browser Audio";
+                ChkAutoImportImagesToMiniClip.Content = "Automatically import browser images to Mini Clip";
+                ChkShowMiniClipImageImportButtons.Content = "Show Mini Clip import button on large images";
+                ChkReplaceMiniClipImageOnImport.Content = "Replace current Mini Clip image when importing from browser";
+                ChkShowFloatingRecordPlayer.Content = "Show floating browser recording player";
+                ChkShowQuickPasteButton.Content = "Show BR Paste button on input fields";
+                ChkEnableEmbeddedMiniClip.Content = "Enable embedded Mini Clip at bottom of browser";
+                ChkEnableCombinerBar.Content = "Enable Smart Prompt Combiner toolbar at bottom of browser";
+                ChkAutoFocusMiniClip.Content = "Automatically focus main Mini Clip window when capturing data";
+                ChkAutoHideStatus.Content = "Hide Status Bar";
+
+                BtnCancel.Content = "Cancel";
+                BtnSave.Content = "Save Settings";
+            }
         }
 
         private void LoadCurrentSettings()
@@ -51,6 +146,8 @@ namespace imgsaver
             ChkShowFloatingRecordPlayer.IsChecked = settings.ShowFloatingRecordPlayer;
             ChkShowQuickPasteButton.IsChecked = settings.ShowQuickPasteButton;
             ChkEnableEmbeddedMiniClip.IsChecked = settings.EnableEmbeddedMiniClip;
+            ChkEnableCombinerBar.IsChecked = settings.EnableCombinerBar;
+            ChkAutoFocusMiniClip.IsChecked = settings.AutoFocusMiniClip;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
 
             if (settings.ProxyMode == "off") CmbProxyMode.SelectedIndex = 1;
@@ -268,6 +365,8 @@ namespace imgsaver
             settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
             settings.ShowQuickPasteButton = ChkShowQuickPasteButton.IsChecked == true;
             settings.EnableEmbeddedMiniClip = ChkEnableEmbeddedMiniClip.IsChecked == true;
+            settings.EnableCombinerBar = ChkEnableCombinerBar.IsChecked == true;
+            settings.AutoFocusMiniClip = ChkAutoFocusMiniClip.IsChecked == true;
             settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
 
             settings.ProxyMode = (CmbProxyMode.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "system";
