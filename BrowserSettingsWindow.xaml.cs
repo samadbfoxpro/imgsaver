@@ -91,9 +91,6 @@ namespace imgsaver
                 ChkEnableCombinerBar.Content = "فعال‌سازی نوار ترکیب هوشمند پرامپت (Combiner) در پایین مرورگر";
                 ChkAutoFocusMiniClip.Content = "فوکوس اتوماتیک به پنجره اصلی مینی کلیپ هنگام دریافت داده‌ها";
                 ChkAutoHideStatus.Content = "مخفی کردن نوار وضعیت پایین مرورگر";
-
-                BtnCancel.Content = "انصراف";
-                BtnSave.Content = "ذخیره تنظیمات";
             }
             else
             {
@@ -127,9 +124,6 @@ namespace imgsaver
                 ChkEnableCombinerBar.Content = "Enable Smart Prompt Combiner toolbar at bottom of browser";
                 ChkAutoFocusMiniClip.Content = "Automatically focus main Mini Clip window when capturing data";
                 ChkAutoHideStatus.Content = "Hide Status Bar";
-
-                BtnCancel.Content = "Cancel";
-                BtnSave.Content = "Save Settings";
             }
         }
 
@@ -352,33 +346,46 @@ namespace imgsaver
             CustomMessageBox.Show("All cached files have been cleared.", "Success");
         }
 
-        private void BtnSave_Click(object? sender, RoutedEventArgs e)
+        private void BtnClose_Click(object? sender, RoutedEventArgs e)
         {
-            var settings = BrowserSettings.Load();
-            settings.LoadImages = ChkLoadImages.IsChecked == true;
-            settings.LoadMedia = ChkLoadMedia.IsChecked == true;
-            settings.EnableJavaScript = ChkEnableJS.IsChecked == true;
-            settings.MuteAudio = ChkMuteAudio.IsChecked == true;
-            settings.AutoImportImagesToMiniClip = ChkAutoImportImagesToMiniClip.IsChecked == true;
-            settings.ShowMiniClipImageImportButtons = ChkShowMiniClipImageImportButtons.IsChecked == true;
-            settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
-            settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
-            settings.ShowQuickPasteButton = ChkShowQuickPasteButton.IsChecked == true;
-            settings.EnableEmbeddedMiniClip = ChkEnableEmbeddedMiniClip.IsChecked == true;
-            settings.EnableCombinerBar = ChkEnableCombinerBar.IsChecked == true;
-            settings.AutoFocusMiniClip = ChkAutoFocusMiniClip.IsChecked == true;
-            settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
-
-            settings.ProxyMode = (CmbProxyMode.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "system";
-            settings.ProxyEnabled = (settings.ProxyMode == "custom");
-            settings.ProxyAddress = TxtProxyAddress.Text.Trim();
-            settings.ProxyPort = TxtProxyPort.Text.Trim();
-            settings.ProxyType = (CmbProxyType.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "http";
-            settings.NoCacheHosts = new List<string>(LstNoCacheSites.Items.Cast<string>());
-
-            settings.Save();
-            DialogResult = true;
             Close();
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            SaveCurrentSettings();
+            base.OnClosing(e);
+        }
+
+        private void SaveCurrentSettings()
+        {
+            try
+            {
+                var settings = BrowserSettings.Load();
+                settings.LoadImages = ChkLoadImages.IsChecked == true;
+                settings.LoadMedia = ChkLoadMedia.IsChecked == true;
+                settings.EnableJavaScript = ChkEnableJS.IsChecked == true;
+                settings.MuteAudio = ChkMuteAudio.IsChecked == true;
+                settings.AutoImportImagesToMiniClip = ChkAutoImportImagesToMiniClip.IsChecked == true;
+                settings.ShowMiniClipImageImportButtons = ChkShowMiniClipImageImportButtons.IsChecked == true;
+                settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
+                settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
+                settings.ShowQuickPasteButton = ChkShowQuickPasteButton.IsChecked == true;
+                settings.EnableEmbeddedMiniClip = ChkEnableEmbeddedMiniClip.IsChecked == true;
+                settings.EnableCombinerBar = ChkEnableCombinerBar.IsChecked == true;
+                settings.AutoFocusMiniClip = ChkAutoFocusMiniClip.IsChecked == true;
+                settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
+
+                settings.ProxyMode = (CmbProxyMode.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "system";
+                settings.ProxyEnabled = (settings.ProxyMode == "custom");
+                settings.ProxyAddress = TxtProxyAddress.Text.Trim();
+                settings.ProxyPort = TxtProxyPort.Text.Trim();
+                settings.ProxyType = (CmbProxyType.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "http";
+                settings.NoCacheHosts = new List<string>(LstNoCacheSites.Items.Cast<string>());
+
+                settings.Save();
+            }
+            catch { }
         }
 
         private void BtnAddNoCacheSite_Click(object? sender, RoutedEventArgs e)
@@ -425,12 +432,6 @@ namespace imgsaver
             {
                 CustomMessageBox.Show("Please select a site to remove.", "No Selection");
             }
-        }
-
-        private void BtnCancel_Click(object? sender, RoutedEventArgs e)
-        {
-            DialogResult = false;
-            Close();
         }
 
         private string SanitizeHostForCache(string host)

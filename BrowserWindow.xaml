@@ -19,6 +19,81 @@
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Margin" Value="0"/>
         </Style>
+
+        <Style x:Key="ThinGreenHorizontalScrollViewerStyle" TargetType="ScrollViewer">
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="Padding" Value="0,0,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" 
+                                                    Grid.Row="0"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                    VerticalAlignment="Center"
+                                                    Margin="{TemplateBinding Padding}"/>
+
+                            <ScrollBar x:Name="PART_HorizontalScrollBar"
+                                       Grid.Row="1"
+                                       Orientation="Horizontal"
+                                       Value="{TemplateBinding HorizontalOffset}"
+                                       Maximum="{TemplateBinding ScrollableWidth}"
+                                       ViewportSize="{TemplateBinding ViewportWidth}"
+                                       Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
+                                       Height="2" Margin="0,0,0,2">
+                                <ScrollBar.Style>
+                                    <Style TargetType="ScrollBar">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ScrollBar">
+                                                    <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                                        <Track.DecreaseRepeatButton>
+                                                            <RepeatButton Command="{x:Static ScrollBar.LineLeftCommand}" Opacity="0" Focusable="False"/>
+                                                        </Track.DecreaseRepeatButton>
+                                                        <Track.Thumb>
+                                                            <Thumb Height="3" Background="#2ECC71" Cursor="Hand">
+                                                                <Thumb.Style>
+                                                                    <Style TargetType="Thumb">
+                                                                        <Setter Property="Template">
+                                                                            <Setter.Value>
+                                                                                <ControlTemplate TargetType="Thumb">
+                                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="1.5"/>
+                                                                                </ControlTemplate>
+                                                                            </Setter.Value>
+                                                                        </Setter>
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="#58D68D"/>
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Thumb.Style>
+                                                            </Thumb>
+                                                        </Track.Thumb>
+                                                        <Track.IncreaseRepeatButton>
+                                                            <RepeatButton Command="{x:Static ScrollBar.LineRightCommand}" Opacity="0" Focusable="False"/>
+                                                        </Track.IncreaseRepeatButton>
+                                                    </Track>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ScrollBar.Style>
+                            </ScrollBar>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border x:Name="MainBorder" Style="{StaticResource MainBorderStyle}">
@@ -28,6 +103,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
@@ -174,7 +250,7 @@
             </Grid>
 
             <!-- Smart Prompt Combiner Toolbar -->
-            <Border x:Name="CombinerBar" Grid.Row="4" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="40" Visibility="Collapsed">
+            <Border x:Name="CombinerBar" Grid.Row="5" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="46" Visibility="Collapsed">
                 <Grid Margin="8,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -203,13 +279,23 @@
                                                     BorderThickness="1.2"
                                                     CornerRadius="13"
                                                     Padding="{TemplateBinding Padding}">
-                                                <TextBlock x:Name="txtContent" 
-                                                           Text="{TemplateBinding Content}" 
-                                                           Foreground="{TemplateBinding Foreground}"
-                                                           FontSize="{TemplateBinding FontSize}"
-                                                           FontWeight="{TemplateBinding FontWeight}"
-                                                           HorizontalAlignment="Center" 
-                                                           VerticalAlignment="Center"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="txtContent" 
+                                                               Text="{TemplateBinding Content}" 
+                                                               Foreground="{TemplateBinding Foreground}"
+                                                               FontSize="{TemplateBinding FontSize}"
+                                                               FontWeight="{TemplateBinding FontWeight}"
+                                                               HorizontalAlignment="Center" 
+                                                               VerticalAlignment="Center"/>
+                                                    
+                                                    <!-- Circle Badge for Active Selection Count -->
+                                                    <Border x:Name="bdCountBadge" Width="18" Height="18" CornerRadius="9" Margin="6,0,0,0"
+                                                            Background="#454545" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            ToolTip="Number of active items selected for combining">
+                                                        <TextBlock x:Name="TxtCombinerActiveCount" Text="0" FontSize="10" FontWeight="Bold" Foreground="White"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
+                                                    </Border>
+                                                </StackPanel>
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsChecked" Value="True">
@@ -217,6 +303,7 @@
                                                     <Setter Property="BorderBrush" Value="#2ECC71"/>
                                                     <Setter Property="Foreground" Value="#2ECC71"/>
                                                     <Setter Property="Content" Value="🧩 Combiner ON"/>
+                                                    <Setter TargetName="bdCountBadge" Property="Background" Value="#2ECC71"/>
                                                 </Trigger>
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="border" Property="Opacity" Value="0.85"/>
@@ -230,10 +317,117 @@
                     </ToggleButton>
 
                     <!-- Category / Folder Dropdown -->
-                    <ComboBox x:Name="CboCombinerFolders" Grid.Column="1" Height="26" Width="140" Margin="0,0,8,0" VerticalAlignment="Center" DisplayMemberPath="Name" SelectionChanged="CboCombinerFolders_SelectionChanged"/>
+                    <ComboBox x:Name="CboCombinerFolders" Grid.Column="1" Height="26" Width="150" Margin="0,0,8,0" VerticalAlignment="Center" 
+                              SelectionChanged="CboCombinerFolders_SelectionChanged" MaxDropDownHeight="130">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox">
+                                <Setter Property="Background" Value="#252526"/>
+                                <Setter Property="Foreground" Value="#F1F1F1"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="Padding" Value="6,0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBox">
+                                            <Grid>
+                                                <ToggleButton Name="ToggleButton" 
+                                                              Background="{TemplateBinding Background}"
+                                                              BorderBrush="{TemplateBinding BorderBrush}"
+                                                              BorderThickness="{TemplateBinding BorderThickness}"
+                                                              Foreground="{TemplateBinding Foreground}"
+                                                              Focusable="false"
+                                                              IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                              ClickMode="Press">
+                                                    <ToggleButton.Template>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition />
+                                                                        <ColumnDefinition Width="22" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Path Name="Arrow" Grid.Column="1" Fill="#F1F1F1" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                                                </Grid>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="true">
+                                                                    <Setter TargetName="Border" Property="Background" Value="#2D2D30" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </ToggleButton.Template>
+                                                </ToggleButton>
+                                                <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                  Margin="8,0,20,0" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                                                <Popup Name="Popup" Placement="Top" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                                    <Grid Name="SubMenu" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                                        <Border Name="DropDownBorder" Background="#252526" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3"/>
+                                                        <ScrollViewer Margin="1" SnapsToDevicePixels="True" CanContentScroll="False" VerticalScrollBarVisibility="Auto"
+                                                                      RequestBringIntoView="CombinerFolderScrollViewer_RequestBringIntoView"
+                                                                      PreviewMouseWheel="CombinerFolderScrollViewer_PreviewMouseWheel">
+                                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                        </ScrollViewer>
+                                                    </Grid>
+                                                </Popup>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ComboBox.Style>
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <EventSetter Event="RequestBringIntoView" Handler="ComboBoxItem_RequestBringIntoView"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="#F1F1F1"/>
+                                <Setter Property="Padding" Value="8,5"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBoxItem">
+                                            <Border Name="Border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="3" Margin="2,1">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#332ECC71"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#4D2ECC71"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid HorizontalAlignment="Stretch">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Padding="0,0,0,2" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="TxtActiveCount" Grid.Column="1" Text="{Binding DisplayActiveCount}" 
+                                               FontSize="11" FontWeight="Bold" Foreground="#2ECC71" 
+                                               VerticalAlignment="Center" Margin="4,0,2,2"/>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveCount}" Value="0">
+                                        <Setter TargetName="TxtActiveCount" Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
 
                     <!-- Snippet Buttons ScrollViewer & WrapPanel -->
-                    <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" VerticalAlignment="Center">
+                    <ScrollViewer Grid.Column="2" Style="{StaticResource ThinGreenHorizontalScrollViewerStyle}" PreviewMouseWheel="CombinerButtonsScrollViewer_PreviewMouseWheel" VerticalAlignment="Stretch">
                         <StackPanel x:Name="PnlCombinerButtons" Orientation="Horizontal" VerticalAlignment="Center"/>
                     </ScrollViewer>
 
@@ -246,7 +440,7 @@
             </Border>
 
             <!-- Embedded MiniClip Bar -->
-            <local:BrowserMiniClipControl x:Name="EmbeddedMiniClip" Grid.Row="5" Visibility="Collapsed" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}"/>
+            <local:BrowserMiniClipControl x:Name="EmbeddedMiniClip" Grid.Row="4" Visibility="Collapsed" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}"/>
 
             <!-- Network Status Bar -->
             <Border x:Name="StatusOverlay" Grid.Row="6" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="36" Opacity="0" Visibility="Collapsed">

@@ -130,7 +130,7 @@
             <Border Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
                     <TextBlock x:Name="TxtTitleBarHeader" Text="Browser Settings" VerticalAlignment="Center" Margin="14,0" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
-                    <Button Content="X" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnCancel_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="X" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </Grid>
             </Border>
 
@@ -361,8 +361,8 @@
 
             <Border Grid.Row="2" Padding="20,14" Background="{StaticResource SurfaceBrush}" CornerRadius="0,0,8,8">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button x:Name="BtnCancel" Content="Cancel" Click="BtnCancel_Click" Width="86" Height="34" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
-                    <Button x:Name="BtnSave" Content="Save Settings" Click="BtnSave_Click" Width="122" Height="34" FontWeight="SemiBold"/>
+                    <Button x:Name="BtnCancel" Content="Cancel" Click="BtnClose_Click" Width="86" Height="34" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnSave" Content="Save Settings" Click="BtnClose_Click" Width="122" Height="34" FontWeight="SemiBold"/>
                 </StackPanel>
             </Border>
         </Grid>

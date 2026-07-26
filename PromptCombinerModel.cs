@@ -30,6 +30,12 @@ namespace imgsaver
         // Custom Placement Rules per Folder
         public CombinerPlacementMode PlacementMode { get; set; } = CombinerPlacementMode.AfterComma;
         public int CommaIndex { get; set; } = 1;
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int ActiveCount { get; set; } = 0;
+        
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string DisplayActiveCount => ActiveCount > 0 ? $"({ActiveCount})" : "";
     }
 
     public class PromptCombinerData

@@ -34,6 +34,167 @@ namespace imgsaver
 
                 PopulateCombinerFolders();
                 UpdateCombinerRuleBadge();
+                UpdateCombinerActiveCountBadge();
+            }
+            catch { }
+        }
+
+        private double _combinerButtonsScrollTargetOffset = 0;
+        private System.Windows.Threading.DispatcherTimer? _combinerButtonsSmoothScrollTimer;
+
+        private void CombinerButtonsScrollViewer_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (sender is ScrollViewer scrollViewer)
+            {
+                e.Handled = true;
+
+                if (_combinerButtonsSmoothScrollTimer == null)
+                {
+                    _combinerButtonsScrollTargetOffset = scrollViewer.HorizontalOffset;
+                    _combinerButtonsSmoothScrollTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Render)
+                    {
+                        Interval = TimeSpan.FromMilliseconds(12)
+                    };
+                    _combinerButtonsSmoothScrollTimer.Tick += (s, ev) =>
+                    {
+                        if (scrollViewer == null) return;
+                        double diff = _combinerButtonsScrollTargetOffset - scrollViewer.HorizontalOffset;
+                        if (Math.Abs(diff) < 0.3)
+                        {
+                            scrollViewer.ScrollToHorizontalOffset(_combinerButtonsScrollTargetOffset);
+                            _combinerButtonsSmoothScrollTimer.Stop();
+                        }
+                        else
+                        {
+                            scrollViewer.ScrollToHorizontalOffset(scrollViewer.HorizontalOffset + diff * 0.22);
+                        }
+                    };
+                }
+
+                double scrollStep = 45.0;
+                double delta = e.Delta > 0 ? -scrollStep : scrollStep;
+
+                if (!_combinerButtonsSmoothScrollTimer.IsEnabled)
+                {
+                    _combinerButtonsScrollTargetOffset = scrollViewer.HorizontalOffset;
+                }
+
+                _combinerButtonsScrollTargetOffset = Math.Max(0, Math.Min(scrollViewer.ScrollableWidth, _combinerButtonsScrollTargetOffset + delta));
+
+                if (!_combinerButtonsSmoothScrollTimer.IsEnabled)
+                {
+                    _combinerButtonsSmoothScrollTimer.Start();
+                }
+            }
+        }
+
+        private double _folderScrollTargetOffset = 0;
+        private System.Windows.Threading.DispatcherTimer? _folderSmoothScrollTimer;
+
+        private void ComboBoxItem_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
+        {
+            // Block automatic scrolling when mouse hovers over items in ComboBox dropdown
+            e.Handled = true;
+        }
+
+        private void CombinerFolderScrollViewer_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
+        {
+            // Block automatic scrolling when mouse hovers over partially visible items
+            e.Handled = true;
+        }
+
+        private void CombinerFolderScrollViewer_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (sender is ScrollViewer scrollViewer)
+            {
+                e.Handled = true;
+
+                if (_folderSmoothScrollTimer == null)
+                {
+                    _folderScrollTargetOffset = scrollViewer.VerticalOffset;
+                    _folderSmoothScrollTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Render)
+                    {
+                        Interval = TimeSpan.FromMilliseconds(12)
+                    };
+                    _folderSmoothScrollTimer.Tick += (s, ev) =>
+                    {
+                        if (scrollViewer == null) return;
+                        double diff = _folderScrollTargetOffset - scrollViewer.VerticalOffset;
+                        if (Math.Abs(diff) < 0.3)
+                        {
+                            scrollViewer.ScrollToVerticalOffset(_folderScrollTargetOffset);
+                            _folderSmoothScrollTimer.Stop();
+                        }
+                        else
+                        {
+                            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset + diff * 0.22);
+                        }
+                    };
+                }
+
+                double scrollStep = 32.0;
+                double delta = e.Delta > 0 ? -scrollStep : scrollStep;
+
+                if (!_folderSmoothScrollTimer.IsEnabled)
+                {
+                    _folderScrollTargetOffset = scrollViewer.VerticalOffset;
+                }
+
+                _folderScrollTargetOffset = Math.Max(0, Math.Min(scrollViewer.ScrollableHeight, _folderScrollTargetOffset + delta));
+
+                if (!_folderSmoothScrollTimer.IsEnabled)
+                {
+                    _folderSmoothScrollTimer.Start();
+                }
+            }
+        }
+
+        private void UpdateCombinerActiveCountBadge()
+        {
+            try
+            {
+                if (ChkCombinerEnable == null) return;
+                int count = _combinerData != null && _combinerData.ActiveItemIds != null ? _combinerData.ActiveItemIds.Count : 0;
+                
+                var badgeText = ChkCombinerEnable.Template?.FindName("TxtCombinerActiveCount", ChkCombinerEnable) as TextBlock;
+                var badgeBorder = ChkCombinerEnable.Template?.FindName("bdCountBadge", ChkCombinerEnable) as Border;
+
+                if (badgeText != null)
+                {
+                    badgeText.Text = count.ToString();
+                }
+
+                if (badgeBorder != null)
+                {
+                    bool isEnabled = _combinerData != null && _combinerData.IsEnabled;
+                    if (isEnabled)
+                    {
+                        // When enabled: vibrant green if items selected (#2ECC71), dark muted if 0
+                        badgeBorder.Background = count > 0 
+                            ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2ECC71"))
+                            : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2A5A3D"));
+                    }
+                    else
+                    {
+                        // When disabled: dark gray background
+                        badgeBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#454545"));
+                    }
+                }
+
+                // Update individual folder counts
+                if (_combinerData != null && _combinerData.Folders != null && _combinerData.Items != null)
+                {
+                    foreach (var folder in _combinerData.Folders)
+                    {
+                        folder.ActiveCount = _combinerData.Items
+                            .Count(i => i.FolderId == folder.Id && _combinerData.ActiveItemIds.Contains(i.Id));
+                    }
+
+                    if (CboCombinerFolders != null)
+                    {
+                        CboCombinerFolders.Items.Refresh();
+                    }
+                }
             }
             catch { }
         }
@@ -62,6 +223,8 @@ namespace imgsaver
                 ChkCombinerEnable.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
                 ChkCombinerEnable.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
             }
+
+            UpdateCombinerActiveCountBadge();
 
             if (_combinerData.IsEnabled)
             {
@@ -151,6 +314,7 @@ namespace imgsaver
 
                     btn.Style = CreateCombinerButtonStyle(isChecked);
                     PromptCombinerStore.Save(_combinerData);
+                    UpdateCombinerActiveCountBadge();
 
                     if (isChecked)
                     {
@@ -160,6 +324,8 @@ namespace imgsaver
 
                 PnlCombinerButtons.Children.Add(btn);
             }
+
+            UpdateCombinerActiveCountBadge();
         }
 
         private Style CreateCombinerButtonStyle(bool isActive)

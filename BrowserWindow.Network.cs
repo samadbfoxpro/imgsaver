@@ -1107,50 +1107,48 @@ namespace imgsaver
         {
             var settingsWin = new BrowserSettingsWindow();
             settingsWin.Owner = this;
-            if (settingsWin.ShowDialog() == true)
+            settingsWin.ShowDialog();
+
+            if (settingsWin.RequestClearData)
             {
-                if (settingsWin.RequestClearData)
+                var browser = GetCurrentBrowser();
+                if (browser?.CoreWebView2 != null)
                 {
-                    var browser = GetCurrentBrowser();
-                    if (browser?.CoreWebView2 != null)
-                    {
-                        if (settingsWin.RequestDeleteLoginData)
-                            await browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
+                    if (settingsWin.RequestDeleteLoginData)
+                        await browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
 
-                        DeleteDirectoryContents(_permanentCacheFolder);
-                        CustomMessageBox.Show(settingsWin.RequestDeleteLoginData
-                            ? "Browser cache, cookies, and login data have been cleared."
-                            : "Browser cache has been cleared.",
-                            "Success");
-                        browser.Reload();
-                    }
+                    DeleteDirectoryContents(_permanentCacheFolder);
+                    CustomMessageBox.Show(settingsWin.RequestDeleteLoginData
+                        ? "Browser cache, cookies, and login data have been cleared."
+                        : "Browser cache has been cleared.",
+                        "Success");
+                    browser.Reload();
                 }
+            }
 
-                // Check if proxy settings changed BEFORE refreshing
-                bool proxyChanged = false;
-                var oldSettings = _currentSettings;
-                var newSettings = BrowserSettings.Load();
-                proxyChanged = (oldSettings.ProxyMode ?? "system") != (newSettings.ProxyMode ?? "system") ||
-                              oldSettings.ProxyAddress != newSettings.ProxyAddress ||
-                              oldSettings.ProxyPort != newSettings.ProxyPort ||
-                              oldSettings.ProxyType != newSettings.ProxyType;
+            // Check if proxy settings changed BEFORE refreshing
+            bool proxyChanged = false;
+            var oldSettings = _currentSettings;
+            var newSettings = BrowserSettings.Load();
+            proxyChanged = (oldSettings.ProxyMode ?? "system") != (newSettings.ProxyMode ?? "system") ||
+                          oldSettings.ProxyAddress != newSettings.ProxyAddress ||
+                          oldSettings.ProxyPort != newSettings.ProxyPort ||
+                          oldSettings.ProxyType != newSettings.ProxyType;
 
-                RefreshSettings();
-                BrowserRecordingFloatingWindowManager.SyncWithSettings(newSettings);
+            RefreshSettings();
+            BrowserRecordingFloatingWindowManager.SyncWithSettings(newSettings);
 
-                if (proxyChanged)
+            if (proxyChanged)
+            {
+                SyncDownloadProxySettings();
+                CustomMessageBox.Show("Proxy settings updated instantly. Active tabs do not need to be reloaded.", "Proxy Updated");
+            }
+            else
+            {
+                // For other settings, just apply them to existing tabs
+                foreach (TabItem tab in BrowserTabs.Items)
                 {
-                    SyncDownloadProxySettings();
-                    CustomMessageBox.Show("Proxy settings updated instantly. Active tabs do not need to be reloaded.", "Proxy Updated");
-                }
-                else
-                {
-                    // For other settings, just apply them to existing tabs
-                    foreach (TabItem tab in BrowserTabs.Items)
-                    {
-                        if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null) ApplyBrowserSettingsTo(state.PrimaryWebView);
-                    }
-                    CustomMessageBox.Show("Settings updated.", "Success");
+                    if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null) ApplyBrowserSettingsTo(state.PrimaryWebView);
                 }
             }
         }
