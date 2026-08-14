@@ -251,16 +251,12 @@ namespace imgsaver
 
         private IntPtr SetHook(int idHook, LowLevelMouseProc proc)
         {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
-                return SetWindowsHookEx(idHook, proc, GetModuleHandle(curModule.ModuleName), 0);
+            return SetWindowsHookEx(idHook, proc, GetModuleHandle((string?)null), 0);
         }
 
         private IntPtr SetHook(int idHook, LowLevelKeyboardProc proc)
         {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
-                return SetWindowsHookEx(idHook, proc, GetModuleHandle(curModule.ModuleName), 0);
+            return SetWindowsHookEx(idHook, proc, GetModuleHandle((string?)null), 0);
         }
 
         #endregion

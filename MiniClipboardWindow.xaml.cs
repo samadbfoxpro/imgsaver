@@ -40,6 +40,7 @@ namespace imgsaver
         private bool _ignoreNextSpiSyncClipboardText = false;
         private DateTime _lastClipboardTime = DateTime.MinValue;
         private string _lastClipboardText = "";
+        private string _lastSavedMainTitle = "";
         private bool _isSaving = false;
         private int _nextMiniSlot = 1;
         private const string MiniExtraPlaceholderTag = "[extra]";
@@ -258,6 +259,42 @@ namespace imgsaver
             }
         }
 
+        private void AutoDetectDirection_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.TextBox textBox)
+            {
+                string text = textBox.Text;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    textBox.FlowDirection = System.Windows.FlowDirection.RightToLeft;
+                    textBox.TextAlignment = TextAlignment.Right;
+                    return;
+                }
+
+                // Check for Persian / Arabic character presence in the text
+                bool isRtl = false;
+                foreach (char c in text)
+                {
+                    if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0x0750 && c <= 0x077F) || (c >= 0xFB50 && c <= 0xFDFF) || (c >= 0xFE70 && c <= 0xFEFF))
+                    {
+                        isRtl = true;
+                        break;
+                    }
+                }
+
+                if (isRtl)
+                {
+                    textBox.FlowDirection = System.Windows.FlowDirection.RightToLeft;
+                    textBox.TextAlignment = TextAlignment.Right;
+                }
+                else
+                {
+                    textBox.FlowDirection = System.Windows.FlowDirection.LeftToRight;
+                    textBox.TextAlignment = TextAlignment.Left;
+                }
+            }
+        }
+
         public bool IsDescriptionEnabled
         {
             get { return (bool)GetValue(IsDescriptionEnabledProperty); }
@@ -283,6 +320,65 @@ namespace imgsaver
         }
 
         private List<CapturedImageInfo> _capturedImages = new List<CapturedImageInfo>();
+        private void ResetAllFields()
+        {
+            _capturedImages.Clear();
+            _positivePrompt = "";
+            _basePositivePrompt = "";
+            NegativePrompt = ""; // Also clears _hasNegativePrompt
+            _hasPositivePrompt = false;
+            TxtTitle.Text = "";
+            TxtTitle.IsEnabled = false;
+            IsDescriptionEnabled = false;
+            IsAdditionalTitleEnabled = false;
+            AdditionalTitle = "";
+            TxtPositiveCheck.Text = "○";
+            TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
+            TxtNegativeCheck.Text = "○";
+            TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
+            IsNegativeLocked = false;
+            UpdateImagePreviews();
+            UpdatePositivePromptToolTip();
+            UpdateState();
+            
+            try
+            {
+                var combinerData = PromptCombinerStore.Load();
+                bool combinerChanged = false;
+                if (combinerData != null)
+                {
+                    if (combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Count > 0)
+                    {
+                        combinerData.ActiveItemIds.Clear();
+                        combinerChanged = true;
+                    }
+                    if (combinerData.Folders != null)
+                    {
+                        foreach (var f in combinerData.Folders)
+                        {
+                            if (f.IsCustomInputActive)
+                            {
+                                f.IsCustomInputActive = false;
+                                combinerChanged = true;
+                            }
+                        }
+                    }
+                    if (combinerChanged)
+                    {
+                        PromptCombinerStore.Save(combinerData);
+                        foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                        {
+                            if (win is BrowserWindow bw)
+                            {
+                                bw.InitializeCombiner();
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
         private string _positivePrompt = "";
         private string _basePositivePrompt = "";
         private string _negativePrompt = "";
@@ -416,8 +512,8 @@ namespace imgsaver
 
             Loaded  += MiniClipboardWindow_Loaded;
             Closed  += MiniClipboardWindow_Closed;
-            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
-            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
+            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); RepositionBaseCombinerPanel(); };
+            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); RepositionBaseCombinerPanel(); };
 
             if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
             {
@@ -502,10 +598,39 @@ namespace imgsaver
             catch { }
         }
 
+        public void FlashTagReplacedSuccess()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                CursorCombinerBadge.ShowTagReplaced("🧩 Tag Replaced!");
+            });
+        }
+
+        public void FlashExtraReplacedSuccess()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                CursorCombinerBadge.ShowExtraReplaced("✨ Extra Applied!");
+            });
+        }
+
+        private void TriggerExtraOrTagNotification()
+        {
+            if (_useTagReplacerForMiniClip)
+            {
+                FlashTagReplacedSuccess();
+            }
+            else
+            {
+                FlashExtraReplacedSuccess();
+            }
+        }
+
         public void FlashCombinerSuccess()
         {
             Dispatcher.InvokeAsync(() =>
             {
+                CursorCombinerBadge.Show("⚡ Combined!");
                 UpdateCombinerToggleVisual();
                 if (BtnCombinerToggle == null) return;
                 try
@@ -660,7 +785,7 @@ namespace imgsaver
         private void StartNetMonitoring()
         {
             _netTimer = new DispatcherTimer();
-            _netTimer.Interval = TimeSpan.FromSeconds(1);
+            _netTimer.Interval = TimeSpan.FromSeconds(2); // Reduced frequency from 1s to 2s
             _netTimer.Tick += NetTimer_Tick;
             _netTimer.Start();
         }
@@ -674,41 +799,65 @@ namespace imgsaver
 
         private void NetTimer_Tick(object sender, EventArgs e)
         {
-            try
+            // Run heavy network scan on background thread to avoid UI blocking
+            Task.Run(() =>
             {
-                long currentReceived = 0;
-                long currentSent = 0;
-                var interfaces = NetworkInterface.GetAllNetworkInterfaces();
-                foreach (var ni in interfaces)
+                try
                 {
-                    if (ni.OperationalStatus == OperationalStatus.Up &&
-                        (ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet || ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
+                    long currentReceived = 0;
+                    long currentSent = 0;
+                    var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+                    foreach (var ni in interfaces)
                     {
-                        var stats = ni.GetIPStatistics();
-                        currentReceived += stats.BytesReceived;
-                        currentSent += stats.BytesSent;
+                        if (ni.OperationalStatus == OperationalStatus.Up &&
+                            (ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet || ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
+                        {
+                            var stats = ni.GetIPStatistics();
+                            currentReceived += stats.BytesReceived;
+                            currentSent += stats.BytesSent;
+                        }
                     }
-                }
 
-                if (_lastBytesReceived > 0)
-                {
-                    long diffReceived = currentReceived - _lastBytesReceived;
-                    long diffSent = currentSent - _lastBytesSent;
-                    TxtDownloadSpeed.Text = FormatSpeed(diffReceived);
-                    TxtUploadSpeed.Text = FormatSpeed(diffSent);
-                }
+                    if (_lastBytesReceived > 0)
+                    {
+                        long diffReceived = currentReceived - _lastBytesReceived;
+                        long diffSent = currentSent - _lastBytesSent;
+                        // Update UI on UI thread
+                        Dispatcher.InvokeAsync(() =>
+                        {
+                            TxtDownloadSpeed.Text = FormatSpeed(diffReceived);
+                            TxtUploadSpeed.Text = FormatSpeed(diffSent);
+                        });
+                    }
 
-                _lastBytesReceived = currentReceived;
-                _lastBytesSent = currentSent;
-            }
-            catch { }
+                    _lastBytesReceived = currentReceived;
+                    _lastBytesSent = currentSent;
+                }
+                catch { }
+            });
         }
 
         private void GlobalHook_OnKeyPressed(System.Windows.Forms.Keys key)
         {
+            if (key == System.Windows.Forms.Keys.ShiftKey || key == System.Windows.Forms.Keys.LShiftKey || key == System.Windows.Forms.Keys.RShiftKey)
+            {
+                Dispatcher.InvokeAsync(() =>
+                {
+                    if (!IsDisabled && !IsTitleLocked && !string.IsNullOrWhiteSpace(_lastSavedMainTitle))
+                    {
+                        TxtTitle.Text = _lastSavedMainTitle;
+                        TxtTitle.IsEnabled = true;
+                    }
+                });
+                return;
+            }
+
             if (key == System.Windows.Forms.Keys.ControlKey || key == System.Windows.Forms.Keys.LControlKey || key == System.Windows.Forms.Keys.RControlKey)
             {
-                Dispatcher.Invoke(() => TriggerBrowserQuickPasteIfReady());
+                if (_isBrowserQuickPasteEnabled && !_isBrowserQuickPasteRunning)
+                {
+                    Dispatcher.InvokeAsync(() => TriggerBrowserQuickPasteIfReady());
+                }
                 return;
             }
 
@@ -717,15 +866,15 @@ namespace imgsaver
             {
                 if (key == System.Windows.Forms.Keys.E)
                 {
-                    Dispatcher.Invoke(() => { if (!IsDisabled && BtnPlayRec.IsEnabled) BtnPlayRec_Click(null, null); });
+                    Dispatcher.InvokeAsync(() => { if (!IsDisabled && BtnPlayRec.IsEnabled) BtnPlayRec_Click(null, null); });
                 }
                 else if (key == System.Windows.Forms.Keys.R)
                 {
-                    Dispatcher.Invoke(() => { if (!IsDisabled) BtnSaveFromPersonaInjector_Click(null, null); });
+                    Dispatcher.InvokeAsync(() => { if (!IsDisabled) BtnSaveFromPersonaInjector_Click(null, null); });
                 }
                 else if (key == System.Windows.Forms.Keys.S)
                 {
-                    Dispatcher.Invoke(() => { if (!IsDisabled && BtnSEO.IsEnabled) SaveDirectly(); });
+                    Dispatcher.InvokeAsync(() => { if (!IsDisabled && BtnSEO.IsEnabled) SaveDirectly(); });
                 }
             }
         }
@@ -749,6 +898,7 @@ namespace imgsaver
             _miniExtraPanel?.Close();
             _miniNegativePanel?.Close();
             _miniAutoSavePanel?.Close();
+            _miniBaseCombinerPanel?.Close();
             _netTimer?.Stop();
             _globalHook?.Dispose();
             if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
@@ -783,6 +933,10 @@ namespace imgsaver
                 if (hasText)
                 {
                     rawText = SafeClipboardGetText();
+                    if (rawText.EndsWith("\u200B"))
+                    {
+                        rawText = rawText.TrimEnd('\u200B');
+                    }
                     if (rawText == _lastClipboardText) return;
                     _lastClipboardText = rawText;
                 }
@@ -891,7 +1045,8 @@ namespace imgsaver
                         return;
                     }
 
-                    if (Regex.IsMatch(rawText, @"[\u0600-\u06FF]"))
+                    int englishLetterCountTemp = Regex.Matches(rawText, "[A-Za-z]").Count;
+                    if (Regex.IsMatch(rawText, @"[\u0600-\u06FF]") && englishLetterCountTemp < 5)
                     {
                         if (!IsTitleLocked)
                         {
@@ -912,19 +1067,28 @@ namespace imgsaver
                         if (englishLetterCount > 0 && englishLetterCount < 5) return;
                         if (Regex.IsMatch(text.Trim(), @"^\d{4,}")) return;
 
+                        bool wasCombined = false;
+                        bool isCombinerEnabled = false;
+
                         // Apply Smart Prompt Combiner if enabled
                         try
                         {
                             var combinerData = PromptCombinerStore.Load();
-                            if (combinerData != null && combinerData.IsEnabled && combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Count > 0)
+                            if (combinerData != null && combinerData.IsEnabled)
                             {
+                                isCombinerEnabled = true;
                                 var activeItems = combinerData.Items
-                                    .Where(i => combinerData.ActiveItemIds.Contains(i.Id))
+                                    .Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id))
                                     .Select(i => i.Text)
                                     .Where(t => !string.IsNullOrWhiteSpace(t))
                                     .ToList();
 
-                                if (activeItems.Count > 0)
+                                var customTexts = combinerData.Folders
+                                    .Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText))
+                                    .Select(f => f.CustomInputText.Trim())
+                                    .ToList();
+
+                                if (activeItems.Count > 0 || customTexts.Count > 0)
                                 {
                                     string combined;
                                     if (combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
@@ -933,13 +1097,30 @@ namespace imgsaver
                                     }
                                     else
                                     {
-                                        combined = PromptCombinerEngine.Combine(text, activeItems, combinerData.PlacementMode, combinerData.CommaIndex, combinerData.Separator);
+                                        var allSnippetTexts = new List<string>(activeItems);
+                                        allSnippetTexts.AddRange(customTexts);
+                                        combined = PromptCombinerEngine.Combine(text, allSnippetTexts, combinerData.PlacementMode, combinerData.CommaIndex, combinerData.Separator);
                                     }
 
                                     if (combined != text)
                                     {
+                                        wasCombined = true;
+                                        if (combinerData.AutoCaptureBasePrompt)
+                                        {
+                                            try
+                                            {
+                                                string configPath = DataPathManager.GetSettingsFilePath("base_combiner_config.json");
+                                                string dir = System.IO.Path.GetDirectoryName(configPath);
+                                                if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
+                                                    System.IO.Directory.CreateDirectory(dir);
+                                                System.IO.File.WriteAllText(configPath, text);
+                                                _miniBaseCombinerPanel?.UpdateBasePromptText(text);
+                                            }
+                                            catch { }
+                                        }
+
                                         text = combined;
-                                        SetClipboardTextIgnoringNextChange(combined);
+                                        SetClipboardTextIgnoringNextChange(combined + "\u200B");
                                         try
                                         {
                                             foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
@@ -952,10 +1133,46 @@ namespace imgsaver
                                         }
                                         catch { }
                                     }
+
+                                    if (!IsAdditionalTitleLocked)
+                                    {
+                                        var activeTitles = new List<string>();
+                                        foreach (var item in combinerData.Items.Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id)))
+                                        {
+                                            string title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title.Trim() : item.Text?.Trim();
+                                            if (!string.IsNullOrWhiteSpace(title) && !activeTitles.Contains(title)) activeTitles.Add(title);
+                                        }
+                                        foreach (var folder in combinerData.Folders.Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText)))
+                                        {
+                                            string title = !string.IsNullOrWhiteSpace(folder.CustomTitle) ? folder.CustomTitle.Trim() : "متن سفارشی";
+                                            if (!activeTitles.Contains(title)) activeTitles.Add(title);
+                                        }
+                                        if (activeTitles.Count > 0)
+                                        {
+                                            IsAdditionalTitleVisible = true;
+                                            IsAdditionalTitleEnabled = true;
+                                            AdditionalTitle = string.Join(" - ", activeTitles);
+                                        }
+                                    }
                                 }
                             }
                         }
                         catch { }
+
+                        bool isReplacing = _hasPositivePrompt;
+
+                        if (wasCombined || isCombinerEnabled)
+                        {
+                            CursorBadgeNotification.ShowCombiner("⚡ Combined!");
+                        }
+                        else if (isReplacing)
+                        {
+                            CursorBadgeNotification.ShowReplaced("🔄 Replaced!");
+                        }
+                        else
+                        {
+                            CursorBadgeNotification.ShowCopied("📋 Copied!");
+                        }
 
                         if (text == _positivePrompt || text == _negativePrompt) return;
                         if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt) return;
@@ -1217,11 +1434,12 @@ namespace imgsaver
             foreach (Window w in System.Windows.Application.Current.Windows) if (w is MainWindow mw) savePath = mw.SavePath;
             if (string.IsNullOrEmpty(savePath) || !Directory.Exists(savePath)) { System.Windows.MessageBox.Show("Invalid Save Path"); return; }
 
-            string title = TxtTitle.Text.Trim();
-            if (!string.IsNullOrEmpty(title))
+            string mainTitle = TxtTitle.Text.Trim();
+            if (!string.IsNullOrEmpty(mainTitle))
             {
-                MiniClipHistory.LastSavedTitle = title;
+                _lastSavedMainTitle = mainTitle;
             }
+            string title = mainTitle;
             if (IsAdditionalTitleEnabled && !string.IsNullOrWhiteSpace(AdditionalTitle)) title += " " + AdditionalTitle.Trim();
             if (string.IsNullOrEmpty(title)) { if (!IsCompactMode) TxtTitle.Focus(); return; }
 
@@ -1311,7 +1529,7 @@ namespace imgsaver
             UpdateImagePreviews();
             TxtPositiveCheck.Text = "○"; TxtPositiveCheck.Foreground = System.Windows.Media.Brushes.Gray;
             if (!IsTitleLocked) TxtTitle.Text = "";
-            if (!IsAdditionalTitleLocked && !IsAdditionalTitleEnabled) AdditionalTitle = "";
+            if (!IsAdditionalTitleLocked) { AdditionalTitle = ""; IsAdditionalTitleEnabled = false; }
             if (!IsDescriptionLocked) DescriptionText = "";
             BtnSEO.IsEnabled = false;
             _lastClipboardText = "";
@@ -1331,6 +1549,7 @@ namespace imgsaver
         private void BtnExtraMenuPageOne_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 0;
         private void BtnExtraMenuPageTwo_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 1;
         private void BtnExtraMenuPageThree_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 2;
+        private void BtnExtraMenuPageFour_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 3;
         private bool TrySetMiniExtraTemplate(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
@@ -1373,6 +1592,7 @@ namespace imgsaver
 
                 SetClipboardTextIgnoringNextChange(output);
                 SetMiniExtraButtonState(true);
+                TriggerExtraOrTagNotification();
             }
             catch (Exception ex)
             {
@@ -1403,6 +1623,7 @@ namespace imgsaver
                 SetClipboardTextIgnoringNextChange(output);
                 TryApplyAutoExtraOutputToPositivePrompt(output);
                 SetMiniExtraButtonState(true);
+                TriggerExtraOrTagNotification();
 
                 if (LastExtraSelectionStore.TryGetSelection(out var lastSel, out _) && lastSel != null && !string.IsNullOrWhiteSpace(lastSel.ShortName))
                 {
@@ -1513,6 +1734,7 @@ namespace imgsaver
                     SetClipboardTextIgnoringNextChange(output);
                     TryApplyAutoExtraOutputToPositivePrompt(output);
                     SetMiniExtraButtonState(true);
+                    TriggerExtraOrTagNotification();
                 }
             }
             finally
@@ -1854,6 +2076,7 @@ namespace imgsaver
 
             _miniNegativePanel?.Hide();
             _miniAutoSavePanel?.Hide();
+            _miniBaseCombinerPanel?.Hide();
 
             if (_miniExtraPanel == null || !_miniExtraPanel.IsLoaded)
             {
@@ -1882,6 +2105,7 @@ namespace imgsaver
 
             _miniExtraPanel?.Hide();
             _miniAutoSavePanel?.Hide();
+            _miniBaseCombinerPanel?.Hide();
 
             if (_miniNegativePanel == null || !_miniNegativePanel.IsLoaded)
             {
@@ -1916,6 +2140,7 @@ namespace imgsaver
 
             _miniExtraPanel?.Hide();
             _miniNegativePanel?.Hide();
+            _miniBaseCombinerPanel?.Hide();
 
             if (_miniAutoSavePanel == null || !_miniAutoSavePanel.IsLoaded)
             {
@@ -1930,6 +2155,65 @@ namespace imgsaver
 
         private void RepositionAutoSavePanel() => RepositionAttachedPanel(_miniAutoSavePanel);
         private void RepositionNegativePanel() => RepositionAttachedPanel(_miniNegativePanel);
+        private void RepositionBaseCombinerPanel() => RepositionAttachedPanel(_miniBaseCombinerPanel);
+
+        private MiniBaseCombinerPanel? _miniBaseCombinerPanel;
+
+        private void BtnToggleBaseCombinerPanel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_miniBaseCombinerPanel != null && _miniBaseCombinerPanel.IsVisible)
+            {
+                _miniBaseCombinerPanel.Hide();
+                return;
+            }
+
+            _miniExtraPanel?.Hide();
+            _miniNegativePanel?.Hide();
+            _miniAutoSavePanel?.Hide();
+
+            if (_miniBaseCombinerPanel == null || !_miniBaseCombinerPanel.IsLoaded)
+            {
+                _miniBaseCombinerPanel = new MiniBaseCombinerPanel(this);
+                _miniBaseCombinerPanel.Closed += (s, ev) => _miniBaseCombinerPanel = null;
+            }
+
+            _miniBaseCombinerPanel.UpdateCombinerSummary();
+            RepositionBaseCombinerPanel();
+            _miniBaseCombinerPanel.Show();
+            _miniBaseCombinerPanel.Activate();
+        }
+
+        private void BtnFastRunBaseCombiner_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath("base_combiner_config.json");
+                string baseText = "";
+                if (System.IO.File.Exists(configPath))
+                {
+                    baseText = System.IO.File.ReadAllText(configPath);
+                }
+
+                if (string.IsNullOrWhiteSpace(baseText))
+                {
+                    BtnToggleBaseCombinerPanel_Click(sender, e);
+                    CursorBadgeNotification.ShowCombiner("⚠️ Set Base Prompt first!");
+                    return;
+                }
+
+                var combinerData = PromptCombinerStore.Load();
+                string combinedText = PromptCombinerEngine.CombinePerFolder(baseText, combinerData);
+
+                string clipboardPayload = combinedText + "\u200B";
+                System.Windows.Clipboard.SetText(clipboardPayload);
+
+                CursorBadgeNotification.ShowCombiner("⚡ Combined Base Prompt!");
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show("Error combining base prompt:\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         private void RepositionAttachedPanel(Window? panel)
         {
@@ -1937,11 +2221,15 @@ namespace imgsaver
 
             try
             {
-                panel.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-                double panelWidth = panel.Width > 0 ? panel.Width : panel.DesiredSize.Width;
-                if (panelWidth <= 0) panelWidth = 230;
+                double panelWidth = !double.IsNaN(panel.Width) && panel.Width > 0 ? panel.Width : 230;
+                double panelHeight = !double.IsNaN(panel.Height) && panel.Height > 0 ? panel.Height : 250;
 
-                double panelHeight = panel.DesiredSize.Height > 0 ? panel.DesiredSize.Height : 250;
+                if (panel.SizeToContent != SizeToContent.Manual || double.IsNaN(panel.Height) || panel.Height <= 0)
+                {
+                    panel.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+                    panelWidth = panel.DesiredSize.Width > 0 ? panel.DesiredSize.Width : panelWidth;
+                    panelHeight = panel.DesiredSize.Height > 0 ? panel.DesiredSize.Height : panelHeight;
+                }
 
                 // Determine if there is enough space on the right side of MiniClipboardWindow
                 double targetLeft;

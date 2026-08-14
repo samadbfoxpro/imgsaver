@@ -89,11 +89,35 @@ namespace imgsaver
             RefreshBookmarksUI();
             UpdateProfileUIBadge();
 
-            this.StateChanged += BrowserWindow_StateChanged;
-            this.Activated += (s, e) => UpdateSplitViewPopupsVisibility(true);
-            this.Deactivated += (s, e) => UpdateSplitViewPopupsVisibility(false);
-            this.LocationChanged += (s, e) => RefreshSplitViewPopupsPosition();
-            this.SizeChanged += (s, e) => RefreshSplitViewPopupsPosition();
+            this.StateChanged += (s, e) =>
+            {
+                BrowserWindow_StateChanged(s, e);
+                OnBrowserWindowStateChanged();
+            };
+            this.Activated += (s, e) =>
+            {
+                UpdateSplitViewPopupsVisibility(true);
+                OnBrowserWindowVisibilityChanged(true);
+            };
+            this.Deactivated += (s, e) =>
+            {
+                UpdateSplitViewPopupsVisibility(false);
+                OnBrowserWindowVisibilityChanged(false);
+            };
+            this.LocationChanged += (s, e) =>
+            {
+                RefreshSplitViewPopupsPosition();
+                RepositionBaseCombinerPopup();
+            };
+            this.SizeChanged += (s, e) =>
+            {
+                RefreshSplitViewPopupsPosition();
+                RepositionBaseCombinerPopup();
+            };
+            this.Closing += (s, e) =>
+            {
+                if (PopInlineBaseCombiner != null) PopInlineBaseCombiner.IsOpen = false;
+            };
             _browserInputRecorder.OnStopRequested += StopBrowserRecordingAndSave;
 
             InitializeTabs();
@@ -192,12 +216,8 @@ namespace imgsaver
 
         private void RefreshSettings()
         {
-            _currentSettings = BrowserSettings.Load();
+            _currentSettings = BrowserSettings.Load(CurrentProfile);
             SyncDownloadProxySettings();
-            if (EmbeddedMiniClip != null)
-            {
-                EmbeddedMiniClip.Visibility = _currentSettings.EnableEmbeddedMiniClip ? Visibility.Visible : Visibility.Collapsed;
-            }
             if (CombinerBar != null)
             {
                 bool showCombiner = _currentSettings.EnableCombinerBar;

@@ -103,10 +103,19 @@ namespace imgsaver
         private void RefreshBookmarksUI()
         {
             BookmarksPanel.Children.Clear();
+            BookmarksOverflowPanel.Children.Clear();
             if (_currentSettings.Bookmarks == null) return;
 
-            foreach (var bookmark in _currentSettings.Bookmarks)
+            double availableWidth = BookmarksBorder.ActualWidth;
+            if (availableWidth == 0) availableWidth = this.ActualWidth; // fallback during initialization
+            double currentWidth = 0;
+            double overflowButtonWidth = 30; // 24 + margins
+
+            bool isOverflowing = false;
+
+            for (int i = 0; i < _currentSettings.Bookmarks.Count; i++)
             {
+                var bookmark = _currentSettings.Bookmarks[i];
                 var stack = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
                 stack.Children.Add(new TextBlock { Text = GetIconForUrl(bookmark.Url), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center, FontSize = 12 });
                 stack.Children.Add(new TextBlock { Text = bookmark.Name, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 });
@@ -118,7 +127,8 @@ namespace imgsaver
                     Margin = new Thickness(2, 0, 2, 0),
                     Padding = new Thickness(8, 2, 8, 2),
                     Height = 26,
-                    Style = (Style)FindResource("SecondaryButtonStyle")
+                    Style = (Style)FindResource("SecondaryButtonStyle"),
+                    Tag = bookmark
                 };
 
                 btn.Click += (s, e) => { GetCurrentBrowser()?.CoreWebView2.Navigate(bookmark.Url); };
@@ -129,7 +139,102 @@ namespace imgsaver
                 cm.Items.Add(deleteMi);
                 btn.ContextMenu = cm;
 
-                BookmarksPanel.Children.Add(btn);
+                // Drag and Drop
+                btn.PreviewMouseLeftButtonDown += Bookmark_PreviewMouseLeftButtonDown;
+                btn.PreviewMouseMove += Bookmark_PreviewMouseMove;
+                btn.AllowDrop = true;
+                btn.Drop += Bookmark_Drop;
+                btn.DragEnter += Bookmark_DragEnter;
+
+                btn.Measure(new System.Windows.Size(double.PositiveInfinity, 26));
+                double btnWidth = btn.DesiredSize.Width + 4; // Including margins
+
+                if (!isOverflowing && currentWidth + btnWidth > availableWidth - overflowButtonWidth)
+                {
+                    isOverflowing = true;
+                }
+
+                if (isOverflowing)
+                {
+                    btn.Margin = new Thickness(2); // Adjust margin for vertical layout
+                    BookmarksOverflowPanel.Children.Add(btn);
+                }
+                else
+                {
+                    currentWidth += btnWidth;
+                    BookmarksPanel.Children.Add(btn);
+                }
+            }
+
+            BtnBookmarksOverflow.Visibility = isOverflowing ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void BookmarksBorder_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            RefreshBookmarksUI();
+        }
+
+        private void BtnBookmarksOverflow_Click(object sender, RoutedEventArgs e)
+        {
+            BookmarksOverflowPopup.IsOpen = true;
+        }
+
+        private System.Windows.Point _bookmarkDragStartPoint;
+        private bool _isBookmarkDragging = false;
+
+        private void Bookmark_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _bookmarkDragStartPoint = e.GetPosition(null);
+            _isBookmarkDragging = false;
+        }
+
+        private void Bookmark_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed && !_isBookmarkDragging)
+            {
+                System.Windows.Point position = e.GetPosition(null);
+                if (Math.Abs(position.X - _bookmarkDragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(position.Y - _bookmarkDragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    if (sender is System.Windows.Controls.Button btn && btn.Tag is BookmarkItem bookmark)
+                    {
+                        _isBookmarkDragging = true;
+                        DragDrop.DoDragDrop(btn, bookmark, System.Windows.DragDropEffects.Move);
+                        _isBookmarkDragging = false;
+                    }
+                }
+            }
+        }
+
+        private void Bookmark_DragEnter(object sender, System.Windows.DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(BookmarkItem)))
+            {
+                e.Effects = System.Windows.DragDropEffects.None;
+            }
+        }
+
+        private void Bookmark_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(BookmarkItem)))
+            {
+                var sourceBookmark = e.Data.GetData(typeof(BookmarkItem)) as BookmarkItem;
+                if (sender is System.Windows.Controls.Button targetBtn && targetBtn.Tag is BookmarkItem targetBookmark)
+                {
+                    if (sourceBookmark != null && sourceBookmark != targetBookmark)
+                    {
+                        int sourceIndex = _currentSettings.Bookmarks.IndexOf(sourceBookmark);
+                        int targetIndex = _currentSettings.Bookmarks.IndexOf(targetBookmark);
+
+                        if (sourceIndex >= 0 && targetIndex >= 0)
+                        {
+                            _currentSettings.Bookmarks.RemoveAt(sourceIndex);
+                            _currentSettings.Bookmarks.Insert(targetIndex, sourceBookmark);
+                            _currentSettings.Save();
+                            RefreshBookmarksUI();
+                        }
+                    }
+                }
             }
         }
 
@@ -424,7 +529,7 @@ namespace imgsaver
             _currentSettings.OpenTabs = urls;
             _currentSettings.TabSessions = sessions;
             _currentSettings.SelectedTabIndex = BrowserTabs.SelectedIndex;
-            _currentSettings.Save();
+            _currentSettings.Save(CurrentProfile);
         }
 
         private WebView2? GetCurrentBrowser()

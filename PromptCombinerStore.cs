@@ -79,6 +79,40 @@ namespace imgsaver
                 data.Items = defaultData.Items;
             }
 
+            // Upgrade existing custom text folders and remove duplicates
+            foreach (var folder in data.Folders)
+            {
+                if (folder.Name != null && (folder.Name.Contains("Custom Text") || folder.Name.Contains("متن سفارشی")))
+                {
+                    folder.IsCustomInput = true;
+                }
+            }
+
+            if (!data.Folders.Any(f => f.IsCustomInput))
+            {
+                data.Folders.Add(new PromptCombinerFolder
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = "✍️ Custom Text",
+                    IsCustomInput = true,
+                    Order = data.Folders.Count
+                });
+            }
+
+            // Remove any duplicate IsCustomInput folders
+            var customFolders = data.Folders.Where(f => f.IsCustomInput).ToList();
+            if (customFolders.Count > 1)
+            {
+                var keepFolder = customFolders.FirstOrDefault(f => !string.IsNullOrWhiteSpace(f.CustomInputText)) ?? customFolders.Last();
+                foreach (var folder in customFolders)
+                {
+                    if (folder != keepFolder)
+                    {
+                        data.Folders.Remove(folder);
+                    }
+                }
+            }
+
             if (string.IsNullOrEmpty(data.ActiveFolderId) || !data.Folders.Any(f => f.Id == data.ActiveFolderId))
             {
                 data.ActiveFolderId = data.Folders[0].Id;
@@ -90,6 +124,7 @@ namespace imgsaver
             var folderQuality = new PromptCombinerFolder { Id = Guid.NewGuid().ToString(), Name = "Quality 💎", Order = 0 };
             var folderStyle   = new PromptCombinerFolder { Id = Guid.NewGuid().ToString(), Name = "Styles 🎨", Order = 1 };
             var folderLight   = new PromptCombinerFolder { Id = Guid.NewGuid().ToString(), Name = "Lighting 💡", Order = 2 };
+            var folderCustom  = new PromptCombinerFolder { Id = Guid.NewGuid().ToString(), Name = "✍️ Custom Text", IsCustomInput = true, Order = 3 };
 
             var items = new List<PromptCombinerItem>
             {
@@ -111,7 +146,7 @@ namespace imgsaver
                 PlacementMode = CombinerPlacementMode.AfterComma,
                 CommaIndex = 1,
                 Separator = ", ",
-                Folders = new List<PromptCombinerFolder> { folderQuality, folderStyle, folderLight },
+                Folders = new List<PromptCombinerFolder> { folderQuality, folderStyle, folderLight, folderCustom },
                 Items = items
             };
         }

@@ -11,9 +11,12 @@ namespace imgsaver
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            StartupProfiler.Log("App.OnStartup ENTER");
             base.OnStartup(e);
 
+            StartupProfiler.Log("App.OnStartup -> Loading Language Config");
             string lang = LanguageManager.LoadLanguageFromConfig();
+            StartupProfiler.Log($"App.OnStartup -> Applying Language ({lang})");
             LanguageManager.ApplyLanguage(lang);
 
             // Register a global handler for all TextBoxes to select one word on double-click (WPF default)
@@ -22,7 +25,15 @@ namespace imgsaver
                 System.Windows.Controls.Control.PreviewMouseLeftButtonDownEvent,
                 new System.Windows.Input.MouseButtonEventHandler(TextBox_PreviewMouseLeftButtonDown));
 
-            BrowserRecordingFloatingWindowManager.SyncWithSettings(BrowserSettings.Load());
+            // Defer heavy I/O (browser settings JSON read + floating window init) to AFTER the UI is visible
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                StartupProfiler.Log("App.OnStartup Background Task -> SyncWithSettings START");
+                BrowserRecordingFloatingWindowManager.SyncWithSettings(BrowserSettings.Load());
+                StartupProfiler.Log("App.OnStartup Background Task -> SyncWithSettings END");
+            }), System.Windows.Threading.DispatcherPriority.Background);
+
+            StartupProfiler.Log("App.OnStartup EXIT");
         }
 
         private void TextBox_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -35,6 +46,30 @@ namespace imgsaver
                     e.Handled = true;
                 }
             }
+        }
+        protected override void OnExit(ExitEventArgs e)
+        {
+            try
+            {
+                // Close all open windows to fire their Closed events and unhook Win32 event listeners
+                foreach (Window win in System.Windows.Application.Current.Windows)
+                {
+                    try
+                    {
+                        if (win != null && win.IsLoaded)
+                        {
+                            win.Close();
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            base.OnExit(e);
+
+            // Force kill the process so no zombie threads or unmanaged User32 hooks linger in Windows
+            System.Environment.Exit(0);
         }
     }
 }

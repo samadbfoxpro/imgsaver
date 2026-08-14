@@ -241,6 +241,20 @@ namespace imgsaver
 
                 string prefix = PromptTaggerStore.Prefix ?? "PH_";
                 var tagRegex = new System.Text.RegularExpressions.Regex($@"\[{System.Text.RegularExpressions.Regex.Escape(prefix)}\d+\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                // Fallback to InteractivePrompt if main Template has a mismatch but InteractivePrompt matches values.Count
+                if (tagRegex.Matches(template).Count != values.Count && !string.IsNullOrWhiteSpace(PromptTaggerStore.InteractivePrompt))
+                {
+                    string interPrefix = PromptTaggerStore.InteractivePrefix ?? "PH_";
+                    var interRegex = new System.Text.RegularExpressions.Regex($@"\[{System.Text.RegularExpressions.Regex.Escape(interPrefix)}\d+\]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (interRegex.Matches(PromptTaggerStore.InteractivePrompt).Count == values.Count)
+                    {
+                        template = PromptTaggerStore.InteractivePrompt.Replace("\r", " ").Replace("\n", " ");
+                        prefix = interPrefix;
+                        tagRegex = interRegex;
+                    }
+                }
+
                 int expectedCount = tagRegex.Matches(template).Count;
                 if (values.Count != expectedCount)
                 {

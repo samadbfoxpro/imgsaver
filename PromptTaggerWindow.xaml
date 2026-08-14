@@ -1,7 +1,7 @@
 <Window x:Class="imgsaver.PromptTaggerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="{DynamicResource Lbl_PromptTagger_Title}" Width="500" Height="740"
+        Title="{DynamicResource Lbl_PromptTagger_Title}" Width="740" Height="830"
         Background="Transparent" WindowStyle="None" AllowsTransparency="True"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -14,258 +14,478 @@
             <MenuItem Header="{DynamicResource Menu_Clear}" Click="MenuClear_Click"/>
         </ContextMenu>
     </Window.Resources>
+
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="32" GlassFrameThickness="0" CornerRadius="8"/>
+        <WindowChrome CaptionHeight="38" GlassFrameThickness="0" CornerRadius="12"/>
     </WindowChrome.WindowChrome>
-    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+
+    <Border Background="{StaticResource BackgroundBrush}" CornerRadius="12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1.2">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="32"/> <!-- Titlebar -->
-                <RowDefinition Height="Auto"/> <!-- Tab Headers -->
+                <RowDefinition Height="38"/> <!-- Window Titlebar -->
+                <RowDefinition Height="Auto"/> <!-- Segmented Tab Header -->
                 <RowDefinition Height="*"/> <!-- Content Panels -->
             </Grid.RowDefinitions>
 
             <!-- Custom Title Bar -->
-            <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid>
-                    <TextBlock Text="{DynamicResource Lbl_PromptTagger_Title}" VerticalAlignment="Center" Margin="12,0" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}"/>
-                    <Button Content="✕" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click"/>
+            <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="12,12,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="14,0,8,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🏷️" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource Lbl_PromptTagger_Title}" VerticalAlignment="Center" FontSize="13" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}"/>
+                    </StackPanel>
+                    <Button Content="✕" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click" Width="30" Height="30"/>
                 </Grid>
             </Border>
 
-            <!-- Tab Headers -->
-            <Grid Grid.Row="1" Background="{StaticResource SurfaceBrush}" Height="40">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <Button x:Name="BtnTabReplacer" Grid.Column="0" Content="{DynamicResource Btn_Tab_Replacer}" Click="BtnTabReplacer_Click" BorderThickness="0,0,0,2">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
-                            <Setter Property="BorderBrush" Value="Transparent"/>
-                            <Setter Property="FontSize" Value="12"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                            <Setter Property="Cursor" Value="Hand"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
-                </Button>
+            <!-- 3-Segmented Tab Header -->
+            <Border Grid.Row="1" Margin="16,12,16,0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="3" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <Grid Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                <Button x:Name="BtnTabDiff" Grid.Column="1" Content="{DynamicResource Btn_Tab_Diff}" Click="BtnTabDiff_Click" BorderThickness="0,0,0,2">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
-                            <Setter Property="BorderBrush" Value="Transparent"/>
-                            <Setter Property="FontSize" Value="12"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                            <Setter Property="Cursor" Value="Hand"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
-                </Button>
-            </Grid>
+                    <Button x:Name="BtnTabReplacer" Grid.Column="0" Content="{DynamicResource Btn_Tab_Replacer}" Click="BtnTabReplacer_Click" Margin="2" BorderThickness="1.5" BorderBrush="Transparent">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
+                                <Setter Property="FontSize" Value="12.5"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
-            <!-- Content Panels -->
-            <Grid Grid.Row="2" Margin="15">
-                
+                    <Button x:Name="BtnTabDiff" Grid.Column="1" Content="{DynamicResource Btn_Tab_Diff}" Click="BtnTabDiff_Click" Margin="2" BorderThickness="1.5" BorderBrush="Transparent">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
+                                <Setter Property="FontSize" Value="12.5"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button x:Name="BtnTabInteractive" Grid.Column="2" Content="⚡ Interactive Tagger" Click="BtnTabInteractive_Click" Margin="2" BorderThickness="1.5" BorderBrush="Transparent">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{StaticResource ForegroundMutedBrush}"/>
+                                <Setter Property="FontSize" Value="12.5"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Main Content Area -->
+            <Grid Grid.Row="2" Margin="16,14,16,16">
+
+                <!-- ════════════════════════════════════════════════════════════════ -->
                 <!-- TAB 1: TAG REPLACER PANEL -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
                 <Grid x:Name="PanelReplacer" Visibility="Visible">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/> <!-- Label + Input 1 -->
-                        <RowDefinition Height="Auto"/> <!-- Label + Input 2 -->
-                        <RowDefinition Height="Auto"/> <!-- Tag Prefix + Process Button -->
-                        <RowDefinition Height="*"/>    <!-- Output Area -->
+                        <RowDefinition Height="1*"/>   <!-- Template Card -->
+                        <RowDefinition Height="1*"/>   <!-- Values Card -->
+                        <RowDefinition Height="Auto"/> <!-- Settings & Execute Action Bar -->
+                        <RowDefinition Height="1.2*"/> <!-- Output Result Card -->
                     </Grid.RowDefinitions>
 
-                    <!-- Template Input -->
-                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock Text="{DynamicResource Lbl_Template_Prompt}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,5"/>
-                        <TextBox x:Name="TxtTemplate" Height="100" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                 Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                 Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                    </StackPanel>
+                    <!-- Card 1: Template Input -->
+                    <Border Grid.Row="0" Margin="0,0,0,12" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Background="#0284C7" CornerRadius="4" Padding="7,3" Margin="0,0,8,0">
+                                    <TextBlock Text="1" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Lbl_Template_Prompt}" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBox x:Name="TxtTemplate" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                     Padding="10,8" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                     Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        </Grid>
+                    </Border>
 
-                    <!-- Replacement Values Input -->
-                    <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                        <TextBlock Text="{DynamicResource Lbl_Replacement_Values}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,5"/>
-                        <TextBox x:Name="TxtValues" Height="100" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                 Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                 Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                    </StackPanel>
+                    <!-- Card 2: Replacement Values Input -->
+                    <Border Grid.Row="1" Margin="0,0,0,12" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Background="#0D9488" CornerRadius="4" Padding="7,3" Margin="0,0,8,0">
+                                    <TextBlock Text="2" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                </Border>
+                                <TextBlock Text="{DynamicResource Lbl_Replacement_Values}" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBox x:Name="TxtValues" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                     Padding="10,8" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                     Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        </Grid>
+                    </Border>
 
-                    <!-- Tag Prefix & Action -->
-                    <Grid Grid.Row="2" Margin="0,0,0,12">
+                    <!-- Card 3: Action Control Bar -->
+                    <Border Grid.Row="2" Margin="0,0,0,12" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Tag Prefix:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,8,0"/>
+                                <TextBox x:Name="TxtReplacerPrefix" Text="PH_" Width="70" Height="30" Padding="6,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="13"
+                                         FontWeight="Bold" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="1" Content="{DynamicResource Btn_Process_Replacer}" Click="BtnProcessReplacement_Click" Height="34" Margin="16,0,0,0" FontSize="12.5" FontWeight="Bold"
+                                    Style="{StaticResource SecondaryButtonStyle}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Card 4: Output Result -->
+                    <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Background="#16A34A" CornerRadius="4" Padding="7,3" Margin="0,0,8,0">
+                                        <TextBlock Text="✓" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                    </Border>
+                                    <TextBlock Text="{DynamicResource Lbl_Result_Output}" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Content="{DynamicResource Btn_Copy_Result}" Click="BtnCopyReplacerOutput_Click" HorizontalAlignment="Right" Padding="12,4" FontSize="11" FontWeight="Bold" Style="{StaticResource SecondaryButtonStyle}"/>
+                            </Grid>
+
+                            <TextBox x:Name="TxtReplacerOutput" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                     Padding="10,8" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                     Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- TAB 2: PROMPT DIFF PANEL -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <Grid x:Name="PanelDiff" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1.2*"/> <!-- Two-Column Prompts Grid -->
+                        <RowDefinition Height="Auto"/> <!-- Action Control Bar -->
+                        <RowDefinition Height="1.2*"/> <!-- Outputs Split Grid -->
+                        <RowDefinition Height="Auto"/> <!-- Transfer Footer Bar -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Split Input Prompts A & B -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Tag Prefix:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,8,0"/>
-                            <TextBox x:Name="TxtReplacerPrefix" Text="PH_" Width="60" Height="28" Padding="5,0" VerticalContentAlignment="Center"
-                                     ContextMenu="{StaticResource TextBoxContextMenu}"
-                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="{DynamicResource Btn_Process_Replacer}" Click="BtnProcessReplacement_Click" Height="30" Margin="15,0,0,0" FontWeight="SemiBold"
-                                Style="{StaticResource SecondaryButtonStyle}"/>
+
+                        <!-- Prompt A (Reference) Card -->
+                        <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{DynamicResource Lbl_Prompt_A}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                <TextBox x:Name="TxtPromptA" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                         Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Prompt B (Target) Card -->
+                        <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{DynamicResource Lbl_Prompt_B}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                <TextBox x:Name="TxtPromptB" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                         Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </Grid>
+                        </Border>
                     </Grid>
 
-                    <!-- Output Prompt -->
-                    <Grid Grid.Row="3">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Margin="0,0,0,5">
-                            <TextBlock Text="{DynamicResource Lbl_Result_Output}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" VerticalAlignment="Center"/>
-                            <Button Content="{DynamicResource Btn_Copy_Result}" Click="BtnCopyReplacerOutput_Click" HorizontalAlignment="Right" Padding="8,2" FontSize="10" Style="{StaticResource SecondaryButtonStyle}"/>
+                    <!-- Control Bar -->
+                    <Border Grid.Row="1" Margin="0,0,0,12" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Tag Prefix:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,8,0"/>
+                                <TextBox x:Name="TxtDiffPrefix" Text="PH_" Width="70" Height="30" Padding="6,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="13"
+                                         FontWeight="Bold" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="1" Content="{DynamicResource Btn_Compare_Prompts}" Click="BtnComparePrompts_Click" Height="34" Margin="16,0,0,0" FontSize="12.5" FontWeight="Bold"
+                                    Style="{StaticResource SecondaryButtonStyle}"/>
                         </Grid>
-                        <TextBox x:Name="TxtReplacerOutput" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                 Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                 Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                    </Border>
+
+                    <!-- Split Outputs Grid -->
+                    <Grid Grid.Row="2" Margin="0,0,0,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="1*"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="1*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Output 1: Generated Template -->
+                        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{DynamicResource Lbl_Generated_Template}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                <TextBox x:Name="TxtDiffTemplateOutput" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                         Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Output 2: Extracted Differences -->
+                        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{DynamicResource Lbl_Extracted_Diffs}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,6"/>
+                                <TextBox x:Name="TxtDiffValuesOutput" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                         Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Transfer Action Buttons -->
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Content="{DynamicResource Btn_Transfer}" Click="BtnTransferToReplacer_Click" Height="36" FontSize="12.5" FontWeight="Bold" Foreground="White">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bd" CornerRadius="6">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#0284C7" Offset="0"/>
+                                                <GradientStop Color="#0369A1" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White" TextElement.FontWeight="Bold"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="bd" Property="Opacity" Value="0.7"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <Button Grid.Column="2" Content="{DynamicResource Btn_Transfer_To_Extra}" Click="BtnTransferToExtra_Click" Height="36" FontSize="12.5" FontWeight="Bold" Foreground="White">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bd" CornerRadius="6">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#0D9488" Offset="0"/>
+                                                <GradientStop Color="#0891B2" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White" TextElement.FontWeight="Bold"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="bd" Property="Opacity" Value="0.7"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </Grid>
                 </Grid>
 
-                <!-- TAB 2: PROMPT DIFF PANEL -->
-                <Grid x:Name="PanelDiff" Visibility="Collapsed">
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <!-- TAB 3: INTERACTIVE SELECTION TAGGER PANEL -->
+                <!-- ════════════════════════════════════════════════════════════════ -->
+                <Grid x:Name="PanelInteractive" Visibility="Collapsed">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/> <!-- Input A & B Side-by-side or Stacked -->
-                        <RowDefinition Height="Auto"/> <!-- Tag Prefix + Compare Button -->
-                        <RowDefinition Height="*"/>    <!-- Outputs -->
+                        <RowDefinition Height="1.2*"/> <!-- Interactive Prompt Editor Card -->
+                        <RowDefinition Height="1*"/>   <!-- Live Extracted Diffs Card -->
+                        <RowDefinition Height="Auto"/> <!-- Controls & Send to MiniClip -->
                     </Grid.RowDefinitions>
 
-                    <!-- Input Grid -->
-                    <Grid Grid.Row="0" Margin="0,0,0,12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        
-                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
-                            <TextBlock Text="{DynamicResource Lbl_Prompt_A}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtPromptA" Height="90" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                     Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        </StackPanel>
-                        
-                        <StackPanel Grid.Row="1" Margin="0,0,0,8">
-                            <TextBlock Text="{DynamicResource Lbl_Prompt_B}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtPromptB" Height="90" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                     Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Control Row -->
-                    <Grid Grid.Row="1" Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Tag Prefix:" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,8,0"/>
-                            <TextBox x:Name="TxtDiffPrefix" Text="PH_" Width="60" Height="28" Padding="5,0" VerticalContentAlignment="Center"
-                                     ContextMenu="{StaticResource TextBoxContextMenu}"
-                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        </StackPanel>
-                        <Button Grid.Column="1" Content="{DynamicResource Btn_Compare_Prompts}" Click="BtnComparePrompts_Click" Height="30" Margin="15,0,0,0" FontWeight="SemiBold"
-                                Style="{StaticResource SecondaryButtonStyle}"/>
-                    </Grid>
-
-                    <!-- Diff Outputs -->
-                    <Grid Grid.Row="2">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/> <!-- Output template -->
-                            <RowDefinition Height="Auto"/> <!-- Gap -->
-                            <RowDefinition Height="Auto"/> <!-- Extracted list (changed to Auto) -->
-                            <RowDefinition Height="Auto"/> <!-- Transfer Button -->
-                        </Grid.RowDefinitions>
-
-                         <!-- Output template -->
-                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <!-- Card 1: Interactive Selection Prompt Editor -->
+                    <Border Grid.Row="0" Margin="0,0,0,12" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="{DynamicResource Lbl_Generated_Template}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtDiffTemplateOutput" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                     Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        </Grid>
 
-                        <!-- Extracted list -->
-                        <Grid Grid.Row="2" Margin="0,0,0,12">
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Background="#8B5CF6" CornerRadius="4" Padding="7,3" Margin="0,0,8,0">
+                                        <TextBlock Text="✏️" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                    </Border>
+                                    <TextBlock Text="Interactive Selection Editor" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="BtnSetBasePrompt" Content="🔄 Reset Base" Click="BtnSetBasePrompt_Click" Padding="10,3" Margin="0,0,6,0" FontSize="10.5" FontWeight="SemiBold" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    <Button x:Name="BtnTagSelection" Content="⚡ Tag Selected Text" Click="BtnTagSelection_Click" Padding="12,3" FontSize="11" FontWeight="Bold">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                            <GradientStop Color="#8B5CF6" Offset="0"/>
+                                                            <GradientStop Color="#6366F1" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White" TextElement.FontWeight="Bold"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter TargetName="bd" Property="Opacity" Value="0.7"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBox x:Name="TxtInteractivePrompt" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                     Padding="10,8" ContextMenu="{StaticResource TextBoxContextMenu}" TextChanged="TxtInteractivePrompt_TextChanged"
+                                     Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Card 2: Live Extracted Values / Diffs -->
+                    <Border Grid.Row="1" Margin="0,0,0,12" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="{DynamicResource Lbl_Extracted_Diffs}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtDiffValuesOutput" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                     Height="80" Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}"
-                                     Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        </Grid>
 
-                        <!-- Actions -->
-                        <Grid Grid.Row="3">
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Background="#10B981" CornerRadius="4" Padding="7,3" Margin="0,0,8,0">
+                                        <TextBlock Text="📡" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                    </Border>
+                                    <TextBlock Text="Live Extracted Values (Diffs)" FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" Background="#0F241B" BorderBrush="#10B981" BorderThickness="1" CornerRadius="4" Padding="8,2">
+                                    <TextBlock Text="● Live Syncing" FontSize="10" FontWeight="Bold" Foreground="#00FF87"/>
+                                </Border>
+                            </Grid>
+
+                            <TextBox x:Name="TxtLiveDifferences" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="13"
+                                     Padding="10,8" ContextMenu="{StaticResource TextBoxContextMenu}" TextChanged="TxtLiveDifferences_TextChanged"
+                                     Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Card 3: Action Control Bar & Send to MiniClip -->
+                    <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" CornerRadius="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12">
+                        <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="8"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1.2*"/>
                             </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Tag Prefix:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,8,0"/>
+                                <TextBox x:Name="TxtInteractivePrefix" Text="PH_" Width="65" Height="32" Padding="6,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="13"
+                                         FontWeight="Bold" ContextMenu="{StaticResource TextBoxContextMenu}"
+                                         Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                            </StackPanel>
 
-                            <Button Grid.Column="0" Content="{DynamicResource Btn_Transfer}" Click="BtnTransferToReplacer_Click" Height="32" FontWeight="Bold"
-                                    Foreground="White">
+                            <Button Grid.Column="1" Content="📋 Copy Tagged Text" Click="BtnCopyInteractiveOutput_Click" Height="34" Margin="10,0,0,0" FontSize="11.5" FontWeight="Bold"
+                                    Style="{StaticResource SecondaryButtonStyle}"/>
+
+                            <Button Grid.Column="3" Content="🚀 Set &amp; Send to MiniClip" Click="BtnSendToMiniClip_Click" Height="34" FontSize="12.5" FontWeight="Bold" Foreground="White">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" CornerRadius="6">
                                             <Border.Background>
                                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                    <GradientStop Color="#0284C7" Offset="0"/>
-                                                    <GradientStop Color="#0369A1" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White" TextElement.FontWeight="Bold"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="bd" Property="Opacity" Value="0.7"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-
-                            <Button Grid.Column="2" Content="{DynamicResource Btn_Transfer_To_Extra}" Click="BtnTransferToExtra_Click" Height="32" FontWeight="Bold"
-                                    Foreground="White">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" CornerRadius="6">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                    <GradientStop Color="#0D9488" Offset="0"/>
-                                                    <GradientStop Color="#0891B2" Offset="1"/>
+                                                    <GradientStop Color="#059669" Offset="0"/>
+                                                    <GradientStop Color="#10B981" Offset="1"/>
                                                 </LinearGradientBrush>
                                             </Border.Background>
                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="White" TextElement.FontWeight="Bold"/>
@@ -282,7 +502,7 @@
                                 </Button.Template>
                             </Button>
                         </Grid>
-                    </Grid>
+                    </Border>
                 </Grid>
 
             </Grid>

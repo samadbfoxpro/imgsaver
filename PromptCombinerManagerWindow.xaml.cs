@@ -66,6 +66,10 @@ namespace imgsaver
                 RadAfterComma.IsChecked = true;
 
             TxtCommaIndex.Text = _data.CommaIndex > 0 ? _data.CommaIndex.ToString() : "1";
+            if (ChkStandaloneGlobal != null)
+            {
+                ChkStandaloneGlobal.IsChecked = _data.IsStandaloneGlobalEnabled;
+            }
             UpdateFolderRuleVisibility();
         }
 
@@ -108,6 +112,11 @@ namespace imgsaver
             _isUpdatingFolderUI = true;
             try
             {
+                if (ChkIsCustomInput != null)
+                {
+                    ChkIsCustomInput.IsChecked = folder.IsCustomInput;
+                }
+
                 if (folder.PlacementMode == CombinerPlacementMode.AtBeginning)
                     CboFolderPlacement.SelectedIndex = 1;
                 else if (folder.PlacementMode == CombinerPlacementMode.AtEnd)
@@ -120,10 +129,39 @@ namespace imgsaver
                 {
                     PnlFolderCommaIndex.Visibility = (CboFolderPlacement.SelectedIndex == 0) ? Visibility.Visible : Visibility.Collapsed;
                 }
+
+                UpdateFolderItemsVisibility(folder);
             }
             finally
             {
                 _isUpdatingFolderUI = false;
+            }
+        }
+
+        private void ChkIsCustomInput_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isUpdatingFolderUI || ChkIsCustomInput == null) return;
+            if (LstFolders != null && LstFolders.SelectedItem is PromptCombinerFolder folder)
+            {
+                folder.IsCustomInput = (ChkIsCustomInput.IsChecked == true);
+                UpdateFolderItemsVisibility(folder);
+            }
+        }
+
+        private void UpdateFolderItemsVisibility(PromptCombinerFolder folder)
+        {
+            if (folder == null) return;
+            if (folder.IsCustomInput)
+            {
+                if (BtnAddItem != null) BtnAddItem.Visibility = Visibility.Collapsed;
+                if (LstItems != null) LstItems.Visibility = Visibility.Collapsed;
+                if (PnlCustomInputInfo != null) PnlCustomInputInfo.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                if (BtnAddItem != null) BtnAddItem.Visibility = Visibility.Visible;
+                if (LstItems != null) LstItems.Visibility = Visibility.Visible;
+                if (PnlCustomInputInfo != null) PnlCustomInputInfo.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -184,24 +222,168 @@ namespace imgsaver
             }
         }
 
+        private void BtnRenameFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement el && el.Tag is PromptCombinerFolder folder)
+            {
+                var dialog = new InputDialogWindow("Rename Category", "Enter new category name:");
+                dialog.Owner = this;
+                if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.InputText))
+                {
+                    folder.Name = dialog.InputText.Trim();
+                    LstFolders.Items.Refresh();
+                    if (LstFolders.SelectedItem == folder)
+                    {
+                        TxtCurrentFolderHeader.Text = $"Prompt Buttons in '{folder.Name}'";
+                    }
+                }
+            }
+        }
+
+        private void BtnInlineDeleteFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement el && el.Tag is PromptCombinerFolder folder)
+            {
+                DeleteFolderInternal(folder);
+            }
+        }
+
+        private void DeleteFolderInternal(PromptCombinerFolder folder)
+        {
+            if (_folders.Count <= 1)
+            {
+                MessageBox.Show("You must keep at least one category.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (MessageBox.Show($"Are you sure you want to delete category '{folder.Name}' and all its buttons?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                _data.Items.RemoveAll(i => i.FolderId == folder.Id);
+                _data.Folders.Remove(folder);
+                _folders.Remove(folder);
+                if (_folders.Count > 0) LstFolders.SelectedIndex = 0;
+            }
+        }
+
         private void BtnDeleteFolder_Click(object sender, RoutedEventArgs e)
         {
             if (LstFolders.SelectedItem is PromptCombinerFolder folder)
             {
-                if (_folders.Count <= 1)
-                {
-                    MessageBox.Show("You must keep at least one category.", "Notice", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
+                DeleteFolderInternal(folder);
+            }
+        }
 
-                if (MessageBox.Show($"Are you sure you want to delete category '{folder.Name}' and all its buttons?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        // --- Drag & Drop Reordering for Categories & Snippets ---
+        private System.Windows.Point _folderDragStartPoint;
+        private PromptCombinerFolder? _draggedFolder;
+
+        private void LstFolders_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _folderDragStartPoint = e.GetPosition(null);
+            var element = e.OriginalSource as FrameworkElement;
+            if (element != null && (element is Button || element.Parent is Button)) return;
+
+            _draggedFolder = GetTargetItem<PromptCombinerFolder>(LstFolders, e.GetPosition(LstFolders));
+        }
+
+        private void LstFolders_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed && _draggedFolder != null)
+            {
+                System.Windows.Point position = e.GetPosition(null);
+                if (Math.Abs(position.X - _folderDragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(position.Y - _folderDragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
-                    _data.Items.RemoveAll(i => i.FolderId == folder.Id);
-                    _data.Folders.Remove(folder);
-                    _folders.Remove(folder);
-                    if (_folders.Count > 0) LstFolders.SelectedIndex = 0;
+                    DragDrop.DoDragDrop(LstFolders, _draggedFolder, System.Windows.DragDropEffects.Move);
                 }
             }
+        }
+
+        private void LstFolders_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            var droppedData = e.Data.GetData(typeof(PromptCombinerFolder)) as PromptCombinerFolder;
+            var targetFolder = GetTargetItem<PromptCombinerFolder>(LstFolders, e.GetPosition(LstFolders));
+
+            if (droppedData != null && targetFolder != null && droppedData != targetFolder)
+            {
+                int oldIndex = _folders.IndexOf(droppedData);
+                int newIndex = _folders.IndexOf(targetFolder);
+
+                if (oldIndex >= 0 && newIndex >= 0)
+                {
+                    _folders.Move(oldIndex, newIndex);
+                    
+                    for (int i = 0; i < _folders.Count; i++)
+                    {
+                        _folders[i].Order = i;
+                    }
+                    _data.Folders = _folders.ToList();
+                    LstFolders.SelectedItem = droppedData;
+                }
+            }
+            _draggedFolder = null;
+        }
+
+        private System.Windows.Point _itemDragStartPoint;
+        private PromptCombinerItem? _draggedItem;
+
+        private void LstItems_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _itemDragStartPoint = e.GetPosition(null);
+            var element = e.OriginalSource as FrameworkElement;
+            if (element != null && (element is Button || element.Parent is Button)) return;
+
+            _draggedItem = GetTargetItem<PromptCombinerItem>(LstItems, e.GetPosition(LstItems));
+        }
+
+        private void LstItems_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed && _draggedItem != null)
+            {
+                System.Windows.Point position = e.GetPosition(null);
+                if (Math.Abs(position.X - _itemDragStartPoint.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(position.Y - _itemDragStartPoint.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    DragDrop.DoDragDrop(LstItems, _draggedItem, System.Windows.DragDropEffects.Move);
+                }
+            }
+        }
+
+        private void LstItems_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            var droppedData = e.Data.GetData(typeof(PromptCombinerItem)) as PromptCombinerItem;
+            var targetItem = GetTargetItem<PromptCombinerItem>(LstItems, e.GetPosition(LstItems));
+
+            if (droppedData != null && targetItem != null && droppedData != targetItem)
+            {
+                int oldIndex = _currentFolderItems.IndexOf(droppedData);
+                int newIndex = _currentFolderItems.IndexOf(targetItem);
+
+                if (oldIndex >= 0 && newIndex >= 0)
+                {
+                    _currentFolderItems.Move(oldIndex, newIndex);
+
+                    for (int i = 0; i < _currentFolderItems.Count; i++)
+                    {
+                        _currentFolderItems[i].Order = i;
+                    }
+                }
+            }
+            _draggedItem = null;
+        }
+
+        private T? GetTargetItem<T>(System.Windows.Controls.ListBox listBox, System.Windows.Point point) where T : class
+        {
+            var element = listBox.InputHitTest(point) as DependencyObject;
+            while (element != null && element != listBox)
+            {
+                if (element is ListBoxItem item && item.DataContext is T data)
+                {
+                    return data;
+                }
+                element = System.Windows.Media.VisualTreeHelper.GetParent(element);
+            }
+            return null;
         }
 
         private void BtnAddItem_Click(object sender, RoutedEventArgs e)
@@ -264,6 +446,22 @@ namespace imgsaver
                 _data.CommaIndex = commaIdx;
             else
                 _data.CommaIndex = 1;
+
+            if (ChkStandaloneGlobal != null)
+            {
+                _data.IsStandaloneGlobalEnabled = (ChkStandaloneGlobal.IsChecked == true);
+            }
+
+            for (int i = 0; i < _folders.Count; i++)
+            {
+                _folders[i].Order = i;
+            }
+            _data.Folders = _folders.ToList();
+
+            for (int i = 0; i < _currentFolderItems.Count; i++)
+            {
+                _currentFolderItems[i].Order = i;
+            }
 
             if (LstFolders.SelectedItem is PromptCombinerFolder selFolder)
             {

@@ -25,40 +25,45 @@ namespace imgsaver
         public void Start()
         {
             if (_isRunning) return;
+            _isRunning = true; // Set early to prevent multiple starts
 
-            try
+            Task.Run(() =>
             {
-                _cts = new CancellationTokenSource();
-                _listener = new HttpListener();
+                try
+                {
+                    _cts = new CancellationTokenSource();
+                    _listener = new HttpListener();
 
-                // ✅ پیکربندی Prefixها برای دسترسی از همه آدرس‌ها
-                _listener.Prefixes.Add($"http://+:{Port}/");
-                _listener.Prefixes.Add($"http://*:{Port}/");
-                _listener.Prefixes.Add($"http://localhost:{Port}/");
+                    // ✅ پیکربندی Prefixها برای دسترسی از همه آدرس‌ها
+                    _listener.Prefixes.Add($"http://+:{Port}/");
+                    _listener.Prefixes.Add($"http://*:{Port}/");
+                    _listener.Prefixes.Add($"http://localhost:{Port}/");
 
-                string ip = GetLocalIPAddress();
-                _listener.Prefixes.Add($"http://{ip}:{Port}/");
+                    string ip = GetLocalIPAddress(); // Heavy network call
+                    _listener.Prefixes.Add($"http://{ip}:{Port}/");
 
-                _listener.Start();
-                _isRunning = true;
+                    _listener.Start();
 
-                // ✅ اجرای Listener در بک‌گراند
-                Task.Run(() => ListenAsync(_cts.Token));
+                    // ✅ اجرای Listener در بک‌گراند
+                    _ = ListenAsync(_cts.Token);
 
-                StatusChanged?.Invoke($"✅ Server running at http://{ip}:{Port}");
-            }
-            catch (HttpListenerException ex) when (ex.ErrorCode == 5)
-            {
-                System.Windows.MessageBox.Show("❌ دسترسی رد شد!\nلطفاً برنامه را به صورت Run as Administrator اجرا کنید.",
-                    "خطای سرور", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
-                Stop();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"❌ خطا در راه‌اندازی سرور:\n{ex.Message}",
-                    "خطا", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                Stop();
-            }
+                    StatusChanged?.Invoke($"✅ Server running at http://{ip}:{Port}");
+                }
+                catch (HttpListenerException ex) when (ex.ErrorCode == 5)
+                {
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        System.Windows.MessageBox.Show("❌ دسترسی رد شد!\nلطفاً برنامه را به صورت Run as Administrator اجرا کنید.",
+                        "خطای سرور", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning));
+                    Stop();
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        System.Windows.MessageBox.Show($"❌ خطا در راه‌اندازی سرور:\n{ex.Message}",
+                        "خطا", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error));
+                    Stop();
+                }
+            });
         }
 
         public void Stop()

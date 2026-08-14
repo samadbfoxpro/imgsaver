@@ -174,6 +174,8 @@ namespace imgsaver
         }
 
         #region Intervention Hooks
+        public event Action? OnInterventionStop;
+
         private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0)
@@ -185,7 +187,11 @@ namespace imgsaver
                     if (data.dwExtraInfo != Magic)
                     {
                         // Ignore intervention for first 300ms to allow trigger key/mouse release
-                        if ((DateTime.Now - _playStartTime).TotalMilliseconds > 300) Stop();
+                        if ((DateTime.Now - _playStartTime).TotalMilliseconds > 300)
+                        {
+                            Stop();
+                            OnInterventionStop?.Invoke();
+                        }
                     }
                 }
             }
@@ -202,8 +208,12 @@ namespace imgsaver
                     var data = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
                     if (data.dwExtraInfo != Magic)
                     {
-                        // Ignore intervention for first 300ms to allow trigger key release (Ctrl+E)
-                        if ((DateTime.Now - _playStartTime).TotalMilliseconds > 300) Stop();
+                        // VK_ESCAPE (0x1B) immediately cancels playback without delay
+                        if (data.vkCode == 0x1B || (DateTime.Now - _playStartTime).TotalMilliseconds > 300)
+                        {
+                            Stop();
+                            OnInterventionStop?.Invoke();
+                        }
                     }
                 }
             }
@@ -212,13 +222,9 @@ namespace imgsaver
 
         private void SetHooks()
         {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
-            {
-                IntPtr hMod = GetModuleHandle(curModule.ModuleName);
-                _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, hMod, 0);
-                _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbProc, hMod, 0);
-            }
+            IntPtr hMod = GetModuleHandle((string?)null);
+            _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, hMod, 0);
+            _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbProc, hMod, 0);
         }
 
         private void UnsetHooks()

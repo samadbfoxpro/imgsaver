@@ -11,10 +11,14 @@ namespace imgsaver
 {
     public partial class PromptTaggerWindow : Window
     {
-        private readonly System.Windows.Media.Brush _activeTabBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0284C7"));
-        private readonly System.Windows.Media.Brush _inactiveTabBrush = System.Windows.Media.Brushes.Transparent;
-        private readonly System.Windows.Media.Brush _activeTextBrush = System.Windows.Media.Brushes.White;
+        private readonly System.Windows.Media.Brush _activeTabBorderBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#06B6D4"));
+        private readonly System.Windows.Media.Brush _inactiveTabBorderBrush = System.Windows.Media.Brushes.Transparent;
+        private readonly System.Windows.Media.Brush _activeTextBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#06B6D4"));
         private readonly System.Windows.Media.Brush _inactiveTextBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#8899AA"));
+
+        private string _initialRawPrompt = "";
+        private bool _isUpdatingLiveDiffs = false;
+        private readonly Dictionary<string, string> _interactiveTagMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         public PromptTaggerWindow()
         {
@@ -32,6 +36,10 @@ namespace imgsaver
             TouchRightClickHelper.Register(TxtDiffTemplateOutput);
             TouchRightClickHelper.Register(TxtDiffValuesOutput);
 
+            TouchRightClickHelper.Register(TxtInteractivePrompt);
+            TouchRightClickHelper.Register(TxtLiveDifferences);
+            TouchRightClickHelper.Register(TxtInteractivePrefix);
+
             Loaded += PromptTaggerWindow_Loaded;
             Closed += PromptTaggerWindow_Closed;
         }
@@ -42,6 +50,7 @@ namespace imgsaver
             TxtTemplate.Text = PromptTaggerStore.Template;
             TxtValues.Text = PromptTaggerStore.Values;
             TxtReplacerPrefix.Text = string.IsNullOrEmpty(PromptTaggerStore.Prefix) ? "PH_" : PromptTaggerStore.Prefix;
+            
             TxtPromptA.Text = PromptTaggerStore.DiffPromptA;
             TxtPromptB.Text = PromptTaggerStore.DiffPromptB;
             TxtDiffPrefix.Text = string.IsNullOrEmpty(PromptTaggerStore.DiffPrefix) ? "PH_" : PromptTaggerStore.DiffPrefix;
@@ -49,7 +58,12 @@ namespace imgsaver
             TxtDiffTemplateOutput.Text = PromptTaggerStore.DiffTemplateOutput;
             TxtDiffValuesOutput.Text = PromptTaggerStore.DiffValuesOutput;
 
-            SwitchToTab(true); // Replacer default
+            TxtInteractivePrompt.Text = PromptTaggerStore.InteractivePrompt;
+            _initialRawPrompt = string.IsNullOrEmpty(PromptTaggerStore.InteractiveInitial) ? TxtInteractivePrompt.Text : PromptTaggerStore.InteractiveInitial;
+            TxtLiveDifferences.Text = PromptTaggerStore.InteractiveValues;
+            TxtInteractivePrefix.Text = string.IsNullOrEmpty(PromptTaggerStore.InteractivePrefix) ? "PH_" : PromptTaggerStore.InteractivePrefix;
+
+            SwitchToTab(0); // Replacer default
         }
 
         private void PromptTaggerWindow_Closed(object? sender, EventArgs e)
@@ -68,6 +82,12 @@ namespace imgsaver
             PromptTaggerStore.ReplacerOutput = TxtReplacerOutput.Text;
             PromptTaggerStore.DiffTemplateOutput = TxtDiffTemplateOutput.Text;
             PromptTaggerStore.DiffValuesOutput = TxtDiffValuesOutput.Text;
+
+            PromptTaggerStore.InteractivePrompt = TxtInteractivePrompt.Text;
+            PromptTaggerStore.InteractiveInitial = _initialRawPrompt;
+            PromptTaggerStore.InteractiveValues = TxtLiveDifferences.Text;
+            PromptTaggerStore.InteractivePrefix = TxtInteractivePrefix.Text;
+
             PromptTaggerStore.Save();
         }
 
@@ -80,33 +100,24 @@ namespace imgsaver
 
         // ─── Tab Navigation ──────────────────────────────────────────────
 
-        private void BtnTabReplacer_Click(object sender, RoutedEventArgs e) => SwitchToTab(true);
-        private void BtnTabDiff_Click(object sender, RoutedEventArgs e) => SwitchToTab(false);
+        private void BtnTabReplacer_Click(object sender, RoutedEventArgs e) => SwitchToTab(0);
+        private void BtnTabDiff_Click(object sender, RoutedEventArgs e) => SwitchToTab(1);
+        private void BtnTabInteractive_Click(object sender, RoutedEventArgs e) => SwitchToTab(2);
 
-        private void SwitchToTab(bool showReplacer)
+        private void SwitchToTab(int tabIndex)
         {
-            if (showReplacer)
-            {
-                PanelReplacer.Visibility = Visibility.Visible;
-                PanelDiff.Visibility = Visibility.Collapsed;
+            PanelReplacer.Visibility = tabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+            PanelDiff.Visibility = tabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+            PanelInteractive.Visibility = tabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
 
-                BtnTabReplacer.BorderBrush = _activeTabBrush;
-                BtnTabReplacer.Foreground = _activeTextBrush;
+            BtnTabReplacer.BorderBrush = tabIndex == 0 ? _activeTabBorderBrush : _inactiveTabBorderBrush;
+            BtnTabReplacer.Foreground = tabIndex == 0 ? _activeTextBrush : _inactiveTextBrush;
 
-                BtnTabDiff.BorderBrush = _inactiveTabBrush;
-                BtnTabDiff.Foreground = _inactiveTextBrush;
-            }
-            else
-            {
-                PanelReplacer.Visibility = Visibility.Collapsed;
-                PanelDiff.Visibility = Visibility.Visible;
+            BtnTabDiff.BorderBrush = tabIndex == 1 ? _activeTabBorderBrush : _inactiveTabBorderBrush;
+            BtnTabDiff.Foreground = tabIndex == 1 ? _activeTextBrush : _inactiveTextBrush;
 
-                BtnTabReplacer.BorderBrush = _inactiveTabBrush;
-                BtnTabReplacer.Foreground = _inactiveTextBrush;
-
-                BtnTabDiff.BorderBrush = _activeTabBrush;
-                BtnTabDiff.Foreground = _activeTextBrush;
-            }
+            BtnTabInteractive.BorderBrush = tabIndex == 2 ? _activeTabBorderBrush : _inactiveTabBorderBrush;
+            BtnTabInteractive.Foreground = tabIndex == 2 ? _activeTextBrush : _inactiveTextBrush;
         }
 
         // ─── Tab 1: Replacer Logic ────────────────────────────────────────
@@ -253,8 +264,7 @@ namespace imgsaver
             TxtReplacerPrefix.Text = TxtDiffPrefix.Text;
 
             SaveCurrentState();
-
-            SwitchToTab(true); // Switch to Tab 1
+            SwitchToTab(0); // Switch to Tab 1
         }
 
         private void BtnTransferToExtra_Click(object sender, RoutedEventArgs e)
@@ -279,16 +289,176 @@ namespace imgsaver
                 if (win is MiniExtraPanel panel)
                 {
                     panel.TxtTaggerValues.Text = extractedValues;
-                    panel.ChkUseTaggerValues.IsChecked = true; // Auto-activate tagger values mode!
+                    panel.ChkUseTaggerValues.IsChecked = true;
                 }
                 else if (win is FloatingExtraWindow floatWin)
                 {
                     floatWin.TxtTaggerValues.Text = extractedValues;
-                    floatWin.ChkUseTaggerValues.IsChecked = true; // Auto-activate tagger values mode!
+                    floatWin.ChkUseTaggerValues.IsChecked = true;
                 }
             }
 
-            System.Windows.MessageBox.Show("Extracted values successfully sent to Extra panels!", "Prompt Tagger", MessageBoxButton.OK, MessageBoxImage.Information);
+            CursorBadgeNotification.ShowTagReplaced("🧩 Sent to Extra Panels!");
+        }
+
+        // ─── Tab 3: Interactive Selection Tagger Logic ────────────────────
+
+        private void BtnTagSelection_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string selectedText = TxtInteractivePrompt.SelectedText;
+                if (string.IsNullOrWhiteSpace(selectedText))
+                {
+                    System.Windows.MessageBox.Show("Please select a word or phrase in the text editor first!", "Interactive Tagger", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(_initialRawPrompt))
+                {
+                    _initialRawPrompt = TxtInteractivePrompt.Text;
+                }
+
+                string prefix = TxtInteractivePrefix.Text.Trim();
+                if (string.IsNullOrEmpty(prefix)) prefix = "PH_";
+
+                // Count existing tags in the current text to get the next index
+                var tagPattern = $@"\[{Regex.Escape(prefix)}(\d+)\]";
+                var matches = Regex.Matches(TxtInteractivePrompt.Text, tagPattern, RegexOptions.IgnoreCase);
+                int maxIdx = 0;
+                foreach (Match m in matches)
+                {
+                    if (m.Groups.Count > 1 && int.TryParse(m.Groups[1].Value, out int idx))
+                    {
+                        if (idx > maxIdx) maxIdx = idx;
+                    }
+                }
+                int nextIndex = maxIdx + 1;
+                string newTag = $"[{prefix}{nextIndex}]";
+
+                string trimmedSnippet = selectedText.Trim(' ', ',', ';');
+                if (string.IsNullOrEmpty(trimmedSnippet)) trimmedSnippet = selectedText;
+
+                // Save exact mapping from tag to selected snippet
+                _interactiveTagMap[newTag] = trimmedSnippet;
+
+                int selStart = TxtInteractivePrompt.SelectionStart;
+                string currentText = TxtInteractivePrompt.Text;
+
+                // Replace selected snippet with tag
+                string updatedText = currentText.Remove(selStart, selectedText.Length).Insert(selStart, newTag);
+
+                TxtInteractivePrompt.Text = updatedText;
+                TxtInteractivePrompt.SelectionStart = selStart + newTag.Length;
+                TxtInteractivePrompt.SelectionLength = 0;
+
+                UpdateLiveDifferences();
+                SaveCurrentState();
+                CursorBadgeNotification.ShowTagReplaced($"🧩 Created Tag {newTag}");
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show("Error tagging selection:\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnSetBasePrompt_Click(object sender, RoutedEventArgs e)
+        {
+            _initialRawPrompt = TxtInteractivePrompt.Text;
+            TxtLiveDifferences.Text = "";
+            SaveCurrentState();
+            CursorBadgeNotification.ShowTagReplaced("🧩 Base Prompt Locked!");
+        }
+
+        private void TxtInteractivePrompt_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isUpdatingLiveDiffs) return;
+            UpdateLiveDifferences();
+        }
+
+        private void TxtLiveDifferences_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Allowed manual adjustments to extracted diffs
+        }
+
+        private void UpdateLiveDifferences()
+        {
+            try
+            {
+                _isUpdatingLiveDiffs = true;
+                string currentText = TxtInteractivePrompt.Text;
+                string prefix = TxtInteractivePrefix.Text.Trim();
+                if (string.IsNullOrEmpty(prefix)) prefix = "PH_";
+
+                var tagPattern = $@"\[{Regex.Escape(prefix)}\d+\]";
+                var matches = Regex.Matches(currentText, tagPattern, RegexOptions.IgnoreCase);
+
+                var activeSnippets = new List<string>();
+                foreach (Match m in matches)
+                {
+                    string tag = m.Value;
+                    if (_interactiveTagMap.TryGetValue(tag, out string? snippet))
+                    {
+                        if (!string.IsNullOrWhiteSpace(snippet) && !activeSnippets.Contains(snippet, StringComparer.OrdinalIgnoreCase))
+                        {
+                            activeSnippets.Add(snippet);
+                        }
+                    }
+                }
+
+                TxtLiveDifferences.Text = string.Join(", ", activeSnippets);
+            }
+            catch { }
+            finally
+            {
+                _isUpdatingLiveDiffs = false;
+            }
+        }
+
+        private void BtnCopyInteractiveOutput_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(TxtInteractivePrompt.Text))
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(TxtInteractivePrompt.Text);
+                    CursorBadgeNotification.ShowTagReplaced("📋 Tagged Prompt Copied!");
+                }
+                catch { }
+            }
+        }
+
+        private void BtnSendToMiniClip_Click(object sender, RoutedEventArgs e)
+        {
+            string values = TxtLiveDifferences.Text;
+            if (string.IsNullOrWhiteSpace(values))
+            {
+                System.Windows.MessageBox.Show("No extracted values to send!", "Interactive Tagger", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            PromptTaggerStore.Template = TxtInteractivePrompt.Text;
+            PromptTaggerStore.Prefix = TxtInteractivePrefix.Text.Trim();
+            PromptTaggerStore.Values = values;
+            PromptTaggerStore.ManualValues = values;
+            SaveCurrentState();
+
+            // Broadcast to open extra windows
+            foreach (Window win in System.Windows.Application.Current.Windows)
+            {
+                if (win is MiniExtraPanel panel)
+                {
+                    panel.TxtTaggerValues.Text = values;
+                    panel.ChkUseTaggerValues.IsChecked = true;
+                }
+                else if (win is FloatingExtraWindow floatWin)
+                {
+                    floatWin.TxtTaggerValues.Text = values;
+                    floatWin.ChkUseTaggerValues.IsChecked = true;
+                }
+            }
+
+            CursorBadgeNotification.ShowTagReplaced("🚀 Set & Sent to MiniClip!");
         }
 
         private void MenuClear_Click(object sender, RoutedEventArgs e)

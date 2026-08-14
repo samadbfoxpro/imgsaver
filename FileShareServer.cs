@@ -54,28 +54,32 @@ namespace imgsaver
         public void Start()
         {
             if (_isRunning) return;
+            _isRunning = true; // Set early to prevent multiple starts
 
-            try
+            Task.Run(() =>
             {
-                _listener = new HttpListener();
-                string ip = GetLocalIPAddress();
+                try
+                {
+                    _listener = new HttpListener();
+                    string ip = GetLocalIPAddress();
 
-                _listener.Prefixes.Add($"http://+:{Port}/");
-                _listener.Prefixes.Add($"http://*:{Port}/");
-                _listener.Prefixes.Add($"http://localhost:{Port}/");
-                _listener.Prefixes.Add($"http://{ip}:{Port}/");
+                    _listener.Prefixes.Add($"http://+:{Port}/");
+                    _listener.Prefixes.Add($"http://*:{Port}/");
+                    _listener.Prefixes.Add($"http://localhost:{Port}/");
+                    _listener.Prefixes.Add($"http://{ip}:{Port}/");
 
-                _listener.Start();
-                _isRunning = true;
+                    _listener.Start();
 
-                Task.Run(() => Listen());
-                StatusChanged?.Invoke($"File Server active at {ip}:{Port}");
-            }
-            catch (Exception ex)
-            {
-                _isRunning = false;
-                throw new Exception($"Failed to start File Server (Administrator privileges might be required):\n{ex.Message}");
-            }
+                    _ = Listen();
+                    StatusChanged?.Invoke($"File Server active at {ip}:{Port}");
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                        System.Windows.MessageBox.Show($"File Share Server Error:\n{ex.Message}"));
+                    Stop();
+                }
+            });
         }
 
         public void Stop()

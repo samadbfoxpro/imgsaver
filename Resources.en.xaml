@@ -105,4 +105,21 @@
     <sys:String x:Key="Lbl_Tagger_Values">Tagger Values</sys:String>
     <sys:String x:Key="Lbl_Replacement_Values_Label">Replacement Values (comma-separated list):</sys:String>
     <sys:String x:Key="Btn_Transfer_To_Extra">🚀 Send Values to Extra Panels</sys:String>
+
+    <!-- ProfileSelection & ProfileEdit -->
+    <sys:String x:Key="Lbl_Profile_Select_Title">Select Account</sys:String>
+    <sys:String x:Key="Lbl_Profile_Select_Desc">Choose a workspace for the browser</sys:String>
+    <sys:String x:Key="Btn_Profile_New">+ New</sys:String>
+    <sys:String x:Key="Btn_Profile_Edit">Edit</sys:String>
+    <sys:String x:Key="Btn_Profile_Delete">Delete</sys:String>
+    <sys:String x:Key="Chk_Profile_AlwaysAsk">Always prompt on startup</sys:String>
+    <sys:String x:Key="Btn_Profile_Launch">Launch</sys:String>
+    
+    <sys:String x:Key="Lbl_Profile_Edit_Title">Edit Account Profile</sys:String>
+    <sys:String x:Key="Lbl_Profile_Add_Title">Add Account Profile</sys:String>
+    <sys:String x:Key="Lbl_Profile_Name">Account Name</sys:String>
+    <sys:String x:Key="Lbl_Profile_Icon">Profile Icon</sys:String>
+    <sys:String x:Key="Lbl_Profile_Color">Color Accent</sys:String>
+    <sys:String x:Key="Btn_Profile_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Btn_Profile_Save">Save Account</sys:String>
 </ResourceDictionary>

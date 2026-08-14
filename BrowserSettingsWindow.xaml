@@ -192,7 +192,6 @@
                                         <CheckBox x:Name="ChkReplaceMiniClipImageOnImport" Content="Replace current Mini Clip image when importing from browser" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowFloatingRecordPlayer" Content="Show floating browser recording player" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowQuickPasteButton" Content="Show BR Paste button on input fields" Margin="0,0,0,14"/>
-                                        <CheckBox x:Name="ChkEnableEmbeddedMiniClip" Content="Enable embedded Mini Clip at bottom of browser" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkEnableCombinerBar" Content="Enable Smart Prompt Combiner toolbar at bottom of browser" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoFocusMiniClip" Content="Automatically focus main Mini Clip window when capturing data" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoHideStatus" Content="Hide Status Bar" Margin="0,0,0,0"/>

@@ -1,0 +1,865 @@
+﻿diff --git a/BrowserMiniClipControl.xaml.cs b/MiniClipboardWindow.xaml.cs
+index 05bd436..ec27a80 100644
+--- a/BrowserMiniClipControl.xaml.cs
++++ b/MiniClipboardWindow.xaml.cs
+@@ -20,7 +20,7 @@ using System.Threading.Tasks;
+ 
+ namespace imgsaver
+ {
+-    public partial class BrowserMiniClipControl : System.Windows.Controls.UserControl, IMiniClipHost
++    public partial class MiniClipboardWindow : Window, IMiniClipHost
+     {
+         private class CapturedImageInfo
+         {
+@@ -37,7 +37,6 @@ namespace imgsaver
+         private bool _hasPositivePrompt = false;
+         private bool _hasNegativePrompt = false;
+         private bool _ignoreNextClipboardChange = true;
+-        private bool _wasPuzzleComplete = false;
+         private bool _ignoreNextSpiSyncClipboardText = false;
+         private DateTime _lastClipboardTime = DateTime.MinValue;
+         private string _lastClipboardText = "";
+@@ -105,15 +104,15 @@ namespace imgsaver
+         private bool _isManualExtraCopyRunning = false;
+ 
+         public static readonly DependencyProperty IsDisabledProperty =
+-            DependencyProperty.Register("IsDisabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false, OnIsDisabledChanged));
++            DependencyProperty.Register("IsDisabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false, OnIsDisabledChanged));
+ 
+         private static void OnIsDisabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+         {
+-            if (d is BrowserMiniClipControl control && (bool)e.NewValue == false)
++            if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
+             {
+-                control._ignoreNextClipboardChange = false;
+-                control._lastClipboardText = "";
+-                control.OnClipboardChanged();
++                window._ignoreNextClipboardChange = false;
++                window._lastClipboardText = "";
++                window.OnClipboardChanged();
+             }
+         }
+ 
+@@ -124,7 +123,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsCompactModeProperty =
+-            DependencyProperty.Register("IsCompactMode", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsCompactMode", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsCompactMode
+         {
+@@ -133,12 +132,12 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsNegativeLockedProperty =
+-            DependencyProperty.Register("IsNegativeLocked", typeof(bool), typeof(BrowserMiniClipControl), 
++            DependencyProperty.Register("IsNegativeLocked", typeof(bool), typeof(MiniClipboardWindow), 
+                 new PropertyMetadata(false, OnIsNegativeLockedChanged));
+ 
+         private static void OnIsNegativeLockedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+         {
+-            if (d is BrowserMiniClipControl window)
++            if (d is MiniClipboardWindow window)
+             {
+                 window.SaveNegativePromptState();
+             }
+@@ -151,7 +150,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsDescriptionVisibleProperty =
+-            DependencyProperty.Register("IsDescriptionVisible", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsDescriptionVisible", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsDescriptionVisible
+         {
+@@ -160,7 +159,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsAdditionalTitleVisibleProperty =
+-            DependencyProperty.Register("IsAdditionalTitleVisible", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsAdditionalTitleVisible", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsAdditionalTitleVisible
+         {
+@@ -169,7 +168,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsAdditionalTitleLockedProperty =
+-            DependencyProperty.Register("IsAdditionalTitleLocked", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsAdditionalTitleLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsAdditionalTitleLocked
+         {
+@@ -178,7 +177,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsTitleLockedProperty =
+-            DependencyProperty.Register("IsTitleLocked", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsTitleLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsTitleLocked
+         {
+@@ -187,7 +186,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsExtraMenuOpenProperty =
+-            DependencyProperty.Register("IsExtraMenuOpen", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsExtraMenuOpen", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsExtraMenuOpen
+         {
+@@ -196,7 +195,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty ExtraMenuPageProperty =
+-            DependencyProperty.Register("ExtraMenuPage", typeof(int), typeof(BrowserMiniClipControl), new PropertyMetadata(0));
++            DependencyProperty.Register("ExtraMenuPage", typeof(int), typeof(MiniClipboardWindow), new PropertyMetadata(0));
+ 
+         public int ExtraMenuPage
+         {
+@@ -205,11 +204,11 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsAdditionalTitleEnabledProperty =
+-            DependencyProperty.Register("IsAdditionalTitleEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false, OnIsAdditionalTitleEnabledChanged));
++            DependencyProperty.Register("IsAdditionalTitleEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false, OnIsAdditionalTitleEnabledChanged));
+ 
+         private static void OnIsAdditionalTitleEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+         {
+-            if (d is BrowserMiniClipControl window && (bool)e.NewValue == false)
++            if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
+             {
+                 window.AdditionalTitle = "";
+             }
+@@ -222,7 +221,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty AdditionalTitleProperty =
+-            DependencyProperty.Register("AdditionalTitle", typeof(string), typeof(BrowserMiniClipControl), new PropertyMetadata(""));
++            DependencyProperty.Register("AdditionalTitle", typeof(string), typeof(MiniClipboardWindow), new PropertyMetadata(""));
+ 
+         public string AdditionalTitle
+         {
+@@ -231,7 +230,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsAutoFillEnabledProperty =
+-            DependencyProperty.Register("IsAutoFillEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsAutoFillEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsAutoFillEnabled
+         {
+@@ -240,7 +239,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsSaveBasePromptEnabledProperty =
+-            DependencyProperty.Register("IsSaveBasePromptEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsSaveBasePromptEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsSaveBasePromptEnabled
+         {
+@@ -249,11 +248,11 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsDescriptionEnabledProperty =
+-            DependencyProperty.Register("IsDescriptionEnabled", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false, OnIsDescriptionEnabledChanged));
++            DependencyProperty.Register("IsDescriptionEnabled", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false, OnIsDescriptionEnabledChanged));
+ 
+         private static void OnIsDescriptionEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+         {
+-            if (d is BrowserMiniClipControl window && (bool)e.NewValue == false)
++            if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
+             {
+                 window.DescriptionText = "";
+             }
+@@ -266,7 +265,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty DescriptionTextProperty =
+-            DependencyProperty.Register("DescriptionText", typeof(string), typeof(BrowserMiniClipControl), new PropertyMetadata(""));
++            DependencyProperty.Register("DescriptionText", typeof(string), typeof(MiniClipboardWindow), new PropertyMetadata(""));
+ 
+         public string DescriptionText
+         {
+@@ -275,7 +274,7 @@ namespace imgsaver
+         }
+ 
+         public static readonly DependencyProperty IsDescriptionLockedProperty =
+-            DependencyProperty.Register("IsDescriptionLocked", typeof(bool), typeof(BrowserMiniClipControl), new PropertyMetadata(false));
++            DependencyProperty.Register("IsDescriptionLocked", typeof(bool), typeof(MiniClipboardWindow), new PropertyMetadata(false));
+ 
+         public bool IsDescriptionLocked
+         {
+@@ -406,18 +405,26 @@ namespace imgsaver
+ 
+         private const int WM_CLIPBOARDUPDATE = 0x031D;
+ 
+-        public BrowserMiniClipControl()
++        public MiniClipboardWindow()
+         {
+             InitializeComponent();
+-            // LanguageManager.ApplyWindowLanguage(this);
++            LanguageManager.ApplyWindowLanguage(this);
+             
+             TouchRightClickHelper.Register(TxtTitle);
+             TouchRightClickHelper.Register(TxtAdditionalTitle);
+             TouchRightClickHelper.Register(TxtDescription);
+ 
+             Loaded  += MiniClipboardWindow_Loaded;
+-            Unloaded  += MiniClipboardWindow_Closed;
+-            SizeChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
++            Closed  += MiniClipboardWindow_Closed;
++            LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
++            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); };
++
++            if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
++            {
++                IsAdditionalTitleEnabled = true;
++                AdditionalTitle = ExtraFloatBridge.LastConfirmedTitle;
++            }
++            ExtraFloatBridge.ExtraTitleConfirmed += OnExtraTitleConfirmed;
+         }
+ 
+         private void OnExtraTitleConfirmed(string title)
+@@ -432,94 +439,103 @@ namespace imgsaver
+         private void MiniClipboardWindow_Loaded(object sender, RoutedEventArgs e)
+         {
+             SetIconsAtRuntime();
+-            LoadNegativePromptState();
+-            
+-            if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
++            var helper = new WindowInteropHelper(this);
++            IntPtr handle = helper.EnsureHandle();
++            _hwndSource = HwndSource.FromHwnd(handle);
++            _hwndSource?.AddHook(WndProc);
++            _ignoreNextClipboardChange = true;
++            AddClipboardFormatListener(handle);
++
++            try
+             {
+-                IsAdditionalTitleEnabled = true;
+-                AdditionalTitle = ExtraFloatBridge.LastConfirmedTitle;
++                _globalHook = new GlobalHook();
++                _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
+             }
++            catch { }
++
++            StartNetMonitoring();
++            RefreshAutoImport();
++            LoadNegativePromptState();
++            UpdateCombinerToggleVisual();
++        }
++
++        private void UpdateCombinerToggleVisual()
++        {
++            if (BtnCombinerToggle == null) return;
++            var data = PromptCombinerStore.Load();
++            bool isEnabled = data != null && data.IsEnabled;
+ 
+-            var settings = BrowserSettings.Load();
+-            if (settings.EnableEmbeddedMiniClip)
++            var txt = BtnCombinerToggle.Template?.FindName("txt", BtnCombinerToggle) as TextBlock;
++            var bd = BtnCombinerToggle.Template?.FindName("bd", BtnCombinerToggle) as Border;
++
++            if (txt != null)
+             {
+-                ActivateMonitoring();
++                txt.Foreground = isEnabled ? new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71")) : new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#888888"));
+             }
+-            else
++            if (bd != null)
+             {
+-                DeactivateMonitoring();
++                bd.BorderBrush = isEnabled ? new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71")) : new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#444444"));
+             }
+-        }
+ 
+-        private bool _isMonitoringActive = false;
++            BtnCombinerToggle.ToolTip = isEnabled ? "Smart Prompt Combiner: ON (Click to Disable)" : "Smart Prompt Combiner: OFF (Click to Enable)";
++        }
+ 
+-        public void ActivateMonitoring()
++        private void BtnCombinerToggle_Click(object sender, RoutedEventArgs e)
+         {
+-            if (_isMonitoringActive) return;
+-            
+-            var window = Window.GetWindow(this);
+-            if (window == null) return;
++            var data = PromptCombinerStore.Load();
++            if (data == null) return;
++            data.IsEnabled = !data.IsEnabled;
++            PromptCombinerStore.Save(data);
++            UpdateCombinerToggleVisual();
+ 
+-            _isMonitoringActive = true;
++            // Sync with BrowserWindow if open
+             try
+             {
+-                var helper = new WindowInteropHelper(window);
+-                IntPtr handle = helper.EnsureHandle();
+-                _hwndSource = HwndSource.FromHwnd(handle);
+-                _hwndSource?.AddHook(WndProc);
+-                _ignoreNextClipboardChange = true;
+-                AddClipboardFormatListener(handle);
+-
+-                try
++                foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                 {
+-                    _globalHook = new GlobalHook();
+-                    _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
++                    if (win is BrowserWindow bw)
++                    {
++                        bw.InitializeCombiner();
++                    }
+                 }
+-                catch { }
+-
+-                ExtraFloatBridge.ExtraTitleConfirmed += OnExtraTitleConfirmed;
+-                StartNetMonitoring();
+-                RefreshAutoImport();
+             }
+             catch { }
+         }
+ 
+-        public void DeactivateMonitoring()
++        public void FlashCombinerSuccess()
+         {
+-            _isMonitoringActive = false;
+-
+-            try
++            Dispatcher.InvokeAsync(() =>
+             {
+-                ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
+-                _miniExtraPanel?.Close();
+-                _miniNegativePanel?.Close();
+-                _miniAutoSavePanel?.Close();
+-                _miniExtraPanel = null;
+-                _miniNegativePanel = null;
+-                _miniAutoSavePanel = null;
+-                _netTimer?.Stop();
+-                _globalHook?.Dispose();
+-                _globalHook = null;
+-                if (_autoImportWatcher != null)
+-                {
+-                    _autoImportWatcher.EnableRaisingEvents = false;
+-                    _autoImportWatcher.Dispose();
+-                    _autoImportWatcher = null;
+-                }
+-                if (_hwndSource != null)
++                UpdateCombinerToggleVisual();
++                if (BtnCombinerToggle == null) return;
++                try
+                 {
+-                    var window = Window.GetWindow(this);
+-                    if (window != null)
++                    var txt = BtnCombinerToggle.Template?.FindName("txt", BtnCombinerToggle) as TextBlock;
++                    var bd = BtnCombinerToggle.Template?.FindName("bd", BtnCombinerToggle) as Border;
++
++                    var vividOrange = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF6A00");
++                    var normalGreen = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71");
++
++                    var borderBrush = new System.Windows.Media.SolidColorBrush(normalGreen);
++                    var textBrush = new System.Windows.Media.SolidColorBrush(normalGreen);
++
++                    if (bd != null) bd.BorderBrush = borderBrush;
++                    if (txt != null) txt.Foreground = textBrush;
++
++                    var animation = new System.Windows.Media.Animation.ColorAnimation
+                     {
+-                        var helper = new WindowInteropHelper(window);
+-                        RemoveClipboardFormatListener(helper.Handle);
+-                    }
+-                    _hwndSource.RemoveHook(WndProc);
+-                    _hwndSource = null;
++                        From = normalGreen,
++                        To = vividOrange,
++                        Duration = new Duration(TimeSpan.FromMilliseconds(250)),
++                        AutoReverse = true,
++                        RepeatBehavior = new System.Windows.Media.Animation.RepeatBehavior(3)
++                    };
++
++                    borderBrush.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, animation);
++                    textBrush.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, animation);
+                 }
+-                ResetState();
+-            }
+-            catch { }
++                catch { }
++            });
+         }
+ 
+         public void RefreshAutoImport()
+@@ -729,7 +745,19 @@ namespace imgsaver
+ 
+         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
+         {
+-            DeactivateMonitoring();
++            ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
++            _miniExtraPanel?.Close();
++            _miniNegativePanel?.Close();
++            _miniAutoSavePanel?.Close();
++            _netTimer?.Stop();
++            _globalHook?.Dispose();
++            if (_autoImportWatcher != null) { _autoImportWatcher.EnableRaisingEvents = false; _autoImportWatcher.Dispose(); }
++            if (_hwndSource != null)
++            {
++                var helper = new WindowInteropHelper(this);
++                RemoveClipboardFormatListener(helper.Handle);
++                _hwndSource.RemoveHook(WndProc);
++            }
+         }
+ 
+         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+@@ -746,8 +774,6 @@ namespace imgsaver
+         {
+             try
+             {
+-                if (!BrowserSettings.Load().EnableEmbeddedMiniClip) return;
+-                if (Visibility != Visibility.Visible) return;
+                 if (IsDisabled) return;
+                 if (_ignoreNextClipboardChange) { _ignoreNextClipboardChange = false; return; }
+ 
+@@ -826,12 +852,6 @@ namespace imgsaver
+                         return;
+                     }
+ 
+-                    if (Window.GetWindow(this) is BrowserWindow bw && bw.TryProcessCombinerText(rawText, out string combined))
+-                    {
+-                        rawText = combined;
+-                        try { System.Windows.Clipboard.SetText(combined); } catch { }
+-                    }
+-
+                     string tagPrefix = _tagReplacerPrefix;
+                     if (string.IsNullOrEmpty(tagPrefix)) tagPrefix = "PH_";
+                     var tagPattern = $@"\[{Regex.Escape(tagPrefix)}\d+\]";
+@@ -877,6 +897,8 @@ namespace imgsaver
+                         {
+                             TxtTitle.Text = rawText.Trim();
+                             TxtTitle.IsEnabled = true;
++                            this.Activate();
++                            TxtTitle.Focus();
+                             UpdateState();
+                             CheckAutoSaveTrigger();
+                             return;
+@@ -889,6 +911,59 @@ namespace imgsaver
+                         int englishLetterCount = Regex.Matches(rawText, "[A-Za-z]").Count;
+                         if (englishLetterCount > 0 && englishLetterCount < 5) return;
+                         if (Regex.IsMatch(text.Trim(), @"^\d{4,}")) return;
++
++                        // Apply Smart Prompt Combiner if enabled
++                        try
++                        {
++                            var combinerData = PromptCombinerStore.Load();
++                            if (combinerData != null && combinerData.IsEnabled)
++                            {
++                                var activeItems = combinerData.Items
++                                    .Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id))
++                                    .Select(i => i.Text)
++                                    .Where(t => !string.IsNullOrWhiteSpace(t))
++                                    .ToList();
++
++                                var customTexts = combinerData.Folders
++                                    .Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText))
++                                    .Select(f => f.CustomInputText.Trim())
++                                    .ToList();
++
++                                if (activeItems.Count > 0 || customTexts.Count > 0)
++                                {
++                                    string combined;
++                                    if (combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
++                                    {
++                                        combined = PromptCombinerEngine.CombinePerFolder(text, combinerData);
++                                    }
++                                    else
++                                    {
++                                        var allSnippetTexts = new List<string>(activeItems);
++                                        allSnippetTexts.AddRange(customTexts);
++                                        combined = PromptCombinerEngine.Combine(text, allSnippetTexts, combinerData.PlacementMode, combinerData.CommaIndex, combinerData.Separator);
++                                    }
++
++                                    if (combined != text)
++                                    {
++                                        text = combined;
++                                        SetClipboardTextIgnoringNextChange(combined);
++                                        try
++                                        {
++                                            foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
++                                            {
++                                                if (win is BrowserWindow bw)
++                                                {
++                                                    bw.FlashCombinerSuccess();
++                                                }
++                                            }
++                                        }
++                                        catch { }
++                                    }
++                                }
++                            }
++                        }
++                        catch { }
++
+                         if (text == _positivePrompt || text == _negativePrompt) return;
+                         if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt) return;
+ 
+@@ -922,50 +997,27 @@ namespace imgsaver
+             catch { }
+         }
+ 
+-        private void UpdateTitleWatermarkHint()
+-        {
+-            if (TxtTitle == null) return;
+-            if (!string.IsNullOrEmpty(MiniClipHistory.LastSavedTitle))
+-            {
+-                TxtTitle.Tag = $"Last: {MiniClipHistory.LastSavedTitle}";
+-            }
+-            else
+-            {
+-                TxtTitle.Tag = "Enter Title...";
+-            }
+-        }
+-
+         private void UpdateState()
+         {
+             TxtTitle.IsEnabled = true;
+             UpdateTitleWatermarkHint();
+             BtnSEO.IsEnabled = _capturedImages.Count > 0 && _hasPositivePrompt && _hasNegativePrompt;
+-
+-            bool isComplete = _hasPositivePrompt && _hasNegativePrompt && !string.IsNullOrWhiteSpace(TxtTitle.Text);
+-            if (isComplete)
++            if (_hasPositivePrompt && _hasNegativePrompt && !IsCompactMode)
+             {
+-                if (!_wasPuzzleComplete)
++                try
+                 {
+-                    _wasPuzzleComplete = true;
+-                    var window = Window.GetWindow(this);
+-                    if (window != null)
++                    var settings = BrowserSettings.Load();
++                    if (settings.AutoFocusMiniClip)
+                     {
+-                        if (window.WindowState == WindowState.Minimized)
+-                        {
+-                            window.WindowState = WindowState.Normal;
+-                        }
+-                        window.Activate();
+-                        window.Focus();
+-                        if (!IsCompactMode)
+-                        {
+-                            TxtTitle.Focus();
+-                        }
++                        this.Activate();
++                        TxtTitle.Focus();
+                     }
+                 }
+-            }
+-            else
+-            {
+-                _wasPuzzleComplete = false;
++                catch
++                {
++                    this.Activate();
++                    TxtTitle.Focus();
++                }
+             }
+         }
+ 
+@@ -988,23 +1040,17 @@ namespace imgsaver
+             }
+         }
+ 
+-        private System.Windows.Threading.DispatcherTimer? _hoverPreviewTimer;
+-        private ImageSource? _currentHoverImageSource;
+-        private UIElement? _currentHoverTarget;
+-
+         private void UpdateImagePreviews()
+         {
+-            HideLargePreviewPopup();
+             ImageGrid.Children.Clear();
+             for (int i = 0; i < _capturedImages.Count; i++)
+             {
+-                int index = i;
+                 var border = new Border
+                 {
+-                    Width = 44,
+-                    Height = 36,
+-                    CornerRadius = new CornerRadius(3),
+-                    Margin = new Thickness(2,0,2,0),
++                    Width = 70,
++                    Height = 70,
++                    CornerRadius = new CornerRadius(4),
++                    Margin = new Thickness(2),
+                     Cursor = System.Windows.Input.Cursors.Hand,
+                     Tag = i.ToString(),
+                     Background = System.Windows.Media.Brushes.Black,
+@@ -1012,85 +1058,22 @@ namespace imgsaver
+                     BorderThickness = new Thickness(1)
+                 };
+                 border.MouseLeftButtonDown += ImagePreview_MouseLeftButtonDown;
+-                border.MouseEnter += (s, e) =>
+-                {
+-                    if (index >= 0 && index < _capturedImages.Count)
+-                    {
+-                        _currentHoverImageSource = _capturedImages[index].Bitmap;
+-                        _currentHoverTarget = border;
+-                        StartHoverPreviewTimer();
+-                    }
+-                };
+-                border.MouseLeave += (s, e) =>
+-                {
+-                    CancelHoverPreviewTimer();
+-                    HideLargePreviewPopup();
+-                };
+                 border.Child = new System.Windows.Controls.Image { Source = _capturedImages[i].Bitmap, Stretch = Stretch.Uniform };
+                 ImageGrid.Children.Add(border);
+             }
+             TxtNoImage.Visibility = _capturedImages.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+         }
+ 
+-        private void StartHoverPreviewTimer()
+-        {
+-            CancelHoverPreviewTimer();
+-            _hoverPreviewTimer = new System.Windows.Threading.DispatcherTimer
+-            {
+-                Interval = TimeSpan.FromSeconds(1.5)
+-            };
+-            _hoverPreviewTimer.Tick += (s, e) =>
+-            {
+-                _hoverPreviewTimer.Stop();
+-                ShowLargePreviewPopup();
+-            };
+-            _hoverPreviewTimer.Start();
+-        }
+-
+-        private void CancelHoverPreviewTimer()
++        private void UpdateTitleWatermarkHint()
+         {
+-            if (_hoverPreviewTimer != null)
++            if (TxtTitle == null) return;
++            if (!string.IsNullOrEmpty(MiniClipHistory.LastSavedTitle))
+             {
+-                _hoverPreviewTimer.Stop();
+-                _hoverPreviewTimer = null;
++                TxtTitle.Tag = $"Last: {MiniClipHistory.LastSavedTitle}";
+             }
+-        }
+-
+-        private void ShowLargePreviewPopup()
+-        {
+-            if (_currentHoverTarget == null || _currentHoverImageSource == null || ImgLargePreview == null || ImagePreviewPopup == null) return;
+-
+-            ImgLargePreview.Source = _currentHoverImageSource;
+-            ImagePreviewPopup.PlacementTarget = _currentHoverTarget;
+-            ImagePreviewPopup.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+-            ImagePreviewPopup.VerticalOffset = -6;
+-            ImagePreviewPopup.IsOpen = true;
+-
+-            BorderLargePreview.BeginAnimation(UIElement.OpacityProperty, null);
+-            DoubleAnimation fadeIn = new DoubleAnimation
+-            {
+-                From = 0,
+-                To = 1,
+-                Duration = TimeSpan.FromSeconds(0.25)
+-            };
+-            BorderLargePreview.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+-        }
+-
+-        private void HideLargePreviewPopup()
+-        {
+-            CancelHoverPreviewTimer();
+-            if (ImagePreviewPopup != null && ImagePreviewPopup.IsOpen && BorderLargePreview != null)
++            else
+             {
+-                DoubleAnimation fadeOut = new DoubleAnimation
+-                {
+-                    To = 0,
+-                    Duration = TimeSpan.FromSeconds(0.2)
+-                };
+-                fadeOut.Completed += (s, e) =>
+-                {
+-                    ImagePreviewPopup.IsOpen = false;
+-                };
+-                BorderLargePreview.BeginAnimation(UIElement.OpacityProperty, fadeOut);
++                TxtTitle.Tag = "Enter Title...";
+             }
+         }
+ 
+@@ -1107,16 +1090,13 @@ namespace imgsaver
+                 {
+                     TxtTitle.Text = MiniClipHistory.LastSavedTitle;
+                     TxtTitle.SelectionStart = TxtTitle.Text.Length;
++                    UpdateState();
++                    CheckAutoSaveTrigger();
+                     e.Handled = true;
+                 }
+             }
+         }
+ 
+-        private void TxtTitle_TextChanged(object sender, TextChangedEventArgs e)
+-        {
+-            UpdateState();
+-        }
+-
+         private void BtnSEO_Click(object sender, RoutedEventArgs e) => SaveDirectly();
+ 
+         private void ImagePreview_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+@@ -1131,6 +1111,7 @@ namespace imgsaver
+         {
+             _hasPositivePrompt = false; _positivePrompt = ""; _basePositivePrompt = ""; TxtPositiveCheck.Text = "○";
+             TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
++            _lastClipboardText = "";
+             UpdatePositivePromptToolTip();
+             UpdateState();
+         }
+@@ -1140,6 +1121,7 @@ namespace imgsaver
+             if (IsNegativeLocked) return;
+             _hasNegativePrompt = false; NegativePrompt = ""; TxtNegativeCheck.Text = "○";
+             TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#969696"));
++            _lastClipboardText = "";
+             UpdateState();
+         }
+ 
+@@ -1339,12 +1321,11 @@ namespace imgsaver
+             if (!IsAdditionalTitleLocked && !IsAdditionalTitleEnabled) AdditionalTitle = "";
+             if (!IsDescriptionLocked) DescriptionText = "";
+             BtnSEO.IsEnabled = false;
+-            _wasPuzzleComplete = false;
+-            UpdateState();
++            _lastClipboardText = "";
+         }
+ 
+-        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
+-        private void BtnClose_Click(object sender, RoutedEventArgs e) { }
++        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 1) DragMove(); }
++        private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+         private void BtnLockNegative_Click(object sender, RoutedEventArgs e)
+         {
+             IsNegativeLocked = !IsNegativeLocked;
+@@ -1831,7 +1812,20 @@ namespace imgsaver
+                         }
+                     }
+                     ClipboardMetadata.Clear();
+-                    UpdateState();
++                    try
++                    {
++                        var settings = BrowserSettings.Load();
++                        if (settings.AutoFocusMiniClip)
++                        {
++                            this.Activate();
++                            if (!IsCompactMode) TxtTitle.Focus();
++                        }
++                    }
++                    catch
++                    {
++                        this.Activate();
++                        if (!IsCompactMode) TxtTitle.Focus();
++                    }
+                     CheckAutoSaveTrigger();
+                 }
+             }));
+@@ -1946,64 +1940,56 @@ namespace imgsaver
+ 
+         private void RepositionAttachedPanel(Window? panel)
+         {
+-            if (panel == null || !this.IsLoaded) return;
+-            try 
++            if (panel == null) return;
++
++            try
+             {
+-                var window = Window.GetWindow(this);
+-                if (window == null) return;
++                panel.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
++                double panelWidth = panel.Width > 0 ? panel.Width : panel.DesiredSize.Width;
++                if (panelWidth <= 0) panelWidth = 230;
+ 
+-                // Use PointToScreen to get correct screen coordinates regardless of maximized state
+-                var screenPt = this.PointToScreen(new System.Windows.Point(0, 0));
++                double panelHeight = panel.DesiredSize.Height > 0 ? panel.DesiredSize.Height : 250;
+ 
+-                // Get DPI scaling factors
+-                double dpiX = 1.0;
+-                double dpiY = 1.0;
+-                var source = PresentationSource.FromVisual(this);
+-                if (source != null && source.CompositionTarget != null)
++                // Determine if there is enough space on the right side of MiniClipboardWindow
++                double targetLeft;
++                if (this.Left + this.ActualWidth + panelWidth + 10 <= SystemParameters.WorkArea.Right)
+                 {
+-                    dpiX = source.CompositionTarget.TransformToDevice.M11;
+-                    dpiY = source.CompositionTarget.TransformToDevice.M22;
++                    // Place on the right
++                    targetLeft = this.Left + this.ActualWidth + 4;
++                }
++                else
++                {
++                    // Place on the left
++                    targetLeft = this.Left - panelWidth - 4;
+                 }
+ 
+-                // Convert physical pixels to device-independent pixels (DIPs)
+-                double controlLeftInDips = screenPt.X / dpiX;
+-                double controlTopInDips = screenPt.Y / dpiY;
+-
+-                double panelWidth = panel.Width > 0 ? panel.Width : 230;
+-
+-                // Force layout measurement so desired height is accurate
+-                panel.Measure(new System.Windows.Size(panelWidth, double.PositiveInfinity));
+-
+-                double realHeight = Math.Max(panel.ActualHeight, Math.Max(panel.DesiredSize.Height, 330));
+-
+-                // Position the panel completely above this control, with a 6px gap
+-                double panelLeft = controlLeftInDips + this.ActualWidth - panelWidth - 10;
+-                double panelTop = controlTopInDips - realHeight - 6;
++                // Adjust vertical position to stay within screen boundaries
++                double targetTop = this.Top;
+ 
+-                panel.Left = panelLeft;
+-                panel.Top = panelTop;
+-                panel.Owner = window; // Ensure it stays on top of the main window
++                // MiniNegativePanel has a 15px transparent margin for its drop shadow, adjust to align visually
++                if (panel is MiniNegativePanel)
++                {
++                    targetLeft += (targetLeft > this.Left) ? -12 : 12; // Bring it closer horizontally
++                    targetTop -= 15; // Align top visually
++                }
+ 
+-                // Re-adjust top once WPF finishes rendering panel content
+-                RoutedEventHandler? onLoaded = null;
+-                onLoaded = (s, e) =>
++                if (targetTop + panelHeight > SystemParameters.WorkArea.Bottom)
+                 {
+-                    panel.Loaded -= onLoaded;
+-                    try
+-                    {
+-                        double h = Math.Max(panel.ActualHeight, panel.DesiredSize.Height);
+-                        if (h > 0)
+-                        {
+-                            var ptNow = this.PointToScreen(new System.Windows.Point(0, 0));
+-                            double topNow = ptNow.Y / dpiY;
+-                            panel.Top = topNow - h - 6;
+-                        }
+-                    }
+-                    catch {}
+-                };
+-                panel.Loaded += onLoaded;
+-            } 
+-            catch {}
++                    targetTop = SystemParameters.WorkArea.Bottom - panelHeight - 10;
++                }
++                if (targetTop < SystemParameters.WorkArea.Top)
++                {
++                    targetTop = SystemParameters.WorkArea.Top + 10;
++                }
++
++                panel.Left = targetLeft;
++                panel.Top = targetTop;
++            }
++            catch
++            {
++                panel.Left = this.Left + this.ActualWidth + 4;
++                panel.Top = this.Top;
++            }
+         }
+     }
+ }

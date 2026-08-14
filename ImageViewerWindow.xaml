@@ -172,10 +172,28 @@
                              <Border Background="#333" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
                                  <TextBlock x:Name="TxtFileInfo" Text="2.4 MB • PNG" FontSize="11" Foreground="#CCC"/>
                              </Border>
-                             <Border Background="#333" CornerRadius="4" Padding="6,3">
+                             <Border Background="#333" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
                                  <TextBlock x:Name="TxtDate" Text="2024-12-10" FontSize="11" Foreground="#CCC"/>
                              </Border>
                         </StackPanel>
+
+                        <!-- Image Dimensions (Single Sleek Capsule: 768 × 1080) -->
+                        <Border Background="#18181C" BorderBrush="#2A2A32" BorderThickness="1" CornerRadius="14" Padding="12,6" Margin="0,0,0,20" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Width Value -->
+                                <TextBlock x:Name="TxtWidth" Text="768" FontSize="13" FontWeight="Bold" Foreground="#EEEEEE"
+                                           Cursor="Hand" ToolTip="Click to copy Width"
+                                           MouseEnter="Dimension_MouseEnter" MouseLeave="Dimension_MouseLeave" MouseLeftButtonDown="TxtWidth_Click"/>
+                                
+                                <!-- Multiplication Symbol -->
+                                <TextBlock Text=" × " FontSize="12" Foreground="#666677" Margin="4,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                
+                                <!-- Height Value -->
+                                <TextBlock x:Name="TxtHeight" Text="1080" FontSize="13" FontWeight="Bold" Foreground="#EEEEEE"
+                                           Cursor="Hand" ToolTip="Click to copy Height"
+                                           MouseEnter="Dimension_MouseEnter" MouseLeave="Dimension_MouseLeave" MouseLeftButtonDown="TxtHeight_Click"/>
+                            </StackPanel>
+                        </Border>
 
                         <Separator Background="#333" Margin="0,0,0,20"/>
 

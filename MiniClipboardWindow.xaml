@@ -5,7 +5,7 @@
         Width="240" Height="Auto"
         Background="Transparent"
         WindowStartupLocation="Manual"
-        FontFamily="Segoe UI" 
+        FontFamily="{StaticResource AppFontFamily}" 
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="NoResize"
@@ -240,19 +240,18 @@
                         </Style>
                     </Grid.Style>
                     <TextBox x:Name="TxtTitle"
-                             FontSize="12" Height="30" Padding="8,0"
+                             FontSize="14" FontWeight="Bold" Height="34" Padding="8,0"
                              VerticalContentAlignment="Center"
-                             TextAlignment="Right"
-                             FlowDirection="RightToLeft"
                              Tag="عنوان اصلی..."
                              IsEnabled="True"
                              KeyDown="TxtTitle_KeyDown"
+                             TextChanged="AutoDetectDirection_TextChanged"
                              ToolTip="Main Title (Enter to save)"/>
                     <TextBlock x:Name="TxtTitleHint"
                                Text="{Binding Tag, ElementName=TxtTitle}"
                                Foreground="{StaticResource ForegroundMutedBrush}"
                                Opacity="0.6"
-                               FontSize="12"
+                               FontSize="14" FontWeight="Bold"
                                Margin="0,0,10,0"
                                HorizontalAlignment="Right"
                                VerticalAlignment="Center"
@@ -294,12 +293,11 @@
                                VerticalAlignment="Center" Margin="0,0,8,0" ToolTip="Enable Suffix Title"/>
                     <TextBox Grid.Column="1" x:Name="TxtAdditionalTitle" 
                              Text="{Binding AdditionalTitle, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
-                             FontSize="11" Height="26" Padding="6,0"
+                             FontSize="13" FontWeight="Bold" Height="30" Padding="6,0"
                              VerticalContentAlignment="Center"
-                             TextAlignment="Right"
-                             FlowDirection="RightToLeft"
                              ToolTip="Additional Suffix (Auto-appended)"
-                             KeyDown="AdditionalTitle_KeyDown">
+                             KeyDown="AdditionalTitle_KeyDown"
+                             TextChanged="AutoDetectDirection_TextChanged">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                 <Setter Property="IsEnabled" Value="{Binding IsAdditionalTitleEnabled, RelativeSource={RelativeSource AncestorType=Window}}"/>
@@ -339,7 +337,8 @@
                              FontSize="11" Height="26" Padding="6,0"
                              VerticalContentAlignment="Center"
                              ToolTip="Description / Notes (saved to text file)"
-                             KeyDown="AdditionalTitle_KeyDown">
+                             KeyDown="AdditionalTitle_KeyDown"
+                             TextChanged="AutoDetectDirection_TextChanged">
                         <TextBox.Style>
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                 <Setter Property="IsEnabled" Value="{Binding IsDescriptionEnabled, RelativeSource={RelativeSource AncestorType=Window}}"/>
@@ -490,6 +489,9 @@
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="3">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -717,21 +719,6 @@
                             </Style>
                         </Grid.Style>
                                <UniformGrid Columns="3" Rows="2">
-                            <Button x:Name="BtnBrowserQuickPaste" Click="BtnBrowserQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Browser-only Ctrl trigger: Ctrl+A, then Ctrl+V">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
-                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Br_Paste}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
- 
                             <Button x:Name="BtnSaveBasePrompt" Click="BtnSaveBasePrompt_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Save as Base Prompt">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -751,6 +738,36 @@
                                 </Button.Template>
                             </Button>
  
+                            <Button x:Name="BtnToggleBaseCombinerPanel" Click="BtnToggleBaseCombinerPanel_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Open Base Prompt &amp; Fast Combiner Panel (Edit Base Prompt)">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#00E5FF" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="BASE COMB" FontSize="9" FontWeight="Bold" Foreground="#00E5FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnFastRunBaseCombiner" Click="BtnFastRunBaseCombiner_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Fast 1-Click Combine: Combine Base Prompt with Active Options &amp; Copy to Clipboard">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#FF6A00" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="⚡ COMB BASE" FontSize="8.5" FontWeight="Bold" Foreground="#FF6A00" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
                             <Button x:Name="BtnToggleDescriptionVisibility" Click="BtnToggleDescriptionVisibility_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Toggle Notes / Description Row Visibility">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
@@ -794,6 +811,35 @@
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
                                              <TextBlock x:Name="txt" Text="🧩 COMB" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </UniformGrid>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="3">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <UniformGrid Columns="3" Rows="2">
+                            <Button x:Name="BtnBrowserQuickPaste" Click="BtnBrowserQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="Browser-only Ctrl trigger: Ctrl+A, then Ctrl+V">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#2D2D2D" CornerRadius="4" BorderBrush="#444" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Br_Paste}" FontSize="9" FontWeight="Bold" Foreground="#888" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
@@ -861,6 +907,27 @@
                                             <Setter TargetName="dot" Property="Fill" Value="#AAAAAA"/>
                                         </Trigger>
                                         <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+                                            <Setter TargetName="dot" Property="Width" Value="10"/>
+                                            <Setter TargetName="dot" Property="Height" Value="10"/>
+                                            <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- Touch friendly page 4 dot -->
+                        <Button Click="BtnExtraMenuPageFour_Click" Width="26" Height="26" Margin="4,0" Cursor="Hand" ToolTip="Page 4" Background="Transparent" BorderThickness="0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Grid Background="Transparent">
+                                        <Ellipse x:Name="dot" Width="8" Height="8" Fill="#555555" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="dot" Property="Fill" Value="#AAAAAA"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding ExtraMenuPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="3">
                                             <Setter TargetName="dot" Property="Width" Value="10"/>
                                             <Setter TargetName="dot" Property="Height" Value="10"/>
                                             <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBrush}"/>

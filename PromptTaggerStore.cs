@@ -23,6 +23,12 @@ namespace imgsaver
         public static string DiffValuesOutput { get; set; } = "";
         public static bool UseManualValuesMode { get; set; } = false;
 
+        // Persistent fields for Tab 3: Interactive Selection Tagger
+        public static string InteractivePrompt { get; set; } = "";
+        public static string InteractiveInitial { get; set; } = "";
+        public static string InteractiveValues { get; set; } = "";
+        public static string InteractivePrefix { get; set; } = "PH_";
+
         private static string FilePath => DataPathManager.GetSettingsFilePath("tagger_manual_config.json");
 
         static PromptTaggerStore()
@@ -53,6 +59,10 @@ namespace imgsaver
                         DiffTemplateOutput = data.DiffTemplateOutput ?? "";
                         DiffValuesOutput = data.DiffValuesOutput ?? "";
                         UseManualValuesMode = data.UseManualValuesMode;
+                        InteractivePrompt = data.InteractivePrompt ?? "";
+                        InteractiveInitial = data.InteractiveInitial ?? "";
+                        InteractiveValues = data.InteractiveValues ?? "";
+                        InteractivePrefix = data.InteractivePrefix ?? "PH_";
                     }
                 }
             }
@@ -86,7 +96,11 @@ namespace imgsaver
                     ReplacerOutput = ReplacerOutput,
                     DiffTemplateOutput = DiffTemplateOutput,
                     DiffValuesOutput = DiffValuesOutput,
-                    UseManualValuesMode = UseManualValuesMode
+                    UseManualValuesMode = UseManualValuesMode,
+                    InteractivePrompt = InteractivePrompt,
+                    InteractiveInitial = InteractiveInitial,
+                    InteractiveValues = InteractiveValues,
+                    InteractivePrefix = InteractivePrefix
                 };
 
                 string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
@@ -112,6 +126,10 @@ namespace imgsaver
             public string? DiffTemplateOutput { get; set; }
             public string? DiffValuesOutput { get; set; }
             public bool UseManualValuesMode { get; set; }
+            public string? InteractivePrompt { get; set; }
+            public string? InteractiveInitial { get; set; }
+            public string? InteractiveValues { get; set; }
+            public string? InteractivePrefix { get; set; }
         }
     }
 }

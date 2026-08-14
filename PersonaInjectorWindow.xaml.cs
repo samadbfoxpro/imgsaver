@@ -1243,16 +1243,28 @@ namespace imgsaver
             ExtraList.ItemsSource = _extraView;
         }
 
+        private void BtnMinimize_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
+
         private void Window_StateChanged(object sender, EventArgs e)
         {
             if (WindowState == WindowState.Maximized)
             {
+                if (BtnMaximize != null) BtnMaximize.Content = "🗗";
                 MainBorder.Margin = new Thickness(8);
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.BorderThickness = new Thickness(0);
             }
             else
             {
+                if (BtnMaximize != null) BtnMaximize.Content = "🗖";
                 MainBorder.Margin = new Thickness(0);
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.BorderThickness = new Thickness(1);

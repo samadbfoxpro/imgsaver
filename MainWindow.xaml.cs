@@ -100,36 +100,69 @@ namespace imgsaver
 
         public MainWindow()
         {
+            StartupProfiler.Log("MainWindow Constructor ENTER");
             InitializeComponent();
+            StartupProfiler.Log("MainWindow Constructor -> InitializeComponent END");
             LanguageManager.ApplyWindowLanguage(this);
+            StartupProfiler.Log("MainWindow Constructor -> ApplyWindowLanguage END");
             LoadSettings();
+            StartupProfiler.Log("MainWindow Constructor -> LoadSettings END");
             this.MaxHeight = SystemParameters.WorkArea.Height;
             VersionManager.Load();
             TxtVersion.Text = $"v{VersionManager.CurrentVersion}";
 
             try
             {
-                _globalHook = new GlobalHook();
-                _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
+                this.Icon = BitmapFrame.Create(new Uri("pack://application:,,,/logo.ico", UriKind.RelativeOrAbsolute));
             }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show("Error (Please run as Administrator):\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            catch { }
 
-
+            Loaded += MainWindow_Loaded;
+            ContentRendered += (s, e) => StartupProfiler.Log("MainWindow -> ContentRendered FIRED (UI IS VISIBLE!)");
             Closed += (_, _) => {
                 _isShuttingDown = true;
+                GlobalClipboardCombiner.Stop();
                 _globalHook?.Dispose();
                 _remoteServer?.Stop();
                 _fileShareServer?.Stop();
                 CleanupSystemTrayIcon();
-                System.Windows.Application.Current.Shutdown();
+                PerformFullApplicationShutdown();
             };
             Closing += MainWindow_Closing;
-            InitInputRecorderPlayer();
-            LoadAndApplyServerStates();
-            InitializeSystemTrayIcon();
+            StartupProfiler.Log("MainWindow Constructor EXIT");
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            StartupProfiler.Log("MainWindow -> Loaded FIRED");
+            try
+            {
+                GlobalClipboardCombiner.Start(this);
+            }
+            catch { }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                StartupProfiler.Log("MainWindow Background Init -> GlobalHook START");
+                try
+                {
+                    _globalHook = new GlobalHook();
+                    _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
+                }
+                catch (Exception ex)
+                {
+                    CustomMessageBox.Show("Error (Please run as Administrator):\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                StartupProfiler.Log("MainWindow Background Init -> GlobalHook END");
+
+                StartupProfiler.Log("MainWindow Background Init -> LoadAndApplyServerStates START");
+                LoadAndApplyServerStates();
+                StartupProfiler.Log("MainWindow Background Init -> LoadAndApplyServerStates END");
+
+                StartupProfiler.Log("MainWindow Background Init -> InitializeSystemTrayIcon START");
+                InitializeSystemTrayIcon();
+                StartupProfiler.Log("MainWindow Background Init -> InitializeSystemTrayIcon END");
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private WinForms.NotifyIcon? _notifyIcon;
@@ -142,19 +175,42 @@ namespace imgsaver
                 
                 try
                 {
-                    string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
-                    if (File.Exists(exePath))
+                    var resStream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/logo.ico", UriKind.RelativeOrAbsolute));
+                    if (resStream != null)
                     {
-                        _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath) ?? System.Drawing.SystemIcons.Application;
+                        _notifyIcon.Icon = new System.Drawing.Icon(resStream.Stream);
                     }
                     else
                     {
-                        _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                        string? exePath = Environment.ProcessPath;
+                        if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
+                        {
+                            _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath) ?? System.Drawing.SystemIcons.Application;
+                        }
+                        else
+                        {
+                            _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                        }
                     }
                 }
                 catch
                 {
-                    _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                    try
+                    {
+                        string? exePath = Environment.ProcessPath;
+                        if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
+                        {
+                            _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath) ?? System.Drawing.SystemIcons.Application;
+                        }
+                        else
+                        {
+                            _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                        }
+                    }
+                    catch
+                    {
+                        _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                    }
                 }
 
                 _notifyIcon.Text = "imgsaver - Dataset & Prompt Assistant";
@@ -799,6 +855,44 @@ namespace imgsaver
             if (_promptTaggerWindow == null || !_promptTaggerWindow.IsLoaded) _promptTaggerWindow = new PromptTaggerWindow();
             _promptTaggerWindow.Show();
             _promptTaggerWindow.Activate();
+        }
+
+        private void BtnExit_Click(object sender, RoutedEventArgs e)
+        {
+            var exitDlg = new ExitConfirmationWindow();
+            exitDlg.Owner = this;
+            if (exitDlg.ShowDialog() == true)
+            {
+                PerformFullApplicationShutdown();
+            }
+        }
+
+        public static void PerformFullApplicationShutdown()
+        {
+            try
+            {
+                var windows = System.Windows.Application.Current.Windows.Cast<Window>().ToList();
+                foreach (Window win in windows)
+                {
+                    try
+                    {
+                        if (win != null && win.IsLoaded && win != System.Windows.Application.Current.MainWindow)
+                        {
+                            win.Close();
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            try
+            {
+                System.Windows.Application.Current.Shutdown();
+            }
+            catch { }
+
+            System.Environment.Exit(0);
         }
     }
 }

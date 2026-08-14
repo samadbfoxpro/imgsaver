@@ -24,14 +24,16 @@ namespace imgsaver
         public bool RequestClearData { get; private set; }
         public bool RequestDeleteLoginData => ChkDeleteLoginData.IsChecked == true && RequestClearData;
 
+        private readonly BrowserProfile _currentProfile;
         private readonly string _permanentCacheFolder = ProfileManager.SharedCacheFolder;
         private readonly List<CachedSiteItem> _cachedSites = new();
         private FrameworkElement? _activePanel;
         private System.Windows.Controls.Button? _activeNavButton;
         private bool _isPersianLanguage = false;
 
-        public BrowserSettingsWindow()
+        public BrowserSettingsWindow(BrowserProfile? profile = null)
         {
+            _currentProfile = profile ?? ProfileManager.GetActiveProfile();
             InitializeComponent();
             LoadCurrentSettings();
             LoadCachedSites();
@@ -87,7 +89,6 @@ namespace imgsaver
                 ChkReplaceMiniClipImageOnImport.Content = "جایگزینی تصویر فعلی مینی کلیپ هنگام ایمپورت از مرورگر";
                 ChkShowFloatingRecordPlayer.Content = "نمایش پلیر شناور ضبط ویدیو مرورگر";
                 ChkShowQuickPasteButton.Content = "نمایش دکمه پیست BR روی کادرهای ورودی";
-                ChkEnableEmbeddedMiniClip.Content = "فعال‌سازی مینی کلیپ داخلی در پایین مرورگر";
                 ChkEnableCombinerBar.Content = "فعال‌سازی نوار ترکیب هوشمند پرامپت (Combiner) در پایین مرورگر";
                 ChkAutoFocusMiniClip.Content = "فوکوس اتوماتیک به پنجره اصلی مینی کلیپ هنگام دریافت داده‌ها";
                 ChkAutoHideStatus.Content = "مخفی کردن نوار وضعیت پایین مرورگر";
@@ -120,7 +121,6 @@ namespace imgsaver
                 ChkReplaceMiniClipImageOnImport.Content = "Replace current Mini Clip image when importing from browser";
                 ChkShowFloatingRecordPlayer.Content = "Show floating browser recording player";
                 ChkShowQuickPasteButton.Content = "Show BR Paste button on input fields";
-                ChkEnableEmbeddedMiniClip.Content = "Enable embedded Mini Clip at bottom of browser";
                 ChkEnableCombinerBar.Content = "Enable Smart Prompt Combiner toolbar at bottom of browser";
                 ChkAutoFocusMiniClip.Content = "Automatically focus main Mini Clip window when capturing data";
                 ChkAutoHideStatus.Content = "Hide Status Bar";
@@ -129,7 +129,7 @@ namespace imgsaver
 
         private void LoadCurrentSettings()
         {
-            var settings = BrowserSettings.Load();
+            var settings = BrowserSettings.Load(_currentProfile);
             ChkLoadImages.IsChecked = settings.LoadImages;
             ChkLoadMedia.IsChecked = settings.LoadMedia;
             ChkEnableJS.IsChecked = settings.EnableJavaScript;
@@ -139,17 +139,18 @@ namespace imgsaver
             ChkReplaceMiniClipImageOnImport.IsChecked = settings.ReplaceMiniClipImageOnImport;
             ChkShowFloatingRecordPlayer.IsChecked = settings.ShowFloatingRecordPlayer;
             ChkShowQuickPasteButton.IsChecked = settings.ShowQuickPasteButton;
-            ChkEnableEmbeddedMiniClip.IsChecked = settings.EnableEmbeddedMiniClip;
             ChkEnableCombinerBar.IsChecked = settings.EnableCombinerBar;
             ChkAutoFocusMiniClip.IsChecked = settings.AutoFocusMiniClip;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
 
-            if (settings.ProxyMode == "off") CmbProxyMode.SelectedIndex = 1;
-            else if (settings.ProxyMode == "custom") CmbProxyMode.SelectedIndex = 2;
-            else CmbProxyMode.SelectedIndex = 0; // Default to "system"
-
             TxtProxyAddress.Text = settings.ProxyAddress;
             TxtProxyPort.Text = settings.ProxyPort;
+
+            string mode = settings.ProxyMode ?? "system";
+            int selectedIndex = 0;
+            if (mode == "custom") selectedIndex = 1;
+            else if (mode == "off") selectedIndex = 2;
+            CmbProxyMode.SelectedIndex = selectedIndex;
 
             CmbProxyType.SelectedIndex = settings.ProxyType == "socks5" ? 1 : 0;
             LstNoCacheSites.ItemsSource = new List<string>(settings.NoCacheHosts ?? new List<string>());
@@ -361,7 +362,7 @@ namespace imgsaver
         {
             try
             {
-                var settings = BrowserSettings.Load();
+                var settings = BrowserSettings.Load(_currentProfile);
                 settings.LoadImages = ChkLoadImages.IsChecked == true;
                 settings.LoadMedia = ChkLoadMedia.IsChecked == true;
                 settings.EnableJavaScript = ChkEnableJS.IsChecked == true;
@@ -371,7 +372,6 @@ namespace imgsaver
                 settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
                 settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
                 settings.ShowQuickPasteButton = ChkShowQuickPasteButton.IsChecked == true;
-                settings.EnableEmbeddedMiniClip = ChkEnableEmbeddedMiniClip.IsChecked == true;
                 settings.EnableCombinerBar = ChkEnableCombinerBar.IsChecked == true;
                 settings.AutoFocusMiniClip = ChkAutoFocusMiniClip.IsChecked == true;
                 settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
@@ -383,7 +383,7 @@ namespace imgsaver
                 settings.ProxyType = (CmbProxyType.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "http";
                 settings.NoCacheHosts = new List<string>(LstNoCacheSites.Items.Cast<string>());
 
-                settings.Save();
+                settings.Save(_currentProfile);
             }
             catch { }
         }

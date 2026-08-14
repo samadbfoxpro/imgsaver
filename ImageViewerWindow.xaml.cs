@@ -126,6 +126,31 @@ namespace imgsaver
                     }
                 });
 
+                // Load real pixel dimensions of original image
+                int originalWidth = 0;
+                int originalHeight = 0;
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        using (var stream = File.OpenRead(_imagePath))
+                        {
+                            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.None);
+                            if (decoder.Frames.Count > 0)
+                            {
+                                originalWidth = decoder.Frames[0].PixelWidth;
+                                originalHeight = decoder.Frames[0].PixelHeight;
+                            }
+                        }
+                    }
+                    catch { }
+                });
+
+                TxtWidth.Text = originalWidth > 0 ? originalWidth.ToString() : "--";
+                TxtHeight.Text = originalHeight > 0 ? originalHeight.ToString() : "--";
+                TxtWidth.Tag = originalWidth.ToString();
+                TxtHeight.Tag = originalHeight.ToString();
+
                 if (bitmap != null)
                 {
                     ImgDisplay.Source = bitmap;
@@ -678,20 +703,74 @@ namespace imgsaver
 
         private void OnFileNameMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-  try
-      {
-    System.Windows.Clipboard.SetText(_currentFileName);
-       // Visual feedback: Flash Green
-   if (sender is TextBlock tb)
-           {
-     tb.Foreground = System.Windows.Media.Brushes.LimeGreen;
-      Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() =>
-   {
-        tb.Foreground = tb.IsMouseOver ? System.Windows.Media.Brushes.Yellow : (System.Windows.Media.Brush)FindResource("ForegroundBrush");
-    }));
-  }
+            try
+            {
+                System.Windows.Clipboard.SetText(_currentFileName);
+                // Visual feedback: Flash Green
+                if (sender is TextBlock tb)
+                {
+                    tb.Foreground = System.Windows.Media.Brushes.LimeGreen;
+                    Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() =>
+                    {
+                        tb.Foreground = tb.IsMouseOver ? System.Windows.Media.Brushes.Yellow : (System.Windows.Media.Brush)FindResource("ForegroundBrush");
+                    }));
+                }
+            }
+            catch { }
         }
-    catch { }
-    }
+
+        private void Dimension_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is TextBlock tb)
+            {
+                tb.Foreground = System.Windows.Media.Brushes.Yellow;
+            }
+        }
+
+        private void Dimension_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is TextBlock tb)
+            {
+                tb.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(238, 238, 238));
+            }
+        }
+
+        private void TxtWidth_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                string widthVal = TxtWidth.Tag as string ?? TxtWidth.Text;
+                if (!string.IsNullOrEmpty(widthVal) && widthVal != "--")
+                {
+                    System.Windows.Clipboard.SetText(widthVal);
+                    // Flash Green on click
+                    TxtWidth.Foreground = System.Windows.Media.Brushes.LimeGreen;
+                    Task.Delay(350).ContinueWith(_ => Dispatcher.Invoke(() =>
+                    {
+                        TxtWidth.Foreground = TxtWidth.IsMouseOver ? System.Windows.Media.Brushes.Yellow : new SolidColorBrush(System.Windows.Media.Color.FromRgb(238, 238, 238));
+                    }));
+                }
+            }
+            catch { }
+        }
+
+        private void TxtHeight_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                string heightVal = TxtHeight.Tag as string ?? TxtHeight.Text;
+                if (!string.IsNullOrEmpty(heightVal) && heightVal != "--")
+                {
+                    System.Windows.Clipboard.SetText(heightVal);
+                    // Flash Green on click
+                    TxtHeight.Foreground = System.Windows.Media.Brushes.LimeGreen;
+                    Task.Delay(350).ContinueWith(_ => Dispatcher.Invoke(() =>
+                    {
+                        TxtHeight.Foreground = TxtHeight.IsMouseOver ? System.Windows.Media.Brushes.Yellow : new SolidColorBrush(System.Windows.Media.Color.FromRgb(238, 238, 238));
+                    }));
+                }
+            }
+            catch { }
+        }
     }
 }

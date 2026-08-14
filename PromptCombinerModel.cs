@@ -27,6 +27,12 @@ namespace imgsaver
         public string Name { get; set; } = "";
         public int Order { get; set; } = 0;
 
+        // Custom Input Mode (Writable Text Box instead of Preset Buttons)
+        public bool IsCustomInput { get; set; } = false;
+        public string CustomInputText { get; set; } = "";
+        public string CustomTitle { get; set; } = "";
+        public bool IsCustomInputActive { get; set; } = true;
+
         // Custom Placement Rules per Folder
         public CombinerPlacementMode PlacementMode { get; set; } = CombinerPlacementMode.AfterComma;
         public int CommaIndex { get; set; } = 1;
@@ -41,6 +47,8 @@ namespace imgsaver
     public class PromptCombinerData
     {
         public bool IsEnabled { get; set; } = false;
+        public bool IsStandaloneGlobalEnabled { get; set; } = true;
+        public bool AutoCaptureBasePrompt { get; set; } = false;
         public string ActiveFolderId { get; set; } = "";
         public List<string> ActiveItemIds { get; set; } = new List<string>();
         public CombinerPlacementMode PlacementMode { get; set; } = CombinerPlacementMode.AfterComma;

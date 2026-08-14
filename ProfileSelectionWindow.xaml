@@ -1,45 +1,42 @@
 <Window x:Class="imgsaver.ProfileSelectionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Select Account Profile" Height="480" Width="520"
+        Title="Select Account" Height="500" Width="480"
         WindowStartupLocation="CenterScreen" WindowStyle="None"
         AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize">
-    <Border Background="#1E1E1E" BorderBrush="#333333" BorderThickness="1.5" CornerRadius="12">
+    <Border Background="#1A1A1A" BorderBrush="#2D2D30" BorderThickness="1" CornerRadius="12">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="25" ShadowDepth="8" Opacity="0.6" Color="#000000"/>
+            <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.5" Color="#000000"/>
         </Border.Effect>
-        <Grid Margin="20">
+        <Grid Margin="24">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- Title Header -->
-                <RowDefinition Height="*"/>    <!-- Profile Cards List -->
-                <RowDefinition Height="Auto"/> <!-- Action Controls -->
-                <RowDefinition Height="Auto"/> <!-- Footer Checkbox & Launch -->
+                <RowDefinition Height="Auto"/> <!-- Header -->
+                <RowDefinition Height="*"/>    <!-- Profile List -->
+                <RowDefinition Height="Auto"/> <!-- Actions -->
+                <RowDefinition Height="Auto"/> <!-- Footer -->
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Grid Grid.Row="0" Margin="0,0,0,16">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="👤" FontSize="22" Margin="0,0,10,0"/>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Select Account Profile" FontWeight="Bold" FontSize="16" Foreground="#FFFFFF"/>
-                        <TextBlock Text="Choose which isolated account profile to launch in Browser" FontSize="11" Foreground="#888888" Margin="0,2,0,0"/>
-                    </StackPanel>
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{DynamicResource Lbl_Profile_Select_Title}" FontWeight="SemiBold" FontSize="18" Foreground="#E0E0E0"/>
+                    <TextBlock Text="{DynamicResource Lbl_Profile_Select_Desc}" FontSize="12" Foreground="#858585" Margin="0,4,0,0"/>
                 </StackPanel>
+                
                 <Button Content="✕" HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Click="BtnClose_Click" Width="26" Height="26"
-                        Background="Transparent" BorderThickness="0" Foreground="#AAAAAA"
-                        Cursor="Hand" FontSize="13" ToolTip="Cancel / Close">
+                        Click="BtnClose_Click" Width="28" Height="28"
+                        Background="Transparent" BorderThickness="0" Foreground="#858585"
+                        Cursor="Hand" FontSize="14" ToolTip="Close">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="13">
-                                <TextBlock Text="✕" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"
-                                           Foreground="{TemplateBinding Foreground}"/>
+                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="14">
+                                <TextBlock Text="✕" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="bd" Property="Background" Value="#E81123"/>
-                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter TargetName="bd" Property="Background" Value="#333333"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -48,30 +45,28 @@
             </Grid>
 
             <!-- Profiles List -->
-            <ListBox x:Name="LstProfiles" Grid.Row="1" Background="#141414" BorderBrush="#2A2A2A" BorderThickness="1"
-                     Margin="0,0,0,12" Padding="6" MouseDoubleClick="LstProfiles_MouseDoubleClick"
+            <ListBox x:Name="LstProfiles" Grid.Row="1" Background="Transparent" BorderThickness="0"
+                     Margin="0,0,0,16" MouseDoubleClick="LstProfiles_MouseDoubleClick"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="8,10"/>
-                        <Setter Property="Margin" Value="0,3"/>
-                        <Setter Property="Background" Value="#252525"/>
-                        <Setter Property="BorderBrush" Value="#333333"/>
-                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Padding" Value="12"/>
+                        <Setter Property="Margin" Value="0,2"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Cursor" Value="Hand"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
-                                    <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="8">
                                         <ContentPresenter Margin="{TemplateBinding Padding}"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="bd" Property="Background" Value="#2F2F2F"/>
-                                            <Setter TargetName="bd" Property="BorderBrush" Value="#2ECC71"/>
+                                            <Setter TargetName="bd" Property="Background" Value="#252526"/>
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="bd" Property="Background" Value="#1E3A29"/>
-                                            <Setter TargetName="bd" Property="BorderBrush" Value="#2ECC71"/>
+                                            <Setter TargetName="bd" Property="Background" Value="#007ACC"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -85,80 +80,106 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             
-                            <!-- Icon & Color Badge -->
-                            <Border Grid.Column="0" Width="38" Height="38" CornerRadius="19" Background="#1A1A1A"
-                                    BorderBrush="{Binding ColorHex}" BorderThickness="2" Margin="0,0,12,0">
-                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Icon}" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
-                                </Grid>
+                            <!-- Minimalist Icon -->
+                            <Border Grid.Column="0" Width="36" Height="36" CornerRadius="18" Background="#1E1E1E"
+                                    BorderBrush="{Binding ColorHex}" BorderThickness="1.5" Margin="0,0,16,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Icon}" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
 
-                            <!-- Profile Details -->
+                            <!-- Text Details -->
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF"/>
-                                <TextBlock Text="{Binding Description}" FontSize="10" Foreground="#AAAAAA" Visibility="{Binding DescriptionVisibility}"/>
+                                <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="14" Foreground="#E0E0E0"/>
+                                <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#A0A0A0" Margin="0,2,0,0"/>
                             </StackPanel>
-
-                            <!-- Selection Indicator -->
-                            <TextBlock Grid.Column="2" Text="➜" FontSize="14" Foreground="#2ECC71" VerticalAlignment="Center" Margin="10,0"/>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <!-- Action Controls (Add/Edit/Delete) -->
-            <Grid Grid.Row="2" Margin="0,0,0,12">
+            <!-- Minimal Action Controls -->
+            <Grid Grid.Row="2" Margin="0,0,0,24">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button x:Name="BtnAddAccount" Content="+ Add Account" Click="BtnAddAccount_Click"
-                            Height="28" Padding="12,0" Background="#252525" BorderBrush="#2ECC71" BorderThickness="1"
-                            Foreground="#2ECC71" FontSize="11" FontWeight="Bold" Cursor="Hand" Margin="0,0,6,0">
+                    <Button x:Name="BtnAddAccount" Content="{DynamicResource Btn_Profile_New}" Click="BtnAddAccount_Click"
+                            Height="28" Padding="12,0" Background="Transparent" BorderThickness="0"
+                            Foreground="#007ACC" FontSize="13" Cursor="Hand" Margin="0,0,4,0">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                                <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="bd" Property="Background" Value="#2ECC71"/>
-                                        <Setter Property="Foreground" Value="#000000"/>
+                                        <Setter TargetName="bd" Property="Background" Value="#1A334D"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
 
-                    <Button x:Name="BtnEditAccount" Content="✏️ Rename" Click="BtnEditAccount_Click"
-                            Height="28" Padding="10,0" Background="#252525" BorderBrush="#444444" BorderThickness="1"
-                            Foreground="#CCCCCC" FontSize="11" Cursor="Hand" Margin="0,0,6,0"/>
+                    <Button x:Name="BtnEditAccount" Content="{DynamicResource Btn_Profile_Edit}" Click="BtnEditAccount_Click"
+                            Height="28" Padding="12,0" Background="Transparent" BorderThickness="0"
+                            Foreground="#858585" FontSize="13" Cursor="Hand" Margin="0,0,4,0">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#2D2D30"/>
+                                        <Setter Property="Foreground" Value="#E0E0E0"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
 
-                    <Button x:Name="BtnDeleteAccount" Content="🗑️ Delete" Click="BtnDeleteAccount_Click"
-                            Height="28" Padding="10,0" Background="#252525" BorderBrush="#E81123" BorderThickness="1"
-                            Foreground="#FF5555" FontSize="11" Cursor="Hand"/>
+                    <Button x:Name="BtnDeleteAccount" Content="{DynamicResource Btn_Profile_Delete}" Click="BtnDeleteAccount_Click"
+                            Height="28" Padding="12,0" Background="Transparent" BorderThickness="0"
+                            Foreground="#858585" FontSize="13" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#4D1A1A"/>
+                                        <Setter Property="Foreground" Value="#FF6B6B"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </StackPanel>
             </Grid>
 
             <!-- Footer & Launch Button -->
             <Grid Grid.Row="3">
-                <CheckBox x:Name="ChkAlwaysAsk" Content="Always ask account profile when opening Browser"
-                          IsChecked="True" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center"/>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <Button x:Name="BtnLaunch" Click="BtnLaunch_Click"
-                        HorizontalAlignment="Right" Height="36" Padding="0" FontSize="12" FontWeight="Bold"
-                        Background="#145A32" BorderBrush="#2ECC71" BorderThickness="1.2" Foreground="#FFFFFF" Cursor="Hand">
+                <CheckBox x:Name="ChkAlwaysAsk" Content="{DynamicResource Chk_Profile_AlwaysAsk}"
+                          IsChecked="True" Foreground="#858585" FontSize="12" VerticalAlignment="Center">
+                    <CheckBox.LayoutTransform>
+                        <ScaleTransform ScaleX="0.9" ScaleY="0.9"/>
+                    </CheckBox.LayoutTransform>
+                </CheckBox>
+
+                <Button x:Name="BtnLaunch" Grid.Column="1" Content="{DynamicResource Btn_Profile_Launch}" Click="BtnLaunch_Click"
+                        Height="34" Padding="24,0" Cursor="Hand" Background="#007ACC" Foreground="White" FontSize="13" FontWeight="SemiBold">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="14,0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                    <TextBlock Text="🚀" FontSize="13" Margin="0,-2,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Launch Selected Account" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                                </StackPanel>
+                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="17">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="bd" Property="Background" Value="#1D7A44"/>
+                                    <Setter TargetName="bd" Property="Background" Value="#005A9E"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

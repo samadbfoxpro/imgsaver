@@ -197,18 +197,42 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Address Bar (Fills remaining space) -->
-                    <TextBox x:Name="TxtUrl" Height="36" Padding="10,0" VerticalContentAlignment="Center" 
-                             FontSize="14" KeyDown="TxtUrl_KeyDown" 
-                             Background="{StaticResource InputBrush}" Foreground="{StaticResource ForegroundBrush}"/>
+                    <!-- Modern Omnibox Address Bar (Chrome/Edge Rounded Style) -->
+                    <Border Background="#1A1B20" BorderBrush="#2D2F38" BorderThickness="1" CornerRadius="17" Height="34" Margin="4,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="🔒" FontSize="11" Foreground="#38BDF8" VerticalAlignment="Center" Margin="10,0,4,0"/>
+                            <TextBox x:Name="TxtUrl" Grid.Column="1" Padding="4,0,10,0" VerticalContentAlignment="Center" 
+                                     FontSize="13" Foreground="#F1F5F9" Background="Transparent" BorderThickness="0" 
+                                     CaretBrush="#00E5FF" KeyDown="TxtUrl_KeyDown" ToolTip="Search or enter web address"/>
+                        </Grid>
+                    </Border>
                 </DockPanel>
             </Border>
 
             <!-- Bookmarks Bar -->
-            <Border Grid.Row="2" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Height="32">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="BookmarksPanel" Orientation="Horizontal" Margin="4,0"/>
-                </ScrollViewer>
+            <Border x:Name="BookmarksBorder" Grid.Row="2" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Height="32" SizeChanged="BookmarksBorder_SizeChanged">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel x:Name="BookmarksPanel" Orientation="Horizontal" Margin="4,0" ClipToBounds="True" />
+                    
+                    <Button x:Name="BtnBookmarksOverflow" Grid.Column="1" Width="24" Height="24" Margin="2,0,4,0" Padding="0"
+                            Style="{StaticResource SecondaryButtonStyle}" Visibility="Collapsed" Click="BtnBookmarksOverflow_Click" ToolTip="More bookmarks">
+                        <TextBlock Text="⋮" Foreground="{StaticResource ForegroundBrush}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Button>
+                    <Popup x:Name="BookmarksOverflowPopup" PlacementTarget="{Binding ElementName=BtnBookmarksOverflow}" Placement="Bottom" StaysOpen="False">
+                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4">
+                            <StackPanel x:Name="BookmarksOverflowPanel" Orientation="Vertical" Margin="2" />
+                        </Border>
+                    </Popup>
+                </Grid>
             </Border>
 
             <!-- Tabs and WebView -->
@@ -217,26 +241,36 @@
                     <TabControl.Resources>
                         <Style TargetType="TabItem">
                             <Setter Property="Header" Value="New Tab"/>
+                            <Setter Property="Foreground" Value="#8A8F9D"/>
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">
-                                        <Border x:Name="Border" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0" CornerRadius="4,4,0,0" Margin="2,0"
-                                                MouseRightButtonUp="TabItem_MouseRightButtonUp">
+                                        <Border x:Name="Border" Background="#141418" BorderBrush="#2D2F36" BorderThickness="1,1,1,0" CornerRadius="8,8,0,0" Margin="2,2,2,0" Padding="8,4" MouseRightButtonUp="TabItem_MouseRightButtonUp" Cursor="Hand">
                                             <Border.ContextMenu>
                                                 <ContextMenu>
                                                     <MenuItem Header="Close" Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                            <StackPanel Orientation="Horizontal" Margin="8,4">
-                                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
-                                                <Button Content="✕" Margin="8,0,0,0" Width="16" Height="16" FontSize="10" 
-                                                        Style="{StaticResource TitleBarCloseButtonStyle}" 
-                                                        Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                            </StackPanel>
+                                            <Grid>
+                                                <Border x:Name="TopAccent" Height="2" VerticalAlignment="Top" Background="#00E5FF" CornerRadius="1,1,0,0" Visibility="Collapsed" Margin="-8,-4,-8,0"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True" Margin="2,0,6,0"/>
+                                                    <Button x:Name="BtnCloseTab" Content="✕" Width="18" Height="18" FontSize="9" Opacity="0"
+                                                            Style="{StaticResource TitleBarCloseButtonStyle}" 
+                                                            Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                                </StackPanel>
+                                            </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="#1C1D24"/>
+                                                <Setter TargetName="BtnCloseTab" Property="Opacity" Value="0.75"/>
+                                            </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Border" Property="Background" Value="{StaticResource InputBrush}"/>
+                                                <Setter TargetName="Border" Property="Background" Value="#1E1F26"/>
+                                                <Setter TargetName="TopAccent" Property="Visibility" Value="Visible"/>
+                                                <Setter TargetName="BtnCloseTab" Property="Opacity" Value="1"/>
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -247,6 +281,75 @@
                 </TabControl>
                 <!-- Particle Canvas (Overlay) -->
                 <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" ClipToBounds="False"/>
+        <!-- Floating Docked Base Prompt Popup (Renders ON TOP of WebView2 HWND Airspace) -->
+        <Popup x:Name="PopInlineBaseCombiner" 
+               PlacementTarget="{Binding ElementName=BtnOpenCombinerManager}" 
+               Placement="Top" 
+               HorizontalOffset="-320" 
+               VerticalOffset="-16"
+               AllowsTransparency="True" 
+               StaysOpen="True" 
+               PopupAnimation="Fade">
+            <Border x:Name="PnlInlineBaseCombiner" 
+                    Width="350" Height="375" 
+                    Background="#F8121720" BorderBrush="#00E5FF" BorderThickness="1.2" 
+                    CornerRadius="10" Padding="12,12,12,14">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.65" Color="Black"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header: Short Title, Auto-Base & Close -->
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="⚡" FontSize="13" Foreground="#00E5FF" Margin="0,0,6,0"/>
+                            <TextBlock Text="Base Prompt" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <CheckBox x:Name="ChkBrowserAutoBase" Content="Auto Base" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" Click="ChkBrowserAutoBase_Click" ToolTip="دریافت اتوماتیک متن اولیه کپی‌شده هنگام ترکیب"/>
+                            <Button Content="✕" Width="20" Height="20" Click="BtnCloseInlineBaseCombiner_Click" Foreground="#AAA" Background="Transparent" BorderThickness="0" Cursor="Hand" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Summary Status Badge -->
+                    <Border Grid.Row="1" Margin="0,0,0,8" Background="#0F172A" CornerRadius="5" BorderBrush="#334155" BorderThickness="1" Padding="8,5">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtBrowserCombinerIcon" Text="🧩" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtBrowserCombinerSummary" Text="Checking active combiner options..." FontSize="10.5" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Text Box Editor -->
+                    <TextBox x:Name="TxtBrowserBasePrompt" Grid.Row="2" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="12" Padding="8,6" Background="#0F172A" Foreground="#F8FAFC" BorderBrush="#334155" BorderThickness="1" Margin="0,0,0,8" TextChanged="TxtBrowserBasePrompt_TextChanged"/>
+
+                    <!-- Action Buttons -->
+                    <Grid Grid.Row="3" Margin="0,2,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <Button x:Name="BtnBrowserCombineAndCopy" Grid.Row="0" Content="⚡ Combine &amp; Copy to Clipboard" Style="{StaticResource PrimaryButtonStyle}" Height="32" Padding="0" Margin="0,0,0,6" FontWeight="Bold" Click="BtnBrowserCombineAndCopy_Click"/>
+                        
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="📋 Copy Base" Style="{StaticResource SecondaryButtonStyle}" Height="30" FontSize="11" Padding="0" Click="BtnBrowserCopyBaseOnly_Click"/>
+                            <Button Grid.Column="2" Content="🗑️ Clear" Style="{StaticResource SecondaryButtonStyle}" Height="30" FontSize="11" Padding="0" Click="BtnBrowserClearBase_Click"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Popup>
             </Grid>
 
             <!-- Smart Prompt Combiner Toolbar -->
@@ -256,7 +359,6 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
@@ -316,44 +418,29 @@
                         </ToggleButton.Style>
                     </ToggleButton>
 
-                    <!-- Category / Folder Dropdown -->
-                    <ComboBox x:Name="CboCombinerFolders" Grid.Column="1" Height="26" Width="150" Margin="0,0,8,0" VerticalAlignment="Center" 
-                              SelectionChanged="CboCombinerFolders_SelectionChanged" MaxDropDownHeight="130">
+                    <!-- Active Folder Category Selector -->
+                    <ComboBox x:Name="CboCombinerFolders" Grid.Column="1" Height="26" Width="140" Margin="0,0,8,0" 
+                              SelectionChanged="CboCombinerFolders_SelectionChanged" ToolTip="Select Prompt Category Folder" MaxDropDownHeight="160">
                         <ComboBox.Style>
                             <Style TargetType="ComboBox">
                                 <Setter Property="Background" Value="#252526"/>
-                                <Setter Property="Foreground" Value="#F1F1F1"/>
                                 <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-                                <Setter Property="BorderThickness" Value="1"/>
-                                <Setter Property="Padding" Value="6,0"/>
-                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                <Setter Property="Foreground" Value="#F1F1F1"/>
+                                <Setter Property="FontSize" Value="11"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ComboBox">
                                             <Grid>
-                                                <ToggleButton Name="ToggleButton" 
-                                                              Background="{TemplateBinding Background}"
-                                                              BorderBrush="{TemplateBinding BorderBrush}"
-                                                              BorderThickness="{TemplateBinding BorderThickness}"
-                                                              Foreground="{TemplateBinding Foreground}"
-                                                              Focusable="false"
-                                                              IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                                              ClickMode="Press">
+                                                <ToggleButton Name="ToggleButton" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                                              Focusable="False" IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press">
                                                     <ToggleButton.Template>
                                                         <ControlTemplate TargetType="ToggleButton">
-                                                            <Border Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition />
-                                                                        <ColumnDefinition Width="22" />
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <Path Name="Arrow" Grid.Column="1" Fill="#F1F1F1" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z"/>
-                                                                </Grid>
+                                                            <Border Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                                                                <Path Name="Arrow" Data="M 0 0 L 4 4 L 8 0 Z" Fill="#A0A0A0" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                                             </Border>
                                                             <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="true">
-                                                                    <Setter TargetName="Border" Property="Background" Value="#2D2D30" />
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Border" Property="Background" Value="#333337"/>
                                                                 </Trigger>
                                                             </ControlTemplate.Triggers>
                                                         </ControlTemplate>
@@ -364,10 +451,15 @@
                                                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                                   ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                                                   Margin="8,0,20,0" VerticalAlignment="Center" HorizontalAlignment="Left" />
-                                                <Popup Name="Popup" Placement="Top" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                                    <Grid Name="SubMenu" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                                        <Border Name="DropDownBorder" Background="#252526" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="3"/>
-                                                        <ScrollViewer Margin="1" SnapsToDevicePixels="True" CanContentScroll="False" VerticalScrollBarVisibility="Auto"
+                                                <Popup Name="Popup" Placement="Top" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                                    <Grid Name="SubMenu" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}" Margin="0,0,0,6">
+                                                        <!-- Glassmorphism Container with original #252526 background, 14px rounded corners and 1px white border -->
+                                                        <Border Name="DropDownBorder" Background="#F2252526" BorderBrush="#33FFFFFF" BorderThickness="1" CornerRadius="14" Padding="4">
+                                                            <Border.Effect>
+                                                                <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.55" Color="Black"/>
+                                                            </Border.Effect>
+                                                        </Border>
+                                                        <ScrollViewer Margin="3" SnapsToDevicePixels="True" CanContentScroll="False" VerticalScrollBarVisibility="Auto"
                                                                       RequestBringIntoView="CombinerFolderScrollViewer_RequestBringIntoView"
                                                                       PreviewMouseWheel="CombinerFolderScrollViewer_PreviewMouseWheel">
                                                             <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
@@ -385,11 +477,11 @@
                                 <EventSetter Event="RequestBringIntoView" Handler="ComboBoxItem_RequestBringIntoView"/>
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="Foreground" Value="#F1F1F1"/>
-                                <Setter Property="Padding" Value="8,5"/>
+                                <Setter Property="Padding" Value="10,6"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ComboBoxItem">
-                                            <Border Name="Border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="3" Margin="2,1">
+                                            <Border Name="Border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="8" Margin="2,1.5">
                                                 <ContentPresenter />
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -415,32 +507,47 @@
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Padding="0,0,0,2" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock x:Name="TxtActiveCount" Grid.Column="1" Text="{Binding DisplayActiveCount}" 
                                                FontSize="11" FontWeight="Bold" Foreground="#2ECC71" 
-                                               VerticalAlignment="Center" Margin="4,0,2,2"/>
+                                               VerticalAlignment="Center" Margin="6,0,0,0"/>
                                 </Grid>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding ActiveCount}" Value="0">
-                                        <Setter TargetName="TxtActiveCount" Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
 
-                    <!-- Snippet Buttons ScrollViewer & WrapPanel -->
-                    <ScrollViewer Grid.Column="2" Style="{StaticResource ThinGreenHorizontalScrollViewerStyle}" PreviewMouseWheel="CombinerButtonsScrollViewer_PreviewMouseWheel" VerticalAlignment="Stretch">
+                    <!-- Scrollable Container for Snippet Buttons -->
+                    <ScrollViewer x:Name="SvcCombinerButtons" Grid.Column="2" Style="{StaticResource ThinGreenHorizontalScrollViewerStyle}" Focusable="False" PreviewMouseWheel="CombinerButtonsScrollViewer_PreviewMouseWheel">
                         <StackPanel x:Name="PnlCombinerButtons" Orientation="Horizontal" VerticalAlignment="Center"/>
                     </ScrollViewer>
 
-                    <!-- Placement Rule Badge -->
-                    <Button x:Name="BtnCombinerRuleBadge" Grid.Column="3" Content="📍 After Comma #1" Style="{StaticResource SecondaryButtonStyle}" Height="26" Padding="8,0" Margin="8,0" FontSize="11" Click="BtnCombinerRuleBadge_Click" ToolTip="Click to cycle placement rule"/>
+                    <!-- Custom Text Input (When Custom Mode is Active) -->
+                    <Grid x:Name="PnlCombinerCustomInput" Grid.Column="2" Visibility="Collapsed" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TxtCombinerCustomInput" Grid.Column="0" Height="28" Background="#1E1E20" Foreground="#2ECC71" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8,2" FontSize="12" FontWeight="SemiBold" CaretBrush="#2ECC71" VerticalContentAlignment="Center" TextChanged="TxtCombinerCustomInput_TextChanged" ToolTip="Type custom text to inject/combine automatically"/>
+                        <TextBox x:Name="TxtCombinerCustomTitle" Grid.Column="1" Height="28" Background="#1E1E20" Foreground="#3794FF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8,2" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold" CaretBrush="#3794FF" VerticalContentAlignment="Center" TextChanged="TxtCombinerCustomTitle_TextChanged" ToolTip="Custom Title for Mini Clip (leave empty for default 'متن سفارشی')"/>
+                        <Button x:Name="BtnClearCustomInput" Grid.Column="2" Content="✕" Width="24" Height="28" Style="{StaticResource SecondaryButtonStyle}" Margin="4,0,0,0" Padding="0" Click="BtnClearCustomInput_Click" ToolTip="Clear Custom Text &amp; Title"/>
+                    </Grid>
 
-                    <!-- Manager Button -->
-                    <Button x:Name="BtnOpenCombinerManager" Grid.Column="4" Content="⚙ Manager" Style="{StaticResource PrimaryButtonStyle}" Height="26" Padding="10,0" FontSize="11" Click="BtnOpenCombinerManager_Click" ToolTip="Open Prompt Combiner Manager"/>
+                    <!-- Fast Combine Action Buttons: MIX ⚡ | Base 📝 | Settings ⚙ -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Border Background="#0F2838" BorderBrush="#00E5FF" BorderThickness="1" CornerRadius="5" Height="28" Margin="4,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnCombBase" Content="⚡ MIX" Height="26" Padding="10,0" FontSize="11" FontWeight="Bold" Background="Transparent" Foreground="#00E5FF" BorderThickness="0" Click="BtnCombBase_Click" MouseRightButtonUp="BtnCombBase_MouseRightButtonUp" ToolTip="Combine Base Prompt with active snippets (Right-click to view/edit Base Prompt)"/>
+                                <Border Width="1" Background="#00E5FF" Opacity="0.4" Margin="0,3"/>
+                                <Button x:Name="BtnViewBasePrompt" Content="📝" Height="26" Width="28" Background="Transparent" Foreground="#00E5FF" BorderThickness="0" Padding="0" FontSize="11" Click="BtnViewBasePrompt_Click" ToolTip="View &amp; Edit Base Prompt Text"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Hidden Placement Rule Badge (Rule is configured inside Manager) -->
+                        <Button x:Name="BtnCombinerRuleBadge" Visibility="Collapsed" Click="BtnCombinerRuleBadge_Click"/>
+
+                        <!-- Manager Button (Gear Icon Only) -->
+                        <Button x:Name="BtnOpenCombinerManager" Content="⚙" Style="{StaticResource SecondaryButtonStyle}" Height="28" Width="30" Padding="0" FontSize="14" FontWeight="Bold" Margin="6,0,0,0" Click="BtnOpenCombinerManager_Click" ToolTip="Open Prompt Combiner Manager"/>
+                    </StackPanel>
                 </Grid>
             </Border>
-
-            <!-- Embedded MiniClip Bar -->
-            <local:BrowserMiniClipControl x:Name="EmbeddedMiniClip" Grid.Row="4" Visibility="Collapsed" BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderBrush}"/>
 
             <!-- Network Status Bar -->
             <Border x:Name="StatusOverlay" Grid.Row="6" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="36" Opacity="0" Visibility="Collapsed">

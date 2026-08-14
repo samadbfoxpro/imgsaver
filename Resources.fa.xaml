@@ -51,18 +51,18 @@
     <sys:String x:Key="Lbl_Tag_Prefix">پیشوند تگ (پیش‌فرض: PH_):</sys:String>
     <sys:String x:Key="Lbl_Language">زبان برنامه:</sys:String>
 
-    <!-- MiniClipboardWindow -->
-    <sys:String x:Key="Lbl_MiniClip_Title">مینی کلیپ</sys:String>
-    <sys:String x:Key="Lbl_Enter_Title">ورود عنوان...</sys:String>
-    <sys:String x:Key="Lbl_Positive">مثبت (POS)</sys:String>
-    <sys:String x:Key="Lbl_Negative">منفی (NEG)</sys:String>
-    <sys:String x:Key="Lbl_Lock_Sfx">قفل پسوند</sys:String>
-    <sys:String x:Key="Lbl_Lock_Ttl">قفل عنوان</sys:String>
-    <sys:String x:Key="Lbl_Lock_Dsc">قفل توضیح</sys:String>
-    <sys:String x:Key="Lbl_Toggle_Dsc">توضیحات</sys:String>
-    <sys:String x:Key="Lbl_Toggle_Sfx">پسوند</sys:String>
+    <!-- MiniClipboardWindow (Kept in English as requested) -->
+    <sys:String x:Key="Lbl_MiniClip_Title">Mini Clip</sys:String>
+    <sys:String x:Key="Lbl_Enter_Title">Enter Title...</sys:String>
+    <sys:String x:Key="Lbl_Positive">POS</sys:String>
+    <sys:String x:Key="Lbl_Negative">NEG</sys:String>
+    <sys:String x:Key="Lbl_Lock_Sfx">LOCK SFX</sys:String>
+    <sys:String x:Key="Lbl_Lock_Ttl">LOCK TTL</sys:String>
+    <sys:String x:Key="Lbl_Lock_Dsc">LOCK DSC</sys:String>
+    <sys:String x:Key="Lbl_Toggle_Dsc">DESC</sys:String>
+    <sys:String x:Key="Lbl_Toggle_Sfx">SUFFIX</sys:String>
     <sys:String x:Key="Lbl_Auto_Ex">AUTO EX</sys:String>
-    <sys:String x:Key="Lbl_Auto_Sv">ذخیره خودکار</sys:String>
+    <sys:String x:Key="Lbl_Auto_Sv">AUTO SV</sys:String>
     <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>
     <sys:String x:Key="Lbl_Br_Paste">BR PASTE</sys:String>
     <sys:String x:Key="Lbl_Man_Ex">MAN EX</sys:String>
@@ -71,13 +71,13 @@
     <sys:String x:Key="Lbl_Neg_Fl">NEG LST</sys:String>
     <sys:String x:Key="Lbl_Spi_Sync">SPI SYNC</sys:String>
     <sys:String x:Key="Lbl_Auto_Fill">AUTO FILL</sys:String>
-    <sys:String x:Key="Btn_Save_To_Disk">ذخیره در دیسک</sys:String>
-    <sys:String x:Key="Lbl_Custom_Text">متن سفارشی</sys:String>
-    <sys:String x:Key="Lbl_Title">عنوان:</sys:String>
-    <sys:String x:Key="Btn_Confirm_Extra">✔ تایید اکسترا</sys:String>
-    <sys:String x:Key="Btn_Save_To_List">💾 ذخیره در لیست</sys:String>
-    <sys:String x:Key="Chk_Autosave_Delay">تأخیر در ذخیره خودکار</sys:String>
-    <sys:String x:Key="Lbl_Delay_Sec">مدت تأخیر (ثانیه):</sys:String>
+    <sys:String x:Key="Btn_Save_To_Disk">Save to Disk</sys:String>
+    <sys:String x:Key="Lbl_Custom_Text">Custom Text</sys:String>
+    <sys:String x:Key="Lbl_Title">Title:</sys:String>
+    <sys:String x:Key="Btn_Confirm_Extra">✔ Confirm Extra</sys:String>
+    <sys:String x:Key="Btn_Save_To_List">💾 Save to List</sys:String>
+    <sys:String x:Key="Chk_Autosave_Delay">Autosave Delay</sys:String>
+    <sys:String x:Key="Lbl_Delay_Sec">Delay (sec):</sys:String>
 
     <!-- PromptTaggerWindow -->
     <sys:String x:Key="Lbl_PromptTagger_Title">سیستم تگ‌گذاری و مقایسه پرامپت</sys:String>
@@ -105,4 +105,21 @@
     <sys:String x:Key="Lbl_Tagger_Values">مقادیر تگ‌گذار</sys:String>
     <sys:String x:Key="Lbl_Replacement_Values_Label">مقادیر جایگزین (لیست جدا شده با کاما):</sys:String>
     <sys:String x:Key="Btn_Transfer_To_Extra">🚀 ارسال مقادیر به پنل‌های اکسترا</sys:String>
+
+    <!-- ProfileSelection & ProfileEdit -->
+    <sys:String x:Key="Lbl_Profile_Select_Title">انتخاب اکانت کاربری</sys:String>
+    <sys:String x:Key="Lbl_Profile_Select_Desc">محیط کاری مورد نظر برای اجرای مرورگر را انتخاب کنید</sys:String>
+    <sys:String x:Key="Btn_Profile_New">+ اکانت جدید</sys:String>
+    <sys:String x:Key="Btn_Profile_Edit">ویرایش</sys:String>
+    <sys:String x:Key="Btn_Profile_Delete">حذف</sys:String>
+    <sys:String x:Key="Chk_Profile_AlwaysAsk">نمایش این پنجره هنگام باز شدن مرورگر</sys:String>
+    <sys:String x:Key="Btn_Profile_Launch">اجرای مرورگر</sys:String>
+    
+    <sys:String x:Key="Lbl_Profile_Edit_Title">ویرایش اکانت</sys:String>
+    <sys:String x:Key="Lbl_Profile_Add_Title">افزودن اکانت کاربری</sys:String>
+    <sys:String x:Key="Lbl_Profile_Name">نام اکانت</sys:String>
+    <sys:String x:Key="Lbl_Profile_Icon">آیکون اکانت</sys:String>
+    <sys:String x:Key="Lbl_Profile_Color">رنگ شاخص</sys:String>
+    <sys:String x:Key="Btn_Profile_Cancel">انصراف</sys:String>
+    <sys:String x:Key="Btn_Profile_Save">ذخیره اکانت</sys:String>
 </ResourceDictionary>

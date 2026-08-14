@@ -154,7 +154,6 @@ namespace imgsaver
             TxtImageCount.Text = $"{totalImages} Images";
 
             MoveToRecentStart();
-            PreloadRecentPromptMetadata();
             ShowDate(_availableDates[_currentDateIndex]);
 
             LoadingIndicator.Visibility = Visibility.Collapsed;
@@ -217,19 +216,6 @@ namespace imgsaver
             _currentDateIndex = recentIndex >= 0 ? recentIndex : 0;
         }
 
-        private void PreloadRecentPromptMetadata()
-        {
-            DateTime recentStart = DateTime.Now.Date.AddDays(-RecentWindowDays + 1);
-            var recentPromptImages = _allImages
-                .Where(img => img.HasPrompt && img.LastWriteTime.Date >= recentStart)
-                .Take(300)
-                .ToList();
-
-            foreach (var image in recentPromptImages)
-            {
-                _ = GetPromptForImage(image.Path);
-            }
-        }
 
         private void ChkShowUnorganized_Changed(object sender, RoutedEventArgs e)
         {
@@ -258,6 +244,8 @@ namespace imgsaver
                 ShowDate(_availableDates[_currentDateIndex]);
             }
         }
+
+
 
         #region Search
 
@@ -584,10 +572,17 @@ namespace imgsaver
                 Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush"),
                 BorderBrush = _selectedImages.Contains(imagePath) ? (System.Windows.Media.Brush)FindResource("AccentBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush"),
                 BorderThickness = _selectedImages.Contains(imagePath) ? new Thickness(2) : new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Margin = new Thickness(5),
+                CornerRadius = new CornerRadius(12),
+                Margin = new Thickness(6),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                Tag = imagePath
+                Tag = imagePath,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    BlurRadius = 10,
+                    Color = System.Windows.Media.Colors.Black,
+                    Opacity = 0.35,
+                    ShadowDepth = 2
+                }
             };
 
             var grid = new Grid();
@@ -611,23 +606,79 @@ namespace imgsaver
 
             var thumbnailBorder = new Border
             {
-                Height = 180,
-                Background = new SolidColorBrush(Colors.Black),
-                CornerRadius = new CornerRadius(8, 8, 0, 0)
+                Height = 185,
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 15, 18)),
+                CornerRadius = new CornerRadius(12, 12, 0, 0),
+                ClipToBounds = true
             };
 
             var thumbnail = new System.Windows.Controls.Image
             {
                 Stretch = Stretch.Uniform,
-                Margin = new Thickness(5)
+                Margin = new Thickness(4),
+                RenderTransformOrigin = new System.Windows.Point(0.5, 0.5),
+                RenderTransform = new ScaleTransform(1.0, 1.0)
             };
+
+            // Badge indicator for HasPrompt
+            if (_imageIndexByPath.TryGetValue(imagePath, out var imgInfo) && imgInfo.HasPrompt)
+            {
+                var promptBadge = new Border
+                {
+                    Background = (System.Windows.Media.Brush)FindResource("AccentBrush"),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(6, 2, 6, 2),
+                    Margin = new Thickness(8),
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Top,
+                    IsHitTestVisible = false
+                };
+                var promptBadgeText = new TextBlock
+                {
+                    Text = "✨ Prompt",
+                    FontSize = 10,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.White
+                };
+                promptBadge.Child = promptBadgeText;
+                grid.Children.Add(promptBadge);
+            }
+            
+            // Resolution Badge (e.g. HD/4K)
+            try
+            {
+                var fileInfo = new FileInfo(imagePath);
+                string resTag = fileInfo.Length > 2 * 1024 * 1024 ? "4K" : "HD";
+                var resBadge = new Border
+                {
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 20, 20, 25)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(4, 1, 4, 1),
+                    Margin = new Thickness(8),
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Top,
+                    IsHitTestVisible = false
+                };
+                var resBadgeText = new TextBlock
+                {
+                    Text = resTag,
+                    FontSize = 9,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.Gray
+                };
+                resBadge.Child = resBadgeText;
+                grid.Children.Add(resBadge);
+            }
+            catch { }
+
+
 
             var privacyOverlay = new Border
             {
                 Name = "PrivacyOverlay",
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 10, 10, 10)),
-                CornerRadius = new CornerRadius(8, 8, 0, 0),
-                Height = 180,
+                CornerRadius = new CornerRadius(12, 12, 0, 0),
+                Height = 185,
                 VerticalAlignment = VerticalAlignment.Top,
                 Visibility = IsPrivacyMode ? Visibility.Visible : Visibility.Collapsed,
                 IsHitTestVisible = false
@@ -726,8 +777,30 @@ namespace imgsaver
                 }
             };
 
-            card.MouseEnter += (s, e) => card.Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush");
-            card.MouseLeave += (s, e) => card.Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush");
+            card.MouseEnter += (s, e) =>
+            {
+                card.Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush");
+                card.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentBrush");
+                if (thumbnail.RenderTransform is ScaleTransform st)
+                {
+                    st.ScaleX = 1.05;
+                    st.ScaleY = 1.05;
+                }
+            };
+
+            card.MouseLeave += (s, e) =>
+            {
+                card.Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush");
+                if (!_selectedImages.Contains(imagePath))
+                {
+                    card.BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
+                }
+                if (thumbnail.RenderTransform is ScaleTransform st)
+                {
+                    st.ScaleX = 1.0;
+                    st.ScaleY = 1.0;
+                }
+            };
 
             return card;
         }
@@ -898,6 +971,20 @@ namespace imgsaver
 
         private void DisplayCurrentPage()
         {
+            // Release memory of previous page thumbnail images before clearing UI
+            foreach (UIElement child in ImageGrid.Children)
+            {
+                if (child is Border card && card.Child is Grid grid)
+                {
+                    var stack = grid.Children.OfType<StackPanel>().FirstOrDefault();
+                    var thumbBorder = stack?.Children.OfType<Border>().FirstOrDefault();
+                    if (thumbBorder?.Child is System.Windows.Controls.Image img)
+                    {
+                        img.Source = null;
+                    }
+                }
+            }
+
             ImageGrid.Children.Clear();
             EmptyState.Visibility = Visibility.Collapsed;
 

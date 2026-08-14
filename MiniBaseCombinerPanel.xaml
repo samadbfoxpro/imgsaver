@@ -1,0 +1,132 @@
+<Window x:Class="imgsaver.MiniBaseCombinerPanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Base Prompt Fast Combiner" Height="370" Width="350"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" WindowStartupLocation="Manual">
+    <Window.Resources>
+        <ContextMenu x:Key="TextBoxContextMenu">
+            <MenuItem Header="{DynamicResource Menu_Cut}" Command="ApplicationCommands.Cut"/>
+            <MenuItem Header="{DynamicResource Menu_Copy}" Command="ApplicationCommands.Copy"/>
+            <MenuItem Header="{DynamicResource Menu_Paste}" Command="ApplicationCommands.Paste"/>
+            <Separator Background="#2A3A4A" Height="1" Margin="2,4"/>
+            <MenuItem Header="{DynamicResource Menu_SelectAll}" Command="ApplicationCommands.SelectAll"/>
+        </ContextMenu>
+    </Window.Resources>
+
+    <Border Margin="8" Background="#181C24" CornerRadius="10" BorderBrush="#00E5FF" BorderThickness="1.2">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- Titlebar -->
+                <RowDefinition Height="Auto"/> <!-- Status / Summary -->
+                <RowDefinition Height="*"/>    <!-- Base Prompt Editor -->
+                <RowDefinition Height="Auto"/> <!-- Actions -->
+            </Grid.RowDefinitions>
+
+            <!-- Title bar -->
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⚡" FontSize="13" Foreground="#00E5FF" Margin="0,0,6,0"/>
+                    <TextBlock Text="Base Prompt &amp; Fast Combiner" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button Content="✕" HorizontalAlignment="Right" Width="22" Height="22" Click="BtnClose_Click"
+                        Foreground="#888" Background="Transparent" BorderThickness="0" Cursor="Hand" FontWeight="Bold"/>
+            </Grid>
+
+            <!-- Status Summary -->
+            <Border Grid.Row="1" Margin="0,0,0,10" Background="#0F172A" CornerRadius="6" BorderBrush="#334155" BorderThickness="1" Padding="8,6">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtStatusIcon" Text="🧩" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtCombinerSummary" Text="Checking active combiner options..." FontSize="10.5" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Base Prompt Editor Card -->
+            <Grid Grid.Row="2" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="0,0,0,5">
+                    <TextBlock Text="Base Prompt (Untouched Base Text):" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="ChkAutoCaptureBase" Content="Auto Base" FontSize="10.5" Foreground="#38BDF8" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" Click="ChkAutoCaptureBase_Click" ToolTip="دریافت اتوماتیک متن اولیه کپی‌شده هنگام ترکیب"/>
+                </Grid>
+                <TextBox x:Name="TxtBasePrompt" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontSize="12"
+                         Padding="8,6" ContextMenu="{StaticResource TextBoxContextMenu}" TextChanged="TxtBasePrompt_TextChanged"
+                         Background="#0F172A" Foreground="#F8FAFC" BorderBrush="#334155" BorderThickness="1"/>
+            </Grid>
+
+            <!-- Actions Footer -->
+            <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Combine & Copy Main Action Button -->
+                <Button x:Name="BtnCombineAndCopy" Grid.Row="0" Click="BtnCombineAndCopy_Click" Height="36" Margin="0,0,0,8" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" CornerRadius="6">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#00E5FF" Offset="0"/>
+                                        <GradientStop Color="#0284C7" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="⚡" FontSize="13" Foreground="Black" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Combine &amp; Copy to Clipboard" FontSize="11.5" FontWeight="Bold" Foreground="Black" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Opacity" Value="0.88"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="bd" Property="Opacity" Value="0.75"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Auxiliary Buttons -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Grid.Column="0" Content="📋 Copy Base Only" Click="BtnCopyBaseOnly_Click" Height="28" FontSize="10.5" FontWeight="SemiBold"
+                            Foreground="#CBD5E1" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Button Grid.Column="2" Content="🗑️ Clear" Click="BtnClear_Click" Height="28" FontSize="10.5" FontWeight="SemiBold"
+                            Foreground="#CBD5E1" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
+            </Grid>
+
+        </Grid>
+    </Border>
+</Window>

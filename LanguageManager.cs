@@ -56,6 +56,14 @@ namespace imgsaver
         public static void ApplyWindowLanguage(Window window)
         {
             if (window == null) return;
+            
+            // Keep Browser, BrowserSettings and MiniClipboard windows always LeftToRight
+            if (window is BrowserWindow || window is BrowserSettingsWindow || window is MiniClipboardWindow)
+            {
+                window.FlowDirection = System.Windows.FlowDirection.LeftToRight;
+                return;
+            }
+
             window.FlowDirection = (_currentLanguage == "fa") ? System.Windows.FlowDirection.RightToLeft : System.Windows.FlowDirection.LeftToRight;
         }
 

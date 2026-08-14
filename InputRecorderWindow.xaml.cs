@@ -43,6 +43,13 @@ namespace imgsaver
             _recorder.OnStopRequested += () => {
                 Dispatcher.Invoke(() => { if (_recorder.IsRecording) StopRecording(); });
             };
+
+            _player.OnInterventionStop += () => {
+                Dispatcher.Invoke(() => {
+                    _isInternalPlaying = false;
+                    TxtStatus.Text = "Stopped (ESC/Interrupted)";
+                });
+            };
         }
 
         private int GetSelectedSlot()
@@ -159,7 +166,7 @@ namespace imgsaver
                     UpdateEventCountDisplay();
                     _isUpdatingUiInternally = false;
 
-                    TxtStatus.Text = $"Playing Slot {currentSlot}... ";
+                    TxtStatus.Text = $"Playing Slot {currentSlot}... (Press ESC to Cancel)";
 
                     _player.SetEvents(RecordingManager.GetEvents(currentSlot));
                     _player.SetSpeed(RecordingManager.PlaybackSpeed);
@@ -201,6 +208,14 @@ namespace imgsaver
             _recorder.Dispose();
             _player.Stop();
             this.Close();
+        }
+
+        private void Window_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+            {
+                this.DragMove();
+            }
         }
     }
 }

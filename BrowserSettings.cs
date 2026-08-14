@@ -41,7 +41,7 @@ namespace imgsaver
 
         private static string FilePath => DataPathManager.GetSettingsFilePath("browser_settings.json");
 
-        public static BrowserSettings Load()
+        public static BrowserSettings Load(BrowserProfile? profile = null)
         {
             try
             {
@@ -60,7 +60,7 @@ namespace imgsaver
             return new BrowserSettings();
         }
 
-        public void Save()
+        public void Save(BrowserProfile? profile = null)
         {
             try
             {

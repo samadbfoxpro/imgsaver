@@ -12,12 +12,12 @@ namespace imgsaver
     public partial class MiniQuickSaverWindow : Window
     {
         private string _savePath;
-        private HwndSource _hwndSource;
-        private IntPtr _nextClipboardViewer;
-        private IntPtr _windowHandle;
+        private HwndSource? _hwndSource;
+        private IntPtr _windowHandle = IntPtr.Zero;
         private bool _ignoreNextClipboardChange = true;
         private DateTime _lastClipboardTime = DateTime.MinValue;
         private bool _isSaving = false;
+        private string _lastClipboardText = "";
 
         private InputPlayer _miniPlayer = new InputPlayer();
 
@@ -30,19 +30,14 @@ namespace imgsaver
             set { SetValue(IsDisabledProperty, value); }
         }
 
-
         // Win32 APIs
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SetClipboardViewer(IntPtr hWndNewViewer);
+        private static extern bool AddClipboardFormatListener(IntPtr hwnd);
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool ChangeClipboardChain(IntPtr hWndRemove, IntPtr hWndNewNext);
+        private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
-
-        private const int WM_DRAWCLIPBOARD = 0x0308;
-        private const int WM_CHANGECBCHAIN = 0x030D;
+        private const int WM_CLIPBOARDUPDATE = 0x031D;
 
         public MiniQuickSaverWindow(string savePath)
         {
@@ -55,38 +50,45 @@ namespace imgsaver
 
         private void MiniQuickSaverWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            var helper = new WindowInteropHelper(this);
-            _windowHandle = helper.Handle;
-            _hwndSource = HwndSource.FromHwnd(_windowHandle);
-            _hwndSource?.AddHook(WndProc);
-
-            _ignoreNextClipboardChange = true;
-            _nextClipboardViewer = SetClipboardViewer(_windowHandle);
+            try
+            {
+                var helper = new WindowInteropHelper(this);
+                _windowHandle = helper.EnsureHandle();
+                if (_windowHandle != IntPtr.Zero)
+                {
+                    _hwndSource = HwndSource.FromHwnd(_windowHandle);
+                    _hwndSource?.AddHook(WndProc);
+                    _ignoreNextClipboardChange = true;
+                    AddClipboardFormatListener(_windowHandle);
+                }
+            }
+            catch { }
         }
 
         private void MiniQuickSaverWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (_hwndSource != null)
+            try
             {
-                ChangeClipboardChain(_windowHandle, _nextClipboardViewer);
-                _hwndSource.RemoveHook(WndProc);
+                if (_windowHandle != IntPtr.Zero)
+                {
+                    RemoveClipboardFormatListener(_windowHandle);
+                }
+                if (_hwndSource != null)
+                {
+                    _hwndSource.RemoveHook(WndProc);
+                    _hwndSource.Dispose();
+                    _hwndSource = null;
+                }
             }
+            catch { }
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            switch (msg)
+            if (msg == WM_CLIPBOARDUPDATE)
             {
-                case WM_DRAWCLIPBOARD:
-                    OnClipboardChanged();
-                    SendMessage(_nextClipboardViewer, msg, wParam, lParam);
-                    break;
-                case WM_CHANGECBCHAIN:
-                    if (wParam == _nextClipboardViewer)
-                        _nextClipboardViewer = lParam;
-                    else if (_nextClipboardViewer != IntPtr.Zero)
-                        SendMessage(_nextClipboardViewer, msg, wParam, lParam);
-                    break;
+                OnClipboardChanged();
+                handled = true;
             }
             return IntPtr.Zero;
         }

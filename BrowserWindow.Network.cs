@@ -461,17 +461,10 @@ namespace imgsaver
 
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    if (settings.EnableEmbeddedMiniClip && EmbeddedMiniClip != null)
+                    var miniClip = GetOpenMiniClipboardWindow();
+                    if (miniClip != null)
                     {
-                        EmbeddedMiniClip.ImportBrowserImage(cachePath, settings.MinImageWidth, settings.MinImageHeight, settings.ReplaceMiniClipImageOnImport);
-                    }
-                    else
-                    {
-                        var miniClip = GetOpenMiniClipboardWindow();
-                        if (miniClip != null)
-                        {
-                            miniClip.ImportBrowserImage(cachePath, settings.MinImageWidth, settings.MinImageHeight, settings.ReplaceMiniClipImageOnImport);
-                        }
+                        miniClip.ImportBrowserImage(cachePath, settings.MinImageWidth, settings.MinImageHeight, settings.ReplaceMiniClipImageOnImport);
                     }
                 });
             }
