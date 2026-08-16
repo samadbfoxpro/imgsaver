@@ -25,6 +25,41 @@ namespace imgsaver
                 System.Windows.Controls.Control.PreviewMouseLeftButtonDownEvent,
                 new System.Windows.Input.MouseButtonEventHandler(TextBox_PreviewMouseLeftButtonDown));
 
+            // Prevent WPF from automatically terminating when the AuthLockWindow closes
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            // Master Password Authentication Gate
+            if (SecurityManager.ShouldPromptPasswordOnStartup())
+            {
+                var authWindow = new AuthLockWindow(isRuntimeLock: false);
+                bool? authenticated = authWindow.ShowDialog();
+
+                if (authenticated != true)
+                {
+                    Shutdown();
+                    return;
+                }
+            }
+
+            // Authentication succeeded: create and assign MainWindow
+            var mainWindow = new MainWindow();
+            MainWindow = mainWindow;
+            
+            // Re-enable normal window closure shutdown mode
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            
+            mainWindow.Opacity = 0.0;
+            mainWindow.Show();
+
+            var fadeIn = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = 0.0,
+                To = 1.0,
+                Duration = TimeSpan.FromMilliseconds(280),
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+            };
+            mainWindow.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
             // Defer heavy I/O (browser settings JSON read + floating window init) to AFTER the UI is visible
             Dispatcher.BeginInvoke(new Action(() =>
             {

@@ -4,19 +4,19 @@
         Title="Manage Extras" 
         Width="550" Height="500"
         MinWidth="450" MinHeight="400"
-        Background="Transparent"
+        Background="#18191C"
         WindowStartupLocation="CenterOwner"
         FontFamily="Segoe UI" 
-        WindowStyle="None"
-        AllowsTransparency="True"
         ResizeMode="CanResize"
+        FlowDirection="LeftToRight"
         StateChanged="Window_StateChanged">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="32" 
-                      ResizeBorderThickness="5" 
+                      ResizeBorderThickness="6" 
                       GlassFrameThickness="0"
-                      CornerRadius="8"/>
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Border x:Name="MainBorder" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Background="{StaticResource BackgroundBrush}">

@@ -124,6 +124,8 @@ namespace imgsaver
             this.PreviewKeyDown += BrowserWindow_PreviewKeyDown;
             this.Loaded += (s, e) =>
             {
+                WindowResizingHelper.HookWindow(this);
+                DwmHelper.UseImmersiveDarkMode(this);
                 UpdateProfileUIBadge();
                 InitializeCombiner();
                 var handle = new WindowInteropHelper(this).Handle;
@@ -138,20 +140,21 @@ namespace imgsaver
             {
                 if (CurrentProfile != null && BtnAccountProfile != null)
                 {
-                    BtnAccountProfile.ApplyTemplate();
-                    var iconBlock = BtnAccountProfile.Template.FindName("TxtProfileIcon", BtnAccountProfile) as TextBlock;
-                    var nameBlock = BtnAccountProfile.Template.FindName("TxtProfileName", BtnAccountProfile) as TextBlock;
-                    var border = BtnAccountProfile.Template.FindName("bd", BtnAccountProfile) as Border;
+                    if (UserProfileAvatarPath != null)
+                    {
+                        UserProfileAvatarPath.Data = ProfileVectorHelper.GetGeometry(CurrentProfile.Icon);
+                    }
+                    if (TxtProfileName != null)
+                    {
+                        TxtProfileName.Text = string.IsNullOrWhiteSpace(CurrentProfile.Name) ? "Account" : CurrentProfile.Name;
+                    }
 
-                    if (iconBlock != null) iconBlock.Text = CurrentProfile.Icon;
-                    if (nameBlock != null) nameBlock.Text = CurrentProfile.Name;
-
-                    if (border != null && !string.IsNullOrEmpty(CurrentProfile.ColorHex))
+                    if (UserProfileAvatarBorder != null && !string.IsNullOrEmpty(CurrentProfile.ColorHex))
                     {
                         try
                         {
                             var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(CurrentProfile.ColorHex);
-                            border.BorderBrush = new System.Windows.Media.SolidColorBrush(color);
+                            UserProfileAvatarBorder.Background = new System.Windows.Media.SolidColorBrush(color);
                         }
                         catch { }
                     }
@@ -168,7 +171,12 @@ namespace imgsaver
             if (selector.ShowDialog() == true && selector.SelectedProfile != null)
             {
                 if (selector.SelectedProfile.Id == CurrentProfile.Id)
+                {
+                    // Update in-place if the current profile was edited
+                    CurrentProfile = selector.SelectedProfile;
+                    UpdateProfileUIBadge();
                     return;
+                }
 
                 var newBrowser = new BrowserWindow(selector.SelectedProfile);
                 newBrowser.Show();
@@ -191,10 +199,13 @@ namespace imgsaver
             {
                 this.MaxHeight = double.PositiveInfinity;
                 this.MaxWidth = double.PositiveInfinity;
-                MainBorder.Margin = new Thickness(0);
+                var resizeThickness = SystemParameters.WindowResizeBorderThickness;
+                MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.BorderThickness = new Thickness(0);
                 if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(0);
+                if (MaximizeIconPath != null) MaximizeIconPath.Data = (Geometry)FindResource("IconRestore");
+                if (BtnMaximize != null) BtnMaximize.ToolTip = "بازگردانی";
             }
             else 
             {
@@ -204,6 +215,8 @@ namespace imgsaver
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.BorderThickness = new Thickness(1);
                 if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(8, 8, 0, 0);
+                if (MaximizeIconPath != null) MaximizeIconPath.Data = (Geometry)FindResource("IconMaximize");
+                if (BtnMaximize != null) BtnMaximize.ToolTip = "بزرگ کردن";
             }
         }
 
@@ -317,6 +330,17 @@ namespace imgsaver
 
         private async void BrowserWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+            // Ctrl+L for Quick App Security Lock
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.L)
+            {
+                if (SecurityManager.IsPasswordConfigured())
+                {
+                    e.Handled = true;
+                    AppLockManager.LockApp();
+                    return;
+                }
+            }
+
             // Ctrl+F5, Shift+F5, Ctrl+Shift+R or Ctrl+R for Hard Reload (Force Refresh & Clear Storage Cache)
             if ((e.Key == Key.F5 && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0) ||
                 (e.Key == Key.R && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)) ||
@@ -499,6 +523,18 @@ namespace imgsaver
                 Marshal.StructureToPtr(mmi, lParam, true);
             }
             catch { }
+        }
+
+        private void BtnAppLock_Click(object sender, RoutedEventArgs e)
+        {
+            if (SecurityManager.IsPasswordConfigured())
+            {
+                AppLockManager.LockApp();
+            }
+            else
+            {
+                CustomMessageBox.Show("رمز عبور اصلی هنوز تعریف نشده است. لطفاً از بخش تنظیمات برنامه ابتدا رمز عبور تعیین کنید.", "امنیت برنامه", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
     }
 }

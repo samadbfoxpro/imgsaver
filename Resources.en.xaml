@@ -8,9 +8,7 @@
     <sys:String x:Key="Btn_ExtraFloat">EXTRA FLOAT</sys:String>
     <sys:String x:Key="Btn_Persona">PERSONA</sys:String>
     <sys:String x:Key="Btn_Gallery">GALLERY</sys:String>
-    <sys:String x:Key="Btn_ClipSaver">CLIP SAVER</sys:String>
     <sys:String x:Key="Btn_Snippets">SNIPPETS</sys:String>
-    <sys:String x:Key="Btn_QuickSave">QUICK SAVE</sys:String>
     <sys:String x:Key="Btn_Remote">REMOTE</sys:String>
     <sys:String x:Key="Btn_CloudLink">CLOUD LINK</sys:String>
     <sys:String x:Key="Btn_Archive">ARCHIVE</sys:String>

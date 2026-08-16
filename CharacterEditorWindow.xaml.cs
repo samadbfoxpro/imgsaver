@@ -178,7 +178,8 @@ namespace imgsaver
         {
             if (WindowState == WindowState.Maximized)
             {
-                MainBorder.Margin = new Thickness(8);
+                var resizeThickness = SystemParameters.WindowResizeBorderThickness;
+                MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.BorderThickness = new Thickness(0);
             }

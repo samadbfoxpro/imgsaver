@@ -40,10 +40,6 @@
 			<Generator>MSBuild:Compile</Generator>
 			<XamlRuntime>Wpf</XamlRuntime>
 		</Page>
-		<Page Update="ClipboardSaverWindow.xaml">
-			<Generator>MSBuild:Compile</Generator>
-			<XamlRuntime>Wpf</XamlRuntime>
-		</Page>
 		<Page Update="InputRecorderWindow.xaml">
 			<Generator>MSBuild:Compile</Generator>
 			<XamlRuntime>Wpf</XamlRuntime>

@@ -9,6 +9,7 @@
         FontFamily="Segoe UI" 
         WindowStyle="None"
         AllowsTransparency="True"
+        FlowDirection="LeftToRight"
         ResizeMode="CanResize">
 
     <WindowChrome.WindowChrome>

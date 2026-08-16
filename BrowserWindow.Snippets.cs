@@ -700,6 +700,84 @@ window.addEventListener('focus', function() {
                 if (data == null) return;
 
                 string? type = data["type"]?.ToString();
+                if (type == "getSettings")
+                {
+                    var resp = new JObject
+                    {
+                        ["type"] = "initSettings",
+                        ["data"] = JObject.FromObject(_currentSettings)
+                    };
+                    (sender as CoreWebView2)?.PostWebMessageAsJson(resp.ToString());
+                    return;
+                }
+
+                if (type == "saveSettings")
+                {
+                    var sData = data["data"];
+                    if (sData != null)
+                    {
+                        if (sData["LoadImages"] != null) _currentSettings.LoadImages = sData["LoadImages"]!.Value<bool>();
+                        if (sData["LoadMedia"] != null) _currentSettings.LoadMedia = sData["LoadMedia"]!.Value<bool>();
+                        if (sData["EnableJavaScript"] != null) _currentSettings.EnableJavaScript = sData["EnableJavaScript"]!.Value<bool>();
+                        if (sData["MuteAudio"] != null) _currentSettings.MuteAudio = sData["MuteAudio"]!.Value<bool>();
+                        if (sData["EnableCombinerBar"] != null) _currentSettings.EnableCombinerBar = sData["EnableCombinerBar"]!.Value<bool>();
+                        if (sData["AutoImportImagesToMiniClip"] != null) _currentSettings.AutoImportImagesToMiniClip = sData["AutoImportImagesToMiniClip"]!.Value<bool>();
+                        if (sData["ShowMiniClipImageImportButtons"] != null) _currentSettings.ShowMiniClipImageImportButtons = sData["ShowMiniClipImageImportButtons"]!.Value<bool>();
+                        if (sData["ShowQuickPasteButton"] != null) _currentSettings.ShowQuickPasteButton = sData["ShowQuickPasteButton"]!.Value<bool>();
+                        if (sData["ShowFloatingRecordPlayer"] != null) _currentSettings.ShowFloatingRecordPlayer = sData["ShowFloatingRecordPlayer"]!.Value<bool>();
+                        if (sData["AutoHideStatus"] != null) _currentSettings.AutoHideStatus = sData["AutoHideStatus"]!.Value<bool>();
+                        if (sData["ProxyMode"] != null) _currentSettings.ProxyMode = sData["ProxyMode"]!.ToString();
+                        if (sData["ProxyType"] != null) _currentSettings.ProxyType = sData["ProxyType"]!.ToString();
+                        if (sData["ProxyAddress"] != null) _currentSettings.ProxyAddress = sData["ProxyAddress"]!.ToString();
+                        if (sData["ProxyPort"] != null) _currentSettings.ProxyPort = sData["ProxyPort"]!.ToString();
+
+                        _currentSettings.Save(CurrentProfile);
+                        RefreshSettings();
+                    }
+                    return;
+                }
+
+                if (type == "clearBrowserData")
+                {
+                    bool deleteLogin = data["deleteLogin"]?.Value<bool>() ?? false;
+                    if (deleteLogin && sender is CoreWebView2 coreWeb)
+                    {
+                        await coreWeb.Profile.ClearBrowsingDataAsync();
+                    }
+                    DeleteDirectoryContents(_permanentCacheFolder);
+                    return;
+                }
+
+                if (type == "getCombinerData")
+                {
+                    var cData = _combinerData ?? PromptCombinerStore.Load();
+                    var resp = new JObject
+                    {
+                        ["type"] = "initCombinerData",
+                        ["data"] = JObject.FromObject(cData)
+                    };
+                    (sender as CoreWebView2)?.PostWebMessageAsJson(resp.ToString());
+                    return;
+                }
+
+                if (type == "saveCombinerData")
+                {
+                    var cDataToken = data["data"];
+                    if (cDataToken != null)
+                    {
+                        var updatedData = cDataToken.ToObject<PromptCombinerData>();
+                        if (updatedData != null)
+                        {
+                            PromptCombinerStore.Save(updatedData);
+                            _combinerData = updatedData;
+                            PopulateCombinerFolders();
+                            UpdateCombinerRuleBadge();
+                            UpdateStatus("تنظیمات کمباینر ذخیره شد", "Combiner");
+                        }
+                    }
+                    return;
+                }
+
                 if (type == "keyup")
                 {
                     HandleKeyUp(data["key"]?.ToString());

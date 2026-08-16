@@ -11,10 +11,12 @@ namespace imgsaver
 {
     public partial class PromptTaggerWindow : Window
     {
-        private readonly System.Windows.Media.Brush _activeTabBorderBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#06B6D4"));
+        private readonly System.Windows.Media.Brush _activeTabBgBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0F2D3A"));
+        private readonly System.Windows.Media.Brush _inactiveTabBgBrush = System.Windows.Media.Brushes.Transparent;
+        private readonly System.Windows.Media.Brush _activeTabBorderBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0891B2"));
         private readonly System.Windows.Media.Brush _inactiveTabBorderBrush = System.Windows.Media.Brushes.Transparent;
-        private readonly System.Windows.Media.Brush _activeTextBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#06B6D4"));
-        private readonly System.Windows.Media.Brush _inactiveTextBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#8899AA"));
+        private readonly System.Windows.Media.Brush _activeTextBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#38BDF8"));
+        private readonly System.Windows.Media.Brush _inactiveTextBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#94A3B8"));
 
         private string _initialRawPrompt = "";
         private bool _isUpdatingLiveDiffs = false;
@@ -42,6 +44,7 @@ namespace imgsaver
 
             Loaded += PromptTaggerWindow_Loaded;
             Closed += PromptTaggerWindow_Closed;
+            StateChanged += PromptTaggerWindow_StateChanged;
         }
 
         private void PromptTaggerWindow_Loaded(object sender, RoutedEventArgs e)
@@ -93,9 +96,48 @@ namespace imgsaver
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 1) DragMove();
+            if (e.ClickCount == 2)
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
+            else if (e.ClickCount == 1) DragMove();
         }
 
+        private void PromptTaggerWindow_StateChanged(object? sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بازگردانی";
+                    if (MaximizeIconPath != null && TryFindResource("IconRestore") is StreamGeometry restoreGeom)
+                    {
+                        MaximizeIconPath.Data = restoreGeom;
+                    }
+                }
+                var resizeThickness = SystemParameters.WindowResizeBorderThickness;
+                MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
+                MainBorder.CornerRadius = new CornerRadius(0);
+                MainBorder.BorderThickness = new Thickness(0);
+            }
+            else
+            {
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بزرگ کردن";
+                    if (MaximizeIconPath != null && TryFindResource("IconMaximize") is StreamGeometry maxGeom)
+                    {
+                        MaximizeIconPath.Data = maxGeom;
+                    }
+                }
+                MainBorder.Margin = new Thickness(0);
+                MainBorder.CornerRadius = new CornerRadius(8);
+                MainBorder.BorderThickness = new Thickness(1);
+            }
+        }
+
+        private void BtnMinimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
         // ─── Tab Navigation ──────────────────────────────────────────────
@@ -110,12 +152,15 @@ namespace imgsaver
             PanelDiff.Visibility = tabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
             PanelInteractive.Visibility = tabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
 
+            BtnTabReplacer.Background = tabIndex == 0 ? _activeTabBgBrush : _inactiveTabBgBrush;
             BtnTabReplacer.BorderBrush = tabIndex == 0 ? _activeTabBorderBrush : _inactiveTabBorderBrush;
             BtnTabReplacer.Foreground = tabIndex == 0 ? _activeTextBrush : _inactiveTextBrush;
 
+            BtnTabDiff.Background = tabIndex == 1 ? _activeTabBgBrush : _inactiveTabBgBrush;
             BtnTabDiff.BorderBrush = tabIndex == 1 ? _activeTabBorderBrush : _inactiveTabBorderBrush;
             BtnTabDiff.Foreground = tabIndex == 1 ? _activeTextBrush : _inactiveTextBrush;
 
+            BtnTabInteractive.Background = tabIndex == 2 ? _activeTabBgBrush : _inactiveTabBgBrush;
             BtnTabInteractive.BorderBrush = tabIndex == 2 ? _activeTabBorderBrush : _inactiveTabBorderBrush;
             BtnTabInteractive.Foreground = tabIndex == 2 ? _activeTextBrush : _inactiveTextBrush;
         }

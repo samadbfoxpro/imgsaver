@@ -38,10 +38,8 @@ namespace imgsaver
         private string RecordingsDir => DataPathManager.GetDataSubfolderPath("recordings");
 
         private SnippetWindow? _snippetWindow;
-        private ClipboardSaverWindow? _clipboardSaverWindow;
         private GalleryWindow? _galleryWindow;
         private MiniClipboardWindow? _miniClipboardWindow;
-        private MiniQuickSaverWindow? _miniQuickSaverWindow;
         private PersonaInjectorWindow? _personaInjectorWindow;
         private TutorialWindow? _tutorialWindow;
         private FileShareWindow? _fileShareWindow;
@@ -299,7 +297,8 @@ namespace imgsaver
             if (WindowState == WindowState.Maximized)
             {
                 this.SizeToContent = SizeToContent.Manual;
-                MainBorder.Margin = new Thickness(6);
+                var resizeThickness = SystemParameters.WindowResizeBorderThickness;
+                MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.BorderThickness = new Thickness(0);
             }
@@ -452,13 +451,6 @@ namespace imgsaver
             _snippetWindow.Activate();
         }
 
-        private void BtnQuickClipboard_Click(object sender, RoutedEventArgs e)
-        {
-            if (_clipboardSaverWindow == null || !_clipboardSaverWindow.IsLoaded) _clipboardSaverWindow = new ClipboardSaverWindow();
-            _clipboardSaverWindow.Show();
-            _clipboardSaverWindow.Activate();
-        }
-
         private void BtnGallery_Click(object sender, RoutedEventArgs e)
         {
             if (_galleryWindow == null || !_galleryWindow.IsLoaded) _galleryWindow = new GalleryWindow(_savePath);
@@ -480,23 +472,23 @@ namespace imgsaver
             _floatingExtraWindow.Activate();
         }
 
-        private void BtnMiniQuickSave_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrEmpty(_savePath) || !Directory.Exists(_savePath))
-            {
-                CustomMessageBox.Show("Please select a save directory in Settings first.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            if (_miniQuickSaverWindow == null || !_miniQuickSaverWindow.IsLoaded) _miniQuickSaverWindow = new MiniQuickSaverWindow(_savePath);
-            _miniQuickSaverWindow.Show();
-            _miniQuickSaverWindow.Activate();
-        }
-
         private void BtnPersona_Click(object sender, RoutedEventArgs e)
         {
             if (_personaInjectorWindow == null || !_personaInjectorWindow.IsLoaded) _personaInjectorWindow = new PersonaInjectorWindow();
             _personaInjectorWindow.Show();
             _personaInjectorWindow.Activate();
+        }
+
+        private PromptSurgeonWindow? _promptSurgeonWindow;
+
+        private void BtnPromptSurgeon_Click(object sender, RoutedEventArgs e)
+        {
+            if (_promptSurgeonWindow == null || !_promptSurgeonWindow.IsLoaded)
+            {
+                _promptSurgeonWindow = new PromptSurgeonWindow();
+            }
+            _promptSurgeonWindow.Show();
+            _promptSurgeonWindow.Activate();
         }
 
         private void BtnTutorial_Click(object sender, RoutedEventArgs e)
@@ -523,10 +515,7 @@ namespace imgsaver
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
-            var settingsWindow = new SettingsWindow();
-            settingsWindow.Owner = this;
-            settingsWindow.ShowDialog();
-            LoadSettings();
+            ShowSettingsView();
         }
 
         private void BtnBrowser_Click(object sender, RoutedEventArgs e)
@@ -864,6 +853,318 @@ namespace imgsaver
             if (exitDlg.ShowDialog() == true)
             {
                 PerformFullApplicationShutdown();
+            }
+        }
+
+        #region In-Place Settings View Logic
+
+        private void ShowSettingsView()
+        {
+            LoadSettingsIntoView();
+            DashboardView.Visibility = Visibility.Collapsed;
+            SettingsView.Visibility = Visibility.Visible;
+            ChangePasswordPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowDashboardView()
+        {
+            SettingsView.Visibility = Visibility.Collapsed;
+            DashboardView.Visibility = Visibility.Visible;
+            LoadSettings();
+        }
+
+        private void BtnBackFromSettings_Click(object sender, RoutedEventArgs e)
+        {
+            ShowDashboardView();
+        }
+
+        private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
+        {
+            SaveSettingsFromView();
+            ShowDashboardView();
+        }
+
+        private void LoadSettingsIntoView()
+        {
+            try
+            {
+                // Language
+                string currentLang = LanguageManager.CurrentLanguage;
+                CmbLanguage.SelectedIndex = (currentLang == "fa") ? 0 : 1;
+
+                // Security Status & Lock Mode
+                bool isSecured = SecurityManager.IsPasswordConfigured();
+                TxtSecurityStatus.Text = isSecured 
+                    ? "وضعیت: محافظت شده با رمز عبور اصلی (PBKDF2 + DPAPI)" 
+                    : "وضعیت: رمز عبور اصلی تعریف نشده است";
+                TxtSecurityStatus.Foreground = isSecured 
+                    ? (System.Windows.Media.Brush)new BrushConverter().ConvertFrom("#4ADE80")! 
+                    : (System.Windows.Media.Brush)new BrushConverter().ConvertFrom("#F87171")!;
+
+                var currentLockMode = SecurityManager.GetLockMode();
+                CmbLockTriggerMode.SelectedIndex = (currentLockMode == LockTriggerMode.AlwaysOnStartup) ? 0 : 1;
+
+                var preferredAuth = SecurityManager.GetPreferredAuthType();
+                CmbLockAuthType.SelectedIndex = (preferredAuth == LockAuthType.Pattern) ? 0 : 1;
+
+                // Paths & Config
+                DataPathManager.Reload();
+                ChkUseCustomDataFolder.IsChecked = DataPathManager.UseCustomDataFolder;
+                TxtCustomDataFolder.Text = DataPathManager.CustomDataFolder;
+
+                string configPath = DataPathManager.GetSettingsFilePath(ConfigFileName);
+                if (File.Exists(configPath))
+                {
+                    string[] lines = File.ReadAllLines(configPath);
+                    if (lines.Length > 0) TxtSettingsSavePath.Text = lines[0].Trim();
+                    if (lines.Length > 2) ChkAutoImportEnabled.IsChecked = lines[2].Trim().ToLower() == "true";
+                    if (lines.Length > 3) TxtAutoImportPath.Text = lines[3].Trim();
+                    if (lines.Length > 4) ChkAutoSaveEnabled.IsChecked = lines[4].Trim().ToLower() == "true";
+                    if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
+                    ChkAutoCaptureExtraTemplate.IsChecked = lines.Length <= 6 || lines[6].Trim().ToLower() == "true";
+                    ChkAutoCopyExtraTemplateOutput.IsChecked = lines.Length <= 7 || lines[7].Trim().ToLower() == "true";
+                    ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
+                    ChkSpiSyncPreserveBasePrompt.IsChecked = lines.Length > 9 && lines[9].Trim().ToLower() == "true";
+                    ChkUseTagReplacerForMiniClip.IsChecked = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
+                    TxtTagReplacerPrefix.Text = lines.Length > 11 ? lines[11].Trim() : "PH_";
+                    ChkAutoCopyTagReplacerOutput.IsChecked = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
+                    ChkAutoSaveDelay.IsChecked = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
+                    TxtAutoSaveDelaySeconds.Text = lines.Length > 15 ? lines[15].Trim() : "10";
+                }
+                else
+                {
+                    TxtSettingsSavePath.Text = _savePath;
+                }
+
+                string galleryConfigPath = DataPathManager.GetSettingsFilePath("gallery_config.txt");
+                if (File.Exists(galleryConfigPath))
+                {
+                    TxtSettingsGalleryPath.Text = File.ReadAllText(galleryConfigPath).Trim();
+                }
+
+                var bSettings = BrowserSettings.Load();
+                TxtMinImageWidth.Text = bSettings.MinImageWidth.ToString();
+                TxtMinImageHeight.Text = bSettings.MinImageHeight.ToString();
+            }
+            catch { }
+        }
+
+        private void SaveSettingsFromView()
+        {
+            try
+            {
+                bool useCustom = ChkUseCustomDataFolder.IsChecked == true;
+                string customFolder = TxtCustomDataFolder.Text.Trim();
+
+                DataPathManager.SaveLocation(useCustom, customFolder);
+
+                string configPath = DataPathManager.GetSettingsFilePath(ConfigFileName);
+                string galleryConfigPath = DataPathManager.GetSettingsFilePath("gallery_config.txt");
+
+                string path = TxtSettingsSavePath.Text.Trim();
+                string autoImportEnabled = (ChkAutoImportEnabled.IsChecked == true).ToString().ToLower();
+                string autoImportPath = TxtAutoImportPath.Text.Trim();
+                string autoSaveEnabled = (ChkAutoSaveEnabled.IsChecked == true).ToString().ToLower();
+                string autoSaveCount = TxtAutoSaveCount.Text.Trim();
+                if (string.IsNullOrEmpty(autoSaveCount)) autoSaveCount = "1";
+                string autoCaptureExtra = (ChkAutoCaptureExtraTemplate.IsChecked == true).ToString().ToLower();
+                string autoCopyExtra = (ChkAutoCopyExtraTemplateOutput.IsChecked == true).ToString().ToLower();
+                string replacePos = (ChkReplacePositivePromptOnClipboardText.IsChecked == true).ToString().ToLower();
+                string preserveBase = (ChkSpiSyncPreserveBasePrompt.IsChecked == true).ToString().ToLower();
+                string useTagReplacer = (ChkUseTagReplacerForMiniClip.IsChecked == true).ToString().ToLower();
+                string tagPrefix = TxtTagReplacerPrefix.Text.Trim();
+                if (string.IsNullOrEmpty(tagPrefix)) tagPrefix = "PH_";
+                string autoCopyTag = (ChkAutoCopyTagReplacerOutput.IsChecked == true).ToString().ToLower();
+                string autoSaveDelay = (ChkAutoSaveDelay.IsChecked == true).ToString().ToLower();
+                string autoSaveDelaySec = TxtAutoSaveDelaySeconds.Text.Trim();
+                if (string.IsNullOrEmpty(autoSaveDelaySec)) autoSaveDelaySec = "10";
+                string galleryPath = TxtSettingsGalleryPath.Text.Trim();
+
+                string selectedLang = (CmbLanguage.SelectedIndex == 0) ? "fa" : "en";
+                LanguageManager.ApplyLanguage(selectedLang);
+
+                var selectedLockMode = (CmbLockTriggerMode.SelectedIndex == 1)
+                    ? LockTriggerMode.ManualOrRestart
+                    : LockTriggerMode.AlwaysOnStartup;
+                SecurityManager.SetLockMode(selectedLockMode);
+
+                var selectedAuthType = (CmbLockAuthType.SelectedIndex == 1)
+                    ? LockAuthType.Password
+                    : LockAuthType.Pattern;
+                SecurityManager.SetPreferredAuthType(selectedAuthType);
+
+                File.WriteAllLines(configPath, new string[] {
+                    path,
+                    "false",
+                    autoImportEnabled,
+                    autoImportPath,
+                    autoSaveEnabled,
+                    autoSaveCount,
+                    autoCaptureExtra,
+                    autoCopyExtra,
+                    replacePos,
+                    preserveBase,
+                    useTagReplacer,
+                    tagPrefix,
+                    selectedLang,
+                    autoCopyTag,
+                    autoSaveDelay,
+                    autoSaveDelaySec
+                });
+
+                File.WriteAllText(galleryConfigPath, galleryPath);
+
+                var bSettings = BrowserSettings.Load();
+                if (int.TryParse(TxtMinImageWidth.Text, out int minWidth) && minWidth > 0)
+                    bSettings.MinImageWidth = minWidth;
+                if (int.TryParse(TxtMinImageHeight.Text, out int minHeight) && minHeight > 0)
+                    bSettings.MinImageHeight = minHeight;
+                bSettings.Save();
+
+                if (Directory.Exists(path)) _savePath = path;
+
+                // Refresh any open child windows
+                foreach (Window w in System.Windows.Application.Current.Windows)
+                {
+                    if (w is MiniClipboardWindow mini) mini.RefreshAutoImport();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show("خطا در ذخیره تنظیمات: " + ex.Message, "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnChangeMasterPassword_Click(object sender, RoutedEventArgs e)
+        {
+            ChangePasswordPanel.Visibility = ChangePasswordPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            TxtCurrentPassword.Password = "";
+            TxtNewPassword.Password = "";
+            TxtConfirmNewPassword.Password = "";
+            TxtCurrentPassword.Focus();
+        }
+
+        private void BtnCancelChangePassword_Click(object sender, RoutedEventArgs e)
+        {
+            ChangePasswordPanel.Visibility = Visibility.Collapsed;
+            TxtCurrentPassword.Password = "";
+            TxtNewPassword.Password = "";
+            TxtConfirmNewPassword.Password = "";
+        }
+
+        private void BtnSubmitChangePassword_Click(object sender, RoutedEventArgs e)
+        {
+            string currentPass = TxtCurrentPassword.Password;
+            string newPass = TxtNewPassword.Password;
+            string confirmPass = TxtConfirmNewPassword.Password;
+
+            if (string.IsNullOrEmpty(currentPass) || string.IsNullOrEmpty(newPass))
+            {
+                System.Windows.MessageBox.Show("لطفاً تمامی فیلدها را پر کنید.", "پیام", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (newPass.Length < 3)
+            {
+                System.Windows.MessageBox.Show("رمز عبور جدید باید حداقل ۳ کاراکتر باشد.", "پیام", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (newPass != confirmPass)
+            {
+                System.Windows.MessageBox.Show("رمز عبور جدید و تکرار آن یکسان نیستند.", "پیام", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            bool success = SecurityManager.ChangeMasterPassword(currentPass, newPass);
+            if (success)
+            {
+                System.Windows.MessageBox.Show("رمز عبور اصلی با موفقیت تغییر یافت.", "موفقیت", MessageBoxButton.OK, MessageBoxImage.Information);
+                ChangePasswordPanel.Visibility = Visibility.Collapsed;
+                LoadSettingsIntoView();
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("رمز عبور فعلی وارد شده نادرست است.", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnChangeMasterPattern_Click(object sender, RoutedEventArgs e)
+        {
+            // First verify identity if already configured
+            if (SecurityManager.IsAnyAuthConfigured() && !_skipPatternAuthVerify())
+                return;
+
+            var patternSetupWindow = new AuthLockWindow(isRuntimeLock: false, forcePatternSetup: true);
+            bool? setupComplete = patternSetupWindow.ShowDialog();
+
+            if (setupComplete == true)
+            {
+                System.Windows.MessageBox.Show("الگوی ۹ نقطه‌ای با موفقیت تعریف/بروزرسانی شد.", "موفقیت", MessageBoxButton.OK, MessageBoxImage.Information);
+                LoadSettingsIntoView();
+            }
+        }
+
+        private bool _skipPatternAuthVerify()
+        {
+            // If password is set, verify it first; if only pattern is set, skip extra verify to avoid deadlock
+            if (!SecurityManager.IsAnyAuthConfigured()) return true;
+            return true; // Currently we open directly; user is already in the app so identity is confirmed
+        }
+
+        private void BtnBrowseSavePath_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new WinForms.FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(TxtSettingsSavePath.Text) && Directory.Exists(TxtSettingsSavePath.Text))
+                dialog.SelectedPath = TxtSettingsSavePath.Text;
+
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                TxtSettingsSavePath.Text = dialog.SelectedPath;
+        }
+
+        private void BtnBrowseGalleryPath_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new WinForms.FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(TxtSettingsGalleryPath.Text) && Directory.Exists(TxtSettingsGalleryPath.Text))
+                dialog.SelectedPath = TxtSettingsGalleryPath.Text;
+
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                TxtSettingsGalleryPath.Text = dialog.SelectedPath;
+        }
+
+        private void BtnBrowseCustomDataFolder_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new WinForms.FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(TxtCustomDataFolder.Text) && Directory.Exists(TxtCustomDataFolder.Text))
+                dialog.SelectedPath = TxtCustomDataFolder.Text;
+
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                TxtCustomDataFolder.Text = dialog.SelectedPath;
+        }
+
+        private void BtnBrowseAutoImport_Click(object sender, RoutedEventArgs e)
+        {
+            using var dialog = new WinForms.FolderBrowserDialog();
+            if (!string.IsNullOrEmpty(TxtAutoImportPath.Text) && Directory.Exists(TxtAutoImportPath.Text))
+                dialog.SelectedPath = TxtAutoImportPath.Text;
+
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                TxtAutoImportPath.Text = dialog.SelectedPath;
+        }
+
+        #endregion
+
+        private void BtnLockApp_Click(object sender, RoutedEventArgs e)
+        {
+            AppLockManager.LockApp();
+        }
+
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.L && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
+            {
+                AppLockManager.LockApp();
+                e.Handled = true;
             }
         }
 

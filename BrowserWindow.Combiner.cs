@@ -429,8 +429,7 @@ namespace imgsaver
                     FontWeight = FontWeights.SemiBold,
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Tag = item.Id,
-                    IsChecked = _combinerData.ActiveItemIds.Contains(item.Id),
-                    ToolTip = $"Text: {item.Text}"
+                    IsChecked = _combinerData.ActiveItemIds.Contains(item.Id)
                 };
 
                 // Custom Pill Styling
@@ -604,15 +603,7 @@ namespace imgsaver
 
         private void BtnOpenCombinerManager_Click(object sender, RoutedEventArgs e)
         {
-            var managerWindow = new PromptCombinerManagerWindow();
-            managerWindow.Owner = this;
-            if (managerWindow.ShowDialog() == true)
-            {
-                _combinerData = PromptCombinerStore.Load();
-                PopulateCombinerFolders();
-                UpdateCombinerRuleBadge();
-                UpdateStatus("⚙ Prompt Combiner settings updated", "Combiner");
-            }
+            OpenCombinerTab();
         }
 
         public bool TryProcessCombinerText(string rawText, out string combinedResult)
@@ -826,9 +817,16 @@ namespace imgsaver
                 var combinerData = _combinerData ?? PromptCombinerStore.Load();
                 if (combinerData == null || !combinerData.IsEnabled)
                 {
-                    TxtBrowserCombinerIcon.Text = "⚠️";
-                    TxtBrowserCombinerSummary.Text = "Combiner is currently OFF (Enable Combiner in toolbar)";
-                    TxtBrowserCombinerSummary.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 113, 113));
+                    if (IcoBrowserCombinerStatus != null)
+                    {
+                        IcoBrowserCombinerStatus.Data = (Geometry)FindResource("IconInfo");
+                        IcoBrowserCombinerStatus.Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 113, 113));
+                    }
+                    if (TxtBrowserCombinerSummary != null)
+                    {
+                        TxtBrowserCombinerSummary.Text = "Combiner is currently OFF (Enable Combiner in toolbar)";
+                        TxtBrowserCombinerSummary.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 113, 113));
+                    }
                     return;
                 }
 
@@ -838,15 +836,29 @@ namespace imgsaver
 
                 if (total == 0)
                 {
-                    TxtBrowserCombinerIcon.Text = "⚠️";
-                    TxtBrowserCombinerSummary.Text = "No active prompt snippets selected (Click buttons in Combiner bar)";
-                    TxtBrowserCombinerSummary.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 146, 60));
+                    if (IcoBrowserCombinerStatus != null)
+                    {
+                        IcoBrowserCombinerStatus.Data = (Geometry)FindResource("IconInfo");
+                        IcoBrowserCombinerStatus.Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 146, 60));
+                    }
+                    if (TxtBrowserCombinerSummary != null)
+                    {
+                        TxtBrowserCombinerSummary.Text = "No active prompt snippets selected (Click buttons in Combiner bar)";
+                        TxtBrowserCombinerSummary.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 146, 60));
+                    }
                 }
                 else
                 {
-                    TxtBrowserCombinerIcon.Text = "⚡";
-                    TxtBrowserCombinerSummary.Text = $"Ready! {total} active snippet(s)/custom text will be combined with Base";
-                    TxtBrowserCombinerSummary.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248));
+                    if (IcoBrowserCombinerStatus != null)
+                    {
+                        IcoBrowserCombinerStatus.Data = (Geometry)FindResource("IconFlash");
+                        IcoBrowserCombinerStatus.Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248));
+                    }
+                    if (TxtBrowserCombinerSummary != null)
+                    {
+                        TxtBrowserCombinerSummary.Text = $"Ready! {total} active snippet(s)/custom text will be combined with Base";
+                        TxtBrowserCombinerSummary.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248));
+                    }
                 }
             }
             catch { }

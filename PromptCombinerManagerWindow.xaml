@@ -1,40 +1,46 @@
 <Window x:Class="imgsaver.PromptCombinerManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Prompt Combiner Manager" Width="800" Height="580"
-        Background="Transparent" WindowStyle="None" AllowsTransparency="True"
+        Title="تنظیمات و مدیریت کمباینر پرامپت" Width="860" Height="620"
+        Background="#18191C"
         WindowStartupLocation="CenterOwner">
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="36" GlassFrameThickness="0" CornerRadius="0" ResizeBorderThickness="6"/>
+        <WindowChrome CaptionHeight="42" GlassFrameThickness="0" CornerRadius="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
-    <Border Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+    <Border Background="#18191C" BorderBrush="#36393E" BorderThickness="1.2" CornerRadius="12">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.55" Color="Black"/>
+        </Border.Effect>
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="36"/>
+                <RowDefinition Height="42"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Title Bar -->
-            <Border Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="10,10,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
-                        <TextBlock Text="🧩 Smart Prompt Combiner Manager" FontSize="13" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}"/>
+            <Border Grid.Row="0" Background="#1E1F22" BorderBrush="#2B2D30" BorderThickness="0,0,0,1" CornerRadius="12,12,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="16,0,8,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#263850" Width="26" Height="26" CornerRadius="7" Margin="0,0,10,0">
+                            <Path Data="{StaticResource IconCombiner}" Fill="#38BDF8" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="مدیریت و تنظیمات کمباینر پرامپت (Prompt Combiner)" FontSize="12.5" FontWeight="Bold" Foreground="#F2F3F5" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <Button Content="✕" HorizontalAlignment="Right" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Style="{StaticResource TitleBarCloseButtonStyle}" HorizontalAlignment="Right" Click="BtnClose_Click" WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="بستن"/>
                 </Grid>
             </Border>
 
             <!-- Main Content Area (2 Columns) -->
-            <Grid Grid.Row="1" Margin="12">
+            <Grid Grid.Row="1" Margin="14,14,14,10">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="250"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Left Column: Folders -->
-                <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,10,0">
+                <!-- Left Column: Folders / Categories -->
+                <Border Grid.Column="0" Background="#1E1F22" BorderBrush="#2B2D30" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,12,0">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -43,44 +49,56 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,0,0,8">
-                            <TextBlock Text="📁 Categories" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <!-- Header -->
+                        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconFolder}" Fill="#60A5FA" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="دسته‌بندی‌ها (Categories)" FontSize="12" FontWeight="Bold" Foreground="#E2E8F0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DockPanel>
 
                         <ListBox x:Name="LstFolders" Grid.Row="1" Background="Transparent" BorderThickness="0" SelectionChanged="LstFolders_SelectionChanged" AllowDrop="True" PreviewMouseLeftButtonDown="LstFolders_PreviewMouseLeftButtonDown" MouseMove="LstFolders_MouseMove" Drop="LstFolders_Drop">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="6,4"/>
+                                    <Setter Property="Padding" Value="8,6"/>
                                     <Setter Property="Margin" Value="0,2"/>
-                                    <Setter Property="BorderThickness" Value="1"/>
-                                    <Setter Property="BorderBrush" Value="Transparent"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#253A4E"/>
-                                            <Setter Property="BorderBrush" Value="#3498DB"/>
-                                        </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#1AFFFFFF"/>
-                                        </Trigger>
-                                    </Style.Triggers>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="7">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#2B2D30"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#1E3A5F"/>
+                                                        <Setter TargetName="bd" Property="BorderBrush" Value="#38BDF8"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Style>
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,2">
+                                    <Grid Margin="0,1">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="⋮⋮" Foreground="#888888" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center" Cursor="SizeAll" ToolTip="Drag up/down to reorder category"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="⋮⋮" Foreground="#64748B" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" Cursor="SizeAll" ToolTip="جابجایی با کشیدن (Drag to Reorder)"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="#F1F5F9" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Width="22" Height="22" Style="{StaticResource SecondaryButtonStyle}" Margin="2,0,0,0" Click="BtnRenameFolder_Click" Tag="{Binding}" ToolTip="Rename Category" Padding="0">
-                                                <TextBlock Text="✏" Foreground="#64B5F6" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                            <Button Width="24" Height="24" Style="{StaticResource ProfileAvatarBtnStyle}" Margin="2,0,0,0" Click="BtnRenameFolder_Click" Tag="{Binding}" ToolTip="تغییر نام دسته" Padding="0">
+                                                <Path Data="{StaticResource IconEdit}" Fill="#60A5FA" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Button>
-                                            <Button Width="22" Height="22" Style="{StaticResource SecondaryButtonStyle}" Margin="2,0,0,0" Click="BtnInlineDeleteFolder_Click" Tag="{Binding}" ToolTip="Delete Category" Padding="0">
-                                                <TextBlock Text="🗑" Foreground="#FF6B6B" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                            <Button Width="24" Height="24" Style="{StaticResource TabCloseBtnStyle}" Margin="2,0,0,0" Click="BtnInlineDeleteFolder_Click" Tag="{Binding}" ToolTip="حذف دسته" Padding="0">
+                                                <Path Data="{StaticResource IconDelete}" Fill="#F87171" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Button>
                                         </StackPanel>
                                     </Grid>
@@ -89,18 +107,18 @@
                         </ListBox>
 
                         <!-- Folder Custom Placement Rule Panel -->
-                        <Border x:Name="FolderRulePanel" Grid.Row="2" Background="#1D1D20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="6,8,6,8" Margin="0,4,0,4">
+                        <Border x:Name="FolderRulePanel" Grid.Row="2" Background="#141517" BorderBrush="#2B2D30" BorderThickness="1" CornerRadius="8" Padding="8,10" Margin="0,8,0,4">
                             <StackPanel>
-                                <CheckBox x:Name="ChkIsCustomInput" Content="✍️ Custom Text Input Mode" FontSize="11" FontWeight="Bold" Foreground="#2ECC71" Margin="0,0,0,6" Checked="ChkIsCustomInput_Changed" Unchecked="ChkIsCustomInput_Changed" ToolTip="User types custom text directly into a text box in the Combiner toolbar instead of preset buttons!"/>
-                                <TextBlock Text="📍 Folder Placement Rule:" FontSize="10" FontWeight="Bold" Foreground="#3498DB" Margin="0,0,0,4"/>
-                                <ComboBox x:Name="CboFolderPlacement" Height="24" FontSize="11" Margin="0,0,0,4" SelectionChanged="CboFolderPlacement_SelectionChanged">
-                                    <ComboBoxItem Content="After Comma #" Tag="0"/>
-                                    <ComboBoxItem Content="At Start (Prepend)" Tag="1"/>
-                                    <ComboBoxItem Content="At End (Append)" Tag="2"/>
+                                <CheckBox x:Name="ChkIsCustomInput" Content="حالت تایپ مستقیم متن" FontSize="11" FontWeight="Bold" Foreground="#34D399" Margin="0,0,0,8" Checked="ChkIsCustomInput_Changed" Unchecked="ChkIsCustomInput_Changed" ToolTip="به جای دکمه‌های آماده، کادر متن برای تایپ دستی در نوار کمباینر قرار می‌گیرد."/>
+                                <TextBlock Text="قانون جای‌گذاری اختصاصی دسته:" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="CboFolderPlacement" Height="26" FontSize="11" Margin="0,0,0,6" SelectionChanged="CboFolderPlacement_SelectionChanged">
+                                    <ComboBoxItem Content="بعد از کامای شماره..." Tag="0"/>
+                                    <ComboBoxItem Content="ابتدای پرامپت (Prepend)" Tag="1"/>
+                                    <ComboBoxItem Content="انتهای پرامپت (Append)" Tag="2"/>
                                 </ComboBox>
-                                <StackPanel x:Name="PnlFolderCommaIndex" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,0,0">
-                                    <TextBlock Text="Comma #:" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <TextBox x:Name="TxtFolderCommaIndex" Width="44" Height="26" Text="1" TextAlignment="Center" VerticalContentAlignment="Center" Padding="0,2,0,0" FontSize="13" FontWeight="Bold" Background="#2D2D30" Foreground="#FFFFFF" CaretBrush="#FFFFFF" BorderBrush="#555555" BorderThickness="1" TextChanged="TxtFolderCommaIndex_TextChanged"/>
+                                <StackPanel x:Name="PnlFolderCommaIndex" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="شماره کاما:" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBox x:Name="TxtFolderCommaIndex" Width="46" Height="24" Text="1" TextAlignment="Center" VerticalContentAlignment="Center" FontSize="12" FontWeight="Bold" Background="#2B2D30" Foreground="#FFFFFF" CaretBrush="#38BDF8" BorderBrush="#475569" BorderThickness="1" TextChanged="TxtFolderCommaIndex_TextChanged"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -110,15 +128,20 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <Button x:Name="BtnAddFolder" Grid.Column="0" Content="+ Category" Style="{StaticResource PrimaryButtonStyle}" Height="28" Padding="6,0" FontSize="11" Click="BtnAddFolder_Click"/>
-                            <Button x:Name="BtnDeleteFolder" Grid.Column="1" Style="{StaticResource SecondaryButtonStyle}" Width="32" Height="28" Margin="6,0,0,0" Click="BtnDeleteFolder_Click" ToolTip="Delete Category" Padding="0">
-                                <TextBlock Text="🗑" Foreground="#FF6B6B" FontSize="13" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Button x:Name="BtnAddFolder" Grid.Column="0" Style="{StaticResource PrimaryButtonStyle}" Height="30" Padding="8,0" FontSize="11.5" Click="BtnAddFolder_Click">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconPlus}" Fill="#FFFFFF" Width="11" Height="11" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="افزودن دسته‌بندی" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnDeleteFolder" Grid.Column="1" Style="{StaticResource SecondaryButtonStyle}" Width="32" Height="30" Margin="6,0,0,0" Click="BtnDeleteFolder_Click" ToolTip="حذف دسته انتخابی" Padding="0">
+                                <Path Data="{StaticResource IconDelete}" Fill="#F87171" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
                         </Grid>
                     </Grid>
                 </Border>
 
-                <!-- Right Column: Snippet Items & Settings -->
+                <!-- Right Column: Snippet Items & Rules -->
                 <Grid Grid.Column="1">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -126,23 +149,32 @@
                     </Grid.RowDefinitions>
 
                     <!-- Snippets List Box -->
-                    <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
+                    <Border Grid.Row="0" Background="#1E1F22" BorderBrush="#2B2D30" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
-                            <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                                <Button x:Name="BtnAddItem" Content="+ Add Snippet Button" Style="{StaticResource PrimaryButtonStyle}" Height="28" Padding="10,0" FontSize="11" DockPanel.Dock="Right" Click="BtnAddItem_Click"/>
-                                <TextBlock x:Name="TxtCurrentFolderHeader" Text="Prompt Buttons in Folder" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center"/>
+                            <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                                <Button x:Name="BtnAddItem" Style="{StaticResource PrimaryButtonStyle}" Height="30" Padding="12,0" FontSize="11.5" DockPanel.Dock="Right" Click="BtnAddItem_Click">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconPlus}" Fill="#FFFFFF" Width="11" Height="11" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="افزودن دکمه پرامپت (Add Snippet)" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconSnippets}" Fill="#A78BFA" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="TxtCurrentFolderHeader" Text="دکمه‌های پرامپت این دسته" FontSize="12" FontWeight="Bold" Foreground="#E2E8F0" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </DockPanel>
 
                             <!-- Custom Input Mode Banner (Shown when ChkIsCustomInput == true) -->
-                            <Border x:Name="PnlCustomInputInfo" Grid.Row="1" Visibility="Collapsed" Background="#1D2A20" BorderBrush="#2ECC71" BorderThickness="1" CornerRadius="6" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+                            <Border x:Name="PnlCustomInputInfo" Grid.Row="1" Visibility="Collapsed" Background="#162E25" BorderBrush="#059669" BorderThickness="1" CornerRadius="8" Padding="18" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="✍️ Custom Text Input Mode Active" FontSize="14" FontWeight="Bold" Foreground="#2ECC71" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                                    <TextBlock Text="When you select this category from the Combiner dropdown, an editable text box will appear in the Combiner toolbar. Any custom text you type will be injected automatically!" FontSize="11" Foreground="#CCCCCC" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
+                                    <Path Data="{StaticResource IconEdit}" Fill="#34D399" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="حالت متن سفارشی (Custom Text Input) فعال است" FontSize="13" FontWeight="Bold" Foreground="#34D399" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                    <TextBlock Text="در این حالت در نوار کمباینر یک کادر متنی قرار می‌گیرد و هر متنی که دستی تایپ کنید به صورت زنده ترکیب می‌شود." FontSize="11" Foreground="#CBD5E1" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380"/>
                                 </StackPanel>
                             </Border>
 
@@ -163,24 +195,24 @@
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#1AFFFFFF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,2">
+                                        <Border Background="#18191C" BorderBrush="#2B2D30" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,2">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="⋮⋮" Foreground="#888888" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center" Cursor="SizeAll" ToolTip="Drag up/down to reorder snippet button"/>
+                                                <TextBlock Text="⋮⋮" Foreground="#64748B" FontSize="15" Margin="0,0,10,0" VerticalAlignment="Center" Cursor="SizeAll" ToolTip="جابجایی با کشیدن (Drag to Reorder)"/>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="#3498DB"/>
-                                                    <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="#38BDF8"/>
+                                                    <TextBlock Text="{Binding Text}" FontSize="11" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Button Width="28" Height="28" Style="{StaticResource SecondaryButtonStyle}" Margin="3,0" Click="BtnEditItem_Click" Tag="{Binding}" ToolTip="Edit Snippet Button" Padding="0">
-                                                        <TextBlock Text="✏" Foreground="#64B5F6" FontSize="13" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                    <Button Width="28" Height="28" Style="{StaticResource ProfileAvatarBtnStyle}" Margin="3,0" Click="BtnEditItem_Click" Tag="{Binding}" ToolTip="ویرایش پرامپت" Padding="0">
+                                                        <Path Data="{StaticResource IconEdit}" Fill="#60A5FA" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Button>
-                                                    <Button Width="28" Height="28" Style="{StaticResource SecondaryButtonStyle}" Margin="3,0" Click="BtnDeleteItem_Click" Tag="{Binding}" ToolTip="Delete Snippet Button" Padding="0">
-                                                        <TextBlock Text="🗑" Foreground="#FF6B6B" FontSize="13" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                    <Button Width="28" Height="28" Style="{StaticResource TabCloseBtnStyle}" Margin="3,0" Click="BtnDeleteItem_Click" Tag="{Binding}" ToolTip="حذف دکمه" Padding="0">
+                                                        <Path Data="{StaticResource IconDelete}" Fill="#F87171" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Button>
                                                 </StackPanel>
                                             </Grid>
@@ -192,37 +224,40 @@
                     </Border>
 
                     <!-- Placement Rules Card -->
-                    <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                    <Border Grid.Row="1" Background="#1E1F22" BorderBrush="#2B2D30" BorderThickness="1" CornerRadius="10" Padding="14,12">
                         <StackPanel>
-                            <TextBlock Text="⚙ Placement &amp; Insertion Rules (No Tags Needed)" FontSize="12" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Path Data="{StaticResource IconSettings}" Fill="#F59E0B" Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="قوانین جای‌گذاری و درج پرامپت (Placement Rules)" FontSize="12" FontWeight="Bold" Foreground="#E2E8F0" VerticalAlignment="Center"/>
+                            </StackPanel>
 
-                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2">
                                 <!-- Mode 1: After N-th Comma -->
-                                <RadioButton x:Name="RadAfterComma" Content="After Comma #" Foreground="{StaticResource ForegroundBrush}" FontSize="11" VerticalAlignment="Center" IsChecked="True" Margin="0,0,4,0" Checked="RadPlacementMode_Changed"/>
-                                <TextBox x:Name="TxtCommaIndex" Width="44" Height="26" Text="1" TextAlignment="Center" VerticalContentAlignment="Center" Padding="0" FontSize="12" FontWeight="Bold" Background="{StaticResource InputBrush}" Foreground="#FFFFFF" CaretBrush="#FFFFFF" BorderBrush="{StaticResource BorderBrush}" VerticalAlignment="Center" Margin="0,0,16,0" TextChanged="TxtCommaIndex_TextChanged"/>
+                                <RadioButton x:Name="RadAfterComma" Content="بعد از کامای شماره:" Foreground="#CBD5E1" FontSize="11" VerticalAlignment="Center" IsChecked="True" Margin="0,0,6,0" Checked="RadPlacementMode_Changed"/>
+                                <TextBox x:Name="TxtCommaIndex" Width="44" Height="24" Text="1" TextAlignment="Center" VerticalContentAlignment="Center" Padding="0" FontSize="12" FontWeight="Bold" Background="#18191C" Foreground="#FFFFFF" CaretBrush="#38BDF8" BorderBrush="#475569" VerticalAlignment="Center" Margin="0,0,18,0" TextChanged="TxtCommaIndex_TextChanged"/>
 
                                 <!-- Mode 2: At Start -->
-                                <RadioButton x:Name="RadAtStart" Content="At Start (Prepend)" Foreground="{StaticResource ForegroundBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" Checked="RadPlacementMode_Changed"/>
+                                <RadioButton x:Name="RadAtStart" Content="ابتدای متن (Prepend)" Foreground="#CBD5E1" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0" Checked="RadPlacementMode_Changed"/>
 
                                 <!-- Mode 3: At End -->
-                                <RadioButton x:Name="RadAtEnd" Content="At End (Append)" Foreground="{StaticResource ForegroundBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" Checked="RadPlacementMode_Changed"/>
+                                <RadioButton x:Name="RadAtEnd" Content="انتهای متن (Append)" Foreground="#CBD5E1" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0" Checked="RadPlacementMode_Changed"/>
 
                                 <!-- Mode 4: Per Folder Rule -->
-                                <RadioButton x:Name="RadPerFolder" Content="📂 Per-Folder Rules" Foreground="#2ECC71" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0" Checked="RadPlacementMode_Changed" ToolTip="Each folder uses its own custom placement rule!"/>
+                                <RadioButton x:Name="RadPerFolder" Content="قانون اختصاصی هر دسته (Per-Folder)" Foreground="#34D399" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0" Checked="RadPlacementMode_Changed" ToolTip="هر دسته بر اساس قانونی که برایش تنظیم کرده‌اید درج می‌شود."/>
                             </WrapPanel>
 
-                            <Separator Background="{StaticResource BorderBrush}" Height="1" Margin="0,8,0,8" Opacity="0.4"/>
-                            <CheckBox x:Name="ChkStandaloneGlobal" Content="🌐 Background Standalone Combine (Works without MiniClipboard open)" FontSize="11" FontWeight="Bold" Foreground="#00E5FF" ToolTip="وقتی فعال باشد، ترکیب هوشمند پرامپت‌ها بدون نیاز به باز بودن مینی‌کلیپ‌بورد در پس‌زمینه انجام می‌شود. در صورت غیرفعال بودن، به حالت قدیمی (وابسته به باز بودن مینی‌کلیپ‌بورد) عمل می‌کند."/>
+                            <Separator Background="#2B2D30" Height="1" Margin="0,10,0,10"/>
+                            <CheckBox x:Name="ChkStandaloneGlobal" Content="فعال‌سازی کمباینر در کل سیستم (بدون نیاز به باز بودن مینی‌کلیپ‌بورد)" FontSize="11" FontWeight="SemiBold" Foreground="#38BDF8" ToolTip="وقتی فعال باشد، ترکیب هوشمند پرامپت‌ها بدون نیاز به باز بودن مینی‌کلیپ‌بورد در پس‌زمینه انجام می‌شود."/>
                         </StackPanel>
                     </Border>
                 </Grid>
             </Grid>
 
             <!-- Bottom Action Controls -->
-            <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,8">
+            <Border Grid.Row="2" Background="#18191C" BorderBrush="#2B2D30" BorderThickness="0,1,0,0" Padding="14,10" CornerRadius="0,0,12,12">
                 <DockPanel LastChildFill="False">
-                    <Button Content="Save &amp; Apply" Style="{StaticResource PrimaryButtonStyle}" Height="30" Padding="16,0" DockPanel.Dock="Right" Click="BtnSave_Click"/>
-                    <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Height="30" Padding="16,0" Margin="0,0,8,0" DockPanel.Dock="Right" Click="BtnClose_Click"/>
+                    <Button Content="ذخیره و اعمال تنظیمات" Style="{StaticResource PrimaryButtonStyle}" Height="32" Padding="20,0" DockPanel.Dock="Right" Click="BtnSave_Click"/>
+                    <Button Content="انصراف" Style="{StaticResource SecondaryButtonStyle}" Height="32" Padding="18,0" Margin="0,0,10,0" DockPanel.Dock="Right" Click="BtnClose_Click"/>
                 </DockPanel>
             </Border>
         </Grid>

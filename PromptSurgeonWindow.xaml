@@ -1,0 +1,313 @@
+<Window x:Class="imgsaver.PromptSurgeonWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Prompt Surgeon" Height="650" Width="900"
+        MinHeight="400" MinWidth="600"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        FontFamily="{StaticResource AppFontFamily}"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="CanResize"
+        StateChanged="Window_StateChanged">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="36" 
+                      ResizeBorderThickness="6" 
+                      GlassFrameThickness="0" 
+                      CornerRadius="12"/>
+    </WindowChrome.WindowChrome>
+
+    <Border x:Name="MainBorder" CornerRadius="12" BorderThickness="1" BorderBrush="#2D3038" Margin="12">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="28" ShadowDepth="4" Opacity="0.7"/>
+        </Border.Effect>
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#1A1B1E" Offset="0"/>
+                <GradientStop Color="#121315" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="36"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- TitleBar -->
+            <Border Grid.Row="0" Background="#222327" CornerRadius="12,12,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
+                        <Path Data="{StaticResource IconCut}" Style="{StaticResource VectorIconSmall}" Fill="#E0E0E0" Margin="0,0,8,0"/>
+                        <TextBlock Text="Prompt Surgeon" Foreground="#E0E0E0" FontSize="13" VerticalAlignment="Center" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button x:Name="BtnMinimize" Content="─" Click="BtnMinimize_Click" Style="{StaticResource TitleBarButtonStyle}"/>
+                        <Button x:Name="BtnMaximize" Content="□" Click="BtnMaximize_Click" Style="{StaticResource TitleBarButtonStyle}"/>
+                        <Button x:Name="BtnClose" Content="✕" Click="BtnClose_Click" Style="{StaticResource TitleBarCloseButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Main Content -->
+            <Grid Grid.Row="1" Margin="16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- 0: Toolbar -->
+                    <RowDefinition Height="1*"/>   <!-- 1: Top 3-Column Boxes (Input / Surgery / Output) -->
+                    <RowDefinition Height="Auto"/> <!-- 2: Full-Width Horizontal Separator -->
+                    <RowDefinition Height="2*"/>   <!-- 3: Full-Width Independent Rows (Across full window) -->
+                </Grid.RowDefinitions>
+
+                <!-- 0: Top Toolbar -->
+                <Border Grid.Row="0" Background="#1E1F23" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BtnPaste" Content="📋 Paste (ورودی)" Click="BtnPaste_Click" Style="{StaticResource SecondaryButtonStyle}" Height="28" Padding="12,0" Margin="0,0,8,0" FontSize="11"/>
+                        <Button x:Name="BtnCopy" Content="📑 Copy Output (کپی خروجی)" Click="BtnCopy_Click" Style="{StaticResource SecondaryButtonStyle}" Height="28" Padding="12,0" Margin="0,0,8,0" FontSize="11" Foreground="#2ECC71"/>
+                        <Button x:Name="BtnClear" Content="🗑️ Clear All (پاکسازی)" Click="BtnClear_Click" Style="{StaticResource SecondaryButtonStyle}" Height="28" Padding="12,0" Margin="0,0,8,0" FontSize="11"/>
+                        
+                        <Separator Width="1" Background="#333" Margin="8,4" />
+                        
+                        <Button x:Name="BtnResetEdit" Content="🔄 Reset Edit to Input" Click="BtnResetEdit_Click" Style="{StaticResource SecondaryButtonStyle}" Height="28" Padding="12,0" Margin="0,0,8,0" FontSize="11" ToolTip="Reset surgery edit box back to raw input"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 1: 3-Column Editor Area (Input / Surgery / Output) -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>   <!-- Left: Input Box (24%) -->
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="5*"/>   <!-- Middle: Surgery Edit Box (52%) -->
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="2*"/>   <!-- Right: Output Box (24%) -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Input Box -->
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" Text="📥 Input (ورودی)" FontSize="12" FontWeight="SemiBold" Foreground="#3794FF" Margin="4,0,0,8"/>
+                        
+                        <Border Grid.Row="1" Background="#161719" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="8" Padding="1">
+                            <TextBox x:Name="TxtInput" Background="Transparent" Foreground="#E0E0E0" BorderThickness="0"
+                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                     Padding="12" FontSize="13" FontFamily="Consolas"
+                                     VerticalContentAlignment="Top" HorizontalContentAlignment="Left" TextAlignment="Left"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                     TextChanged="TxtInput_TextChanged"
+                                     ToolTip="Enter your raw prompt here"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Middle: Surgery Edit Box -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" Text="✂️ Surgery &amp; Edit (اصلاح)" FontSize="12" FontWeight="SemiBold" Foreground="#FFB900" Margin="4,0,0,8"/>
+                        
+                        <Border Grid.Row="1" Background="#161719" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="8" Padding="1">
+                            <TextBox x:Name="TxtEdit" Background="Transparent" Foreground="#E0E0E0" BorderThickness="0"
+                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                     Padding="12" FontSize="13" FontFamily="Consolas"
+                                     VerticalContentAlignment="Top" HorizontalContentAlignment="Left" TextAlignment="Left"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                     TextChanged="TxtEdit_TextChanged"
+                                     ToolTip="بخشی از متن را انتخاب و برای ترجمه و جایگزینی راست‌کلیک کنید">
+                                <TextBox.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="🌐 جایگزینی ترجمه" Click="MenuSendToTranslate_Click" Foreground="#3794FF" FontWeight="SemiBold" FontFamily="{StaticResource AppFontFamily}" FontSize="13" ToolTip="ارسال متن انتخابی به بخش ترجمه گوگل و جایگزینی"/>
+                                        <MenuItem Header="📍 درج ترجمه" Click="MenuInsertAtCursor_Click" Foreground="#00D2D3" FontWeight="SemiBold" FontFamily="{StaticResource AppFontFamily}" FontSize="13" ToolTip="درج ترجمه انگلیسی در موقعیت مکان‌نما"/>
+                                        <MenuItem Header="🔍 معنی فارسی" Click="MenuTranslateSelectionToPersian_Click" Foreground="#FFD700" FontWeight="SemiBold" FontFamily="{StaticResource AppFontFamily}" FontSize="13" ToolTip="ترجمه این بخش به فارسی و مشاهده معنی"/>
+                                        <Separator Background="#33363F" Margin="4,2"/>
+                                        <MenuItem Command="Cut" Header="✂️ برش (Cut)" FontFamily="{StaticResource AppFontFamily}" FontSize="13"/>
+                                        <MenuItem Command="Copy" Header="📑 کپی (Copy)" FontFamily="{StaticResource AppFontFamily}" FontSize="13"/>
+                                        <MenuItem Command="Paste" Header="📋 چسباندن (Paste)" FontFamily="{StaticResource AppFontFamily}" FontSize="13"/>
+                                        <MenuItem Command="SelectAll" Header="🔲 انتخاب همه (Select All)" FontFamily="{StaticResource AppFontFamily}" FontSize="13"/>
+                                    </ContextMenu>
+                                </TextBox.ContextMenu>
+                            </TextBox>
+                        </Border>
+                    </Grid>
+
+                    <!-- Right: Output Box -->
+                    <Grid Grid.Column="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,8">
+                            <TextBlock Text="📤 Output (خروجی نهایی)" FontSize="12" FontWeight="SemiBold" Foreground="#2ECC71" VerticalAlignment="Center"/>
+                            <TextBlock Text="— کلیک برای کپی 📋" FontSize="11" FontFamily="{StaticResource AppFontFamily}" Foreground="#888888" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <Border x:Name="BorderOutput" Grid.Row="1" Background="#161719" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="8" Padding="1"
+                                Cursor="Hand" MouseEnter="RtfOutput_MouseEnter" MouseLeave="RtfOutput_MouseLeave" PreviewMouseLeftButtonDown="RtfOutput_PreviewMouseLeftButtonDown">
+                            <RichTextBox x:Name="RtfOutput" Background="Transparent" Foreground="#E0E0E0" BorderThickness="0"
+                                         IsReadOnly="True" IsDocumentEnabled="True" Focusable="False"
+                                         Padding="12" FontSize="13" FontFamily="Consolas"
+                                         Cursor="Hand"
+                                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                         ToolTip="کلیک کنید تا تمام متن خروجی کپی شود">
+                                <RichTextBox.Resources>
+                                    <Style TargetType="{x:Type Paragraph}">
+                                        <Setter Property="Margin" Value="0"/>
+                                    </Style>
+                                </RichTextBox.Resources>
+                                <FlowDocument PagePadding="0">
+                                    <Paragraph>
+                                        <Run Text=""/>
+                                    </Paragraph>
+                                </FlowDocument>
+                            </RichTextBox>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- 2: Full-Width Horizontal Separator Line -->
+                <Border Grid.Row="2" Height="1" Background="#282A30" Margin="0,14,0,14"/>
+
+                <!-- 3: Full-Width Independent Rows Area (Spans entire width!) -->
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Row 1: Full-Width Google Translate Surgery Bar (Persian -> English & Replace) -->
+                        <Border Background="#1A1B1F" BorderBrush="#2A2C33" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/> <!-- Title & Status -->
+                                    <RowDefinition Height="Auto"/> <!-- Full-Width Controls Row -->
+                                </Grid.RowDefinitions>
+
+                                <!-- Top Title & Live Status (RTL Order) -->
+                                <Grid Grid.Row="0" Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Background="#1E3A5F" CornerRadius="4" Padding="5,1" Margin="0,0,8,0">
+                                            <TextBlock Text="🌐 Google Translate" FontSize="10" FontWeight="Bold" Foreground="#3794FF"/>
+                                        </Border>
+                                        <TextBlock Text="بخش ترجمه فارسی به انگلیسی و جایگزینی در پرامپت:" FontSize="11" FontFamily="{StaticResource AppFontFamily}" FontWeight="SemiBold" Foreground="#A0A5B5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtTranslateStatus" Grid.Column="1" Text="متنی را در کادر اصلاح بالا سلکت و راست‌کلیک کنید" 
+                                               FontSize="11" FontFamily="{StaticResource AppFontFamily}" Foreground="#888888" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="10,0,0,0"/>
+                                </Grid>
+
+                                <!-- Full Width Horizontal Controls: [Button (Left)] [Chip] [Persian Input Box (Far Right)] -->
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/> <!-- Action Button (Far Left) -->
+                                        <ColumnDefinition Width="Auto"/> <!-- Target Chip (Left/Center) -->
+                                        <ColumnDefinition Width="*"/>    <!-- Persian Input Box (Far Right) -->
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Compact Dark Purple Action Button (Far Left) -->
+                                    <Button x:Name="BtnTranslateAndReplace" Grid.Column="0" Click="BtnTranslateAndReplace_Click" 
+                                            Height="34" Padding="12,0" Style="{StaticResource PrimaryButtonStyle}" Background="#4A1D6E"
+                                            Margin="0,0,8,0"
+                                            ToolTip="ترجمه به انگلیسی و ثبت در پرامپت (Enter)">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="ترجمه" FontWeight="Bold" FontSize="12" FontFamily="{StaticResource AppFontFamily}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Target Chip (Selected phrase) -->
+                                    <Border Grid.Column="1" Background="#141518" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="6" Padding="8,0" Height="34" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="🎯 " FontSize="10" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="TxtSelectedTargetPreview" Text="(بدون انتخاب)" MaxWidth="220"
+                                                       FontSize="11" FontFamily="Consolas" Foreground="#FFD700" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            <Button x:Name="BtnClearTarget" Content="✕" Click="BtnClearTarget_Click" Style="{StaticResource SecondaryButtonStyle}" 
+                                                    Height="18" Width="18" Padding="0" FontSize="9" ToolTip="پاک کردن انتخاب" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Persian Input Box (On the Far Right) -->
+                                    <Border Grid.Column="2" Background="#141518" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="6" Height="34" Padding="1" VerticalAlignment="Center" Cursor="IBeam">
+                                        <TextBox x:Name="TxtPersianInput" Background="Transparent" Foreground="#FFD700" CaretBrush="#FFD700" BorderThickness="0"
+                                                 Padding="10,0" FontSize="13" FontFamily="{StaticResource AppFontFamily}"
+                                                 FlowDirection="RightToLeft" TextAlignment="Right"
+                                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Right"
+                                                 TextWrapping="NoWrap" AcceptsReturn="False" Cursor="IBeam"
+                                                 VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto"
+                                                 KeyDown="TxtPersianInput_KeyDown"
+                                                 ToolTip="متن جایگزین به فارسی را اینجا بنویسید... (Enter یا کلیک روی دکمه)"/>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Row 2: Full-Width English to Persian Inspector (Double Height) -->
+                        <Border Background="#1A1B1F" BorderBrush="#2A2C33" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/> <!-- Title & Controls -->
+                                    <RowDefinition Height="Auto"/> <!-- Double-Height Persian Translation Box (Height: 64px) -->
+                                </Grid.RowDefinitions>
+
+                                <!-- Top Header, Target Source & Actions -->
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Background="#3D2A00" BorderBrush="#7A5200" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="0,0,8,0">
+                                            <TextBlock Text="🔍 ترجمه به فارسی" FontSize="10" FontWeight="Bold" Foreground="#FFD700"/>
+                                        </Border>
+                                        <TextBlock Text="معنی فارسی عبارت انتخابی پرامپت:" FontSize="11" FontFamily="{StaticResource AppFontFamily}" FontWeight="SemiBold" Foreground="#A0A5B5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- English Source Chip -->
+                                    <Border Grid.Column="1" Background="#141518" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="5" Padding="8,2" Margin="10,0" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="🔤 متن انگلیسی: " FontSize="11" FontFamily="{StaticResource AppFontFamily}" Foreground="#888888" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="TxtEnSourcePreview" Text="(متنی انتخاب نشده است - بخشی از پرامپت را سلکت کنید)" MaxWidth="340"
+                                                       FontSize="11" FontFamily="Consolas" Foreground="#3794FF" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Quick Copy Button -->
+                                    <Button x:Name="BtnCopyPersianTranslation" Grid.Column="2" Content="📑 کپی معنی فارسی" Click="BtnCopyPersianTranslation_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}" Height="24" Padding="8,0" FontSize="11" FontFamily="{StaticResource AppFontFamily}" Foreground="#FFD700" ToolTip="کپی کردن متن ترجمه شده فارسی"/>
+                                </Grid>
+
+                                <!-- Row 2: Double Height Persian Output Display (64px) -->
+                                <Border Grid.Row="1" Background="#141518" BorderBrush="#2D2F36" BorderThickness="1" CornerRadius="6" Padding="8,6" MinHeight="64" Cursor="IBeam">
+                                    <TextBox x:Name="TxtPersianMeaningDisplay" Background="Transparent" Foreground="#FFD700" BorderThickness="0"
+                                             TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" Cursor="IBeam"
+                                             FontSize="13" FontFamily="{StaticResource AppFontFamily}"
+                                             FlowDirection="RightToLeft" TextAlignment="Right"
+                                             VerticalContentAlignment="Top" HorizontalContentAlignment="Right"
+                                             VerticalScrollBarVisibility="Auto"
+                                             Text="ترجمه فارسی عبارت انگلیسی انتخاب‌شده در اینجا نمایش داده می‌شود..."/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Next Independent Full-Width Rows will be added here -->
+                        <StackPanel x:Name="PnlFullWidthFutureRows">
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

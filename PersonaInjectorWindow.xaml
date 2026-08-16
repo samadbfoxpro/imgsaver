@@ -4,20 +4,20 @@
         Title="Persona Injector" 
         Width="840" Height="840"
         MinWidth="750" MinHeight="680"
-        Background="Transparent"
+        Background="#18191C"
         WindowStartupLocation="CenterScreen"
         FontFamily="{StaticResource AppFontFamily}" 
-        WindowStyle="None"
-        AllowsTransparency="True"
         ResizeMode="CanResize"
+        FlowDirection="LeftToRight"
         StateChanged="Window_StateChanged"
         xmlns:local="clr-namespace:imgsaver">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="32" 
-                      ResizeBorderThickness="5" 
+                      ResizeBorderThickness="6" 
                       GlassFrameThickness="0"
-                      CornerRadius="8"/>
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>

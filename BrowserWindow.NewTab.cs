@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace imgsaver
 {
@@ -6,13 +6,13 @@ namespace imgsaver
     {
         private string GetIconForUrl(string? url)
         {
-            if (string.IsNullOrEmpty(url)) return "*";
+            if (string.IsNullOrEmpty(url)) return "✦";
             string lower = url.ToLower();
             if (lower.Contains("google")) return "G";
             if (lower.Contains("github")) return "GH";
             if (lower.Contains("youtube")) return "YT";
             if (lower.Contains("facebook")) return "FB";
-            if (lower.Contains("twitter") || lower.Contains("x.com")) return "X";
+            if (lower.Contains("twitter") || lower.Contains("x.com")) return "𝕏";
             if (lower.Contains("instagram")) return "IG";
             if (lower.Contains("reddit")) return "RD";
             if (lower.Contains("amazon")) return "AZ";
@@ -22,54 +22,496 @@ namespace imgsaver
             if (lower.Contains("civitai")) return "CV";
             if (lower.Contains("pinterest")) return "PT";
             if (lower.Contains("discord")) return "DC";
-            return "*";
+            if (lower.Contains("chatgpt") || lower.Contains("openai")) return "AI";
+            return "✦";
         }
 
         private string GetNewTabPageHtml() => """
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>New Tab</title>
-<style>
-:root{color-scheme:dark;--bg:#0e1116;--panel:#161b22;--panel2:#10151d;--border:#283241;--text:#edf2f7;--muted:#8b98a8;--accent:#3ea6ff;--green:#31c46b;--orange:#f7b955}
-*{box-sizing:border-box}html,body{height:100%;margin:0}body{font-family:Segoe UI,Inter,Arial,sans-serif;background:radial-gradient(circle at 28% 18%,#1a3148 0,#111820 34%,var(--bg) 76%);color:var(--text);display:flex;align-items:center;justify-content:center;padding:32px}
-.shell{width:min(980px,100%);display:grid;gap:22px}.top{display:flex;align-items:end;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:14px}.mark{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--green));display:grid;place-items:center;font-weight:800;color:#061018;box-shadow:0 14px 40px #0008}.title{font-size:30px;font-weight:700;letter-spacing:0}.sub{color:var(--muted);font-size:13px;margin-top:3px}.clock{text-align:right}.time{font-size:28px;font-weight:650}.date{font-size:12px;color:var(--muted)}
-.google-entry{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--border);border-radius:10px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;padding:18px 20px;box-shadow:0 18px 48px #0007}.google-entry h1{font-size:18px;margin:0 0 5px}.google-entry p{margin:0;color:var(--muted);font-size:13px}.google-button{display:inline-flex;align-items:center;gap:10px;text-decoration:none;border:1px solid #2f78b7;background:linear-gradient(180deg,#16629b,#11476f);color:#f2fbff;border-radius:8px;padding:13px 20px;font-weight:750;box-shadow:0 12px 30px #0005}.google-button:hover{background:linear-gradient(180deg,#1b75b8,#14537f);border-color:#4da3e8}.gmark{width:24px;height:24px;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;font-weight:800}
-.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}.panel{background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 92%,transparent),color-mix(in srgb,var(--panel2) 94%,transparent));border:1px solid var(--border);border-radius:10px;padding:18px}.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 14px}.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.tile{min-height:74px;border:1px solid #263140;background:#111923;border-radius:8px;padding:12px;text-decoration:none;color:var(--text);display:flex;flex-direction:column;justify-content:space-between}.tile:hover{border-color:#3c7fae;background:#132130}.tile b{font-size:14px}.tile small{color:var(--muted);font-size:11px}.stats{display:grid;gap:10px}.stat{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222b38;padding:0 0 10px}.stat:last-child{border-bottom:0;padding-bottom:0}.stat label{color:var(--muted);font-size:12px}.stat strong{font-size:15px}.hint{font-size:12px;color:var(--muted);line-height:1.65;margin-top:14px}.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid #2b3a4c;background:#111923;border-radius:999px;padding:6px 10px;color:#b9c5d3;font-size:12px}
-@media(max-width:760px){body{padding:18px}.top{align-items:flex-start;flex-direction:column}.clock{text-align:left}.google-entry{grid-template-columns:1fr}.google-button{justify-content:center}.grid{grid-template-columns:1fr}.quick{grid-template-columns:1fr 1fr}.title{font-size:25px}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تب جدید</title>
+    <style>
+        :root {
+            --bg-deep: #0b0f17;
+            --card-bg: rgba(23, 30, 44, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-border-hover: rgba(56, 189, 248, 0.4);
+            --accent-blue: #38bdf8;
+            --accent-purple: #818cf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, 'Vazirmatn', sans-serif;
+            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(56, 189, 248, 0.15), transparent 70%),
+                        radial-gradient(ellipse 60% 50% at 50% 110%, rgba(129, 140, 248, 0.1), transparent 70%),
+                        var(--bg-deep);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Glow Background Effect */
+        .ambient-glow {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(129, 140, 248, 0.03) 50%, transparent 80%);
+            filter: blur(60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 780px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+            animation: fadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Clock & Date Header */
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 6px;
+        }
+
+        .time-display {
+            font-size: 58px;
+            font-weight: 200;
+            letter-spacing: -1px;
+            color: #ffffff;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.25);
+            line-height: 1.1;
+        }
+
+        .date-display {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+
+        /* Search Section */
+        .search-wrapper {
+            width: 100%;
+            max-width: 640px;
+            position: relative;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(18, 24, 38, 0.75);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 10px 14px 10px 20px;
+            border-radius: 999px;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .search-box:focus-within {
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(22, 30, 48, 0.9);
+            box-shadow: 0 12px 36px -4px rgba(56, 189, 248, 0.2), 0 0 0 2px rgba(56, 189, 248, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .search-engine-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--accent-blue);
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 15px;
+            font-family: inherit;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-dim);
+            font-weight: 300;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            outline: none;
+            color: #ffffff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex-shrink: 0;
+        }
+
+        .search-btn:hover {
+            transform: scale(1.06);
+            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+        }
+
+        .search-btn:active {
+            transform: scale(0.96);
+        }
+
+        .search-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Quick Links Grid */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            width: 100%;
+            max-width: 640px;
+        }
+
+        .shortcut-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shortcut-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .shortcut-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--card-border-hover);
+            background: rgba(30, 41, 59, 0.8);
+            box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.35);
+        }
+
+        .shortcut-card:hover::before {
+            opacity: 1;
+        }
+
+        .shortcut-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-google { background: linear-gradient(135deg, #4285f4, #34a853); color: #fff; }
+        .icon-chatgpt { background: linear-gradient(135deg, #10a37f, #0d8a6b); color: #fff; }
+        .icon-youtube { background: linear-gradient(135deg, #ff0000, #cc0000); color: #fff; }
+        .icon-github { background: linear-gradient(135deg, #333333, #24292e); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+        .icon-civitai { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+        .icon-seaart { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; }
+        .icon-pinterest { background: linear-gradient(135deg, #e60023, #ad081b); color: #fff; }
+        .icon-settings { background: linear-gradient(135deg, #475569, #334155); color: #94a3b8; }
+
+        .shortcut-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            text-align: right;
+        }
+
+        .shortcut-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .shortcut-desc {
+            font-size: 11px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Footer & Shortcuts Help */
+        .footer-hint {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        .key-badge {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-family: monospace;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 640px) {
+            .shortcuts-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .time-display {
+                font-size: 44px;
+            }
+        }
+    </style>
 </head>
 <body>
-<main class="shell">
-  <section class="top">
-    <div class="brand"><div class="mark">IS</div><div><div class="title">imgsaver Browser</div><div class="sub">Clean start page for search, downloads, and focused browsing</div></div></div>
-    <div class="clock"><div class="time" id="time">--:--</div><div class="date" id="date"></div></div>
-  </section>
-  <section class="google-entry">
-    <div><h1>Start with Google</h1><p>Open Google first, then search normally from the Google page.</p></div>
-    <a class="google-button" href="https://www.google.com"><span class="gmark">G</span> Open Google</a>
-  </section>
-  <section class="grid">
-    <div class="panel"><h2>Quick Links</h2><div class="quick">
-      <a class="tile" href="https://www.google.com"><b>Google</b><small>Open homepage</small></a>
-      <a class="tile" href="https://chat.openai.com"><b>ChatGPT</b><small>Open assistant</small></a>
-      <a class="tile" href="https://www.youtube.com"><b>YouTube</b><small>Watch videos</small></a>
-      <a class="tile" href="https://github.com"><b>GitHub</b><small>Code workspace</small></a>
-      <a class="tile" href="https://mail.google.com"><b>Gmail</b><small>Mail inbox</small></a>
-      <a class="tile" href="https://drive.google.com"><b>Drive</b><small>Cloud files</small></a>
-    </div></div>
-    <aside class="panel"><h2>Session</h2><div class="stats">
-      <div class="stat"><label>Status</label><strong>Ready</strong></div>
-      <div class="stat"><label>New tab</label><strong>Internal</strong></div>
-      <div class="stat"><label>Privacy</label><strong>No file URL</strong></div>
-    </div><p class="hint">Type a phrase to search, or enter a domain like <span class="pill">example.com</span>. This page is generated by the app and does not require an external HTML file.</p></aside>
-  </section>
-</main>
-<script>
-function tick(){const now=new Date();time.textContent=now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});date.textContent=now.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'});}tick();setInterval(tick,1000);
-</script>
+    <div class="ambient-glow"></div>
+
+    <div class="container">
+        <!-- Minimal Clock & Date Header -->
+        <header class="header">
+            <div class="time-display" id="time">--:--</div>
+            <div class="date-display" id="date">در حال بارگذاری...</div>
+        </header>
+
+        <!-- Search Bar -->
+        <div class="search-wrapper">
+            <div class="search-box">
+                <div class="search-engine-badge">G</div>
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput" 
+                    placeholder="جستجو در وب یا وارد کردن آدرس سایت..." 
+                    autocomplete="off"
+                    spellcheck="false"
+                    autofocus
+                />
+                <button class="search-btn" id="searchBtn" title="جستجو">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Shortcuts Quick Access Grid -->
+        <div class="shortcuts-grid">
+            <a class="shortcut-card" href="https://www.google.com">
+                <div class="shortcut-icon-wrapper icon-google">G</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">Google</span>
+                    <span class="shortcut-desc">موتور جستجو</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://chatgpt.com">
+                <div class="shortcut-icon-wrapper icon-chatgpt">AI</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">ChatGPT</span>
+                    <span class="shortcut-desc">هوش مصنوعی</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://www.youtube.com">
+                <div class="shortcut-icon-wrapper icon-youtube">YT</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">YouTube</span>
+                    <span class="shortcut-desc">ویدیو و کلیپ</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://github.com">
+                <div class="shortcut-icon-wrapper icon-github">GH</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">GitHub</span>
+                    <span class="shortcut-desc">مخازن کد</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://civitai.com">
+                <div class="shortcut-icon-wrapper icon-civitai">CV</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">Civitai</span>
+                    <span class="shortcut-desc">مدل‌های AI</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://www.seaart.ai">
+                <div class="shortcut-icon-wrapper icon-seaart">SA</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">SeaArt</span>
+                    <span class="shortcut-desc">تولید تصویر هوش</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://www.pinterest.com">
+                <div class="shortcut-icon-wrapper icon-pinterest">PT</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">Pinterest</span>
+                    <span class="shortcut-desc">ایده و تصاویر</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="imgsaver://settings">
+                <div class="shortcut-icon-wrapper icon-settings">⚙</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">تنظیمات</span>
+                    <span class="shortcut-desc">تنظیمات مرورگر</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Minimal Keyboard Shortcut Hint -->
+        <div class="footer-hint">
+            <span>برای جستجوی سریع کلید</span>
+            <span class="key-badge">Enter ↵</span>
+            <span>را فشار دهید</span>
+        </div>
+    </div>
+
+    <script>
+        // Clock & Persian/Gregorian Date
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('time').textContent = `${hours}:${minutes}`;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            try {
+                document.getElementById('date').textContent = now.toLocaleDateString('fa-IR', options);
+            } catch (e) {
+                document.getElementById('date').textContent = now.toLocaleDateString(undefined, options);
+            }
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Search & Navigate logic
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+
+        function performSearch() {
+            let query = searchInput.value.trim();
+            if (!query) return;
+
+            if (query === 'imgsaver://settings' || query === 'about:settings' || query === 'settings') {
+                window.location.href = 'imgsaver://settings';
+                return;
+            }
+
+            if (/^(https?:\/\/)/i.test(query)) {
+                window.location.href = query;
+            } else if (query.includes('.') && !query.includes(' ')) {
+                window.location.href = 'https://' + query;
+            } else {
+                window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+            }
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch();
+            }
+        });
+
+        // Autofocus input
+        window.addEventListener('DOMContentLoaded', () => {
+            searchInput.focus();
+        });
+    </script>
 </body>
 </html>
 """;

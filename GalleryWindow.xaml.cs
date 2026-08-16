@@ -124,7 +124,7 @@ namespace imgsaver
                 }
                 else
                 {
-                    System.Windows.MessageBox.Show("Path does not exist.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show("پوشه مورد نظر یافت نشد.", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
@@ -143,7 +143,7 @@ namespace imgsaver
             {
                 LoadingIndicator.Visibility = Visibility.Collapsed;
                 EmptyState.Visibility = Visibility.Visible;
-                TxtEmptyMessage.Text = "No images found";
+                TxtEmptyMessage.Text = "هیچ تصویری در پوشه انتخاب‌شده یافت نشد";
                 return;
             }
 
@@ -151,7 +151,7 @@ namespace imgsaver
             _currentDateIndex = 0;
 
             int totalImages = _allImages.Count;
-            TxtImageCount.Text = $"{totalImages} Images";
+            TxtImageCount.Text = $"{totalImages} تصویر";
 
             MoveToRecentStart();
             ShowDate(_availableDates[_currentDateIndex]);
@@ -311,7 +311,7 @@ namespace imgsaver
 
                 await Dispatcher.InvokeAsync(() =>
                 {
-                    TxtSearchResults.Text = $"{results.Count} results";
+                    TxtSearchResults.Text = $"{results.Count} تصویر یافت شد";
 
                     _currentImagesList = results;
                     _currentPage = 1;
@@ -458,7 +458,7 @@ namespace imgsaver
             {
                 _currentImagesList = new List<string>();
                 EmptyState.Visibility = Visibility.Visible;
-                TxtEmptyMessage.Text = "No images found for this day";
+                TxtEmptyMessage.Text = "هیچ تصویری برای این تاریخ یافت نشد";
                 return;
             }
 
@@ -466,7 +466,7 @@ namespace imgsaver
 
             var images = _imagesByDate[date];
             TxtCurrentDate.Text = FormatDate(date);
-            TxtDateInfo.Text = $"{images.Count} Images";
+            TxtDateInfo.Text = $"{images.Count} تصویر";
 
             BtnPrevDate.IsEnabled = _currentDateIndex < _availableDates.Count - 1;
             BtnNextDate.IsEnabled = _currentDateIndex > 0;
@@ -544,17 +544,17 @@ namespace imgsaver
             {
                 _currentImagesList = new List<string>();
                 EmptyState.Visibility = Visibility.Visible;
-                TxtEmptyMessage.Text = "No images found in gallery";
+                TxtEmptyMessage.Text = "هیچ تصویری در گالری یافت نشد";
                 return;
             }
 
-            TxtCurrentDate.Text = "🎲 Random Gallery";
+            TxtCurrentDate.Text = "تصاویر تصادفی (Random)";
             
             // Pick from the whole lightweight index, including months not yet viewed.
             var random = new Random();
             var randomImages = _allImages.OrderBy(x => random.Next()).Take(10).Select(x => x.Path).ToList();
             
-            TxtDateInfo.Text = $"{randomImages.Count} Random Images";
+            TxtDateInfo.Text = $"{randomImages.Count} تصویر تصادفی";
 
             _currentImagesList = randomImages;
             _currentPage = 1;
@@ -635,7 +635,7 @@ namespace imgsaver
                 };
                 var promptBadgeText = new TextBlock
                 {
-                    Text = "✨ Prompt",
+                    Text = "✨ پرامپت",
                     FontSize = 10,
                     FontWeight = FontWeights.Bold,
                     Foreground = System.Windows.Media.Brushes.White
@@ -809,12 +809,15 @@ namespace imgsaver
         {
             IsPrivacyMode = !IsPrivacyMode;
             
-            // Update button UI
-            if (BtnPrivacyMode.Template.FindName("txt", BtnPrivacyMode) is TextBlock txt)
+            // Update button UI vector icon
+            if (BtnPrivacyMode.Template.FindName("PrivacyIconPath", BtnPrivacyMode) is System.Windows.Shapes.Path iconPath)
             {
-                txt.Text = IsPrivacyMode ? "👁️‍🗨️" : "👁️";
+                if (IsPrivacyMode && TryFindResource("IconEyeOff") is StreamGeometry offGeom)
+                    iconPath.Data = offGeom;
+                else if (!IsPrivacyMode && TryFindResource("IconEye") is StreamGeometry onGeom)
+                    iconPath.Data = onGeom;
             }
-            BtnPrivacyMode.ToolTip = IsPrivacyMode ? "Disable Privacy Blur" : "Enable Privacy Blur";
+            BtnPrivacyMode.ToolTip = IsPrivacyMode ? "غیرفعال‌سازی حالت حریم خصوصی" : "حالت حریم خصوصی (تار کردن تصاویر)";
 
             UpdatePrivacyUI();
 
@@ -872,8 +875,8 @@ namespace imgsaver
             if (_selectedImages.Count == 0) return;
 
             var result = System.Windows.MessageBox.Show(
-                $"Are you sure you want to delete {_selectedImages.Count} images and their associated text files?",
-                "Confirm Delete",
+                $"آیا از حذف {_selectedImages.Count} تصویر و فایل‌های متنی متناظر اطمینان دارید؟",
+                "تأیید حذف",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -912,9 +915,9 @@ namespace imgsaver
             {
                 var today = DateTime.Now.Date;
                 if (date.Date == today)
-                    return "Today";
+                    return "امروز";
                 else if (date.Date == today.AddDays(-1))
-                    return "Yesterday";
+                    return "دیروز";
                 else
                     return date.ToString("yyyy/MM/dd");
             }
@@ -946,6 +949,20 @@ namespace imgsaver
 
         #region Window Controls
 
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
+            else if (e.ClickCount == 1) DragMove();
+        }
+
+        private void BtnLockApp_Click(object sender, RoutedEventArgs e)
+        {
+            AppLockManager.LockApp();
+        }
+
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             Close();
@@ -954,6 +971,11 @@ namespace imgsaver
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;
+        }
+
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         }
 
         #endregion
@@ -991,7 +1013,7 @@ namespace imgsaver
             if (_currentImagesList.Count == 0)
             {
                 EmptyState.Visibility = Visibility.Visible;
-                TxtEmptyMessage.Text = "No images found";
+                TxtEmptyMessage.Text = "هیچ تصویری یافت نشد";
                 PaginationPanel.Visibility = Visibility.Collapsed;
                 return;
             }
@@ -1003,7 +1025,7 @@ namespace imgsaver
             if (_currentPage > totalPages) _currentPage = totalPages;
 
             PaginationPanel.Visibility = totalPages > 1 ? Visibility.Visible : Visibility.Collapsed;
-            TxtPageInfo.Text = $"Page {_currentPage} of {totalPages}";
+            TxtPageInfo.Text = $"صفحه {_currentPage} از {totalPages}";
             BtnPrevPage.IsEnabled = _currentPage > 1;
             BtnNextPage.IsEnabled = _currentPage < totalPages;
 
@@ -1053,12 +1075,29 @@ namespace imgsaver
         {
             if (WindowState == WindowState.Maximized)
             {
-                MainBorder.Margin = new Thickness(8);
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بازگردانی";
+                    if (MaximizeIconPath != null && TryFindResource("IconRestore") is StreamGeometry restoreGeom)
+                    {
+                        MaximizeIconPath.Data = restoreGeom;
+                    }
+                }
+                var resizeThickness = SystemParameters.WindowResizeBorderThickness;
+                MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
                 MainBorder.CornerRadius = new CornerRadius(0);
                 MainBorder.BorderThickness = new Thickness(0);
             }
             else
             {
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بزرگ کردن";
+                    if (MaximizeIconPath != null && TryFindResource("IconMaximize") is StreamGeometry maxGeom)
+                    {
+                        MaximizeIconPath.Data = maxGeom;
+                    }
+                }
                 MainBorder.Margin = new Thickness(0);
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.BorderThickness = new Thickness(1);

@@ -106,10 +106,10 @@ namespace imgsaver
                 _tabNetworkStats[tabItem] = stats;
             }
 
-            TxtStatusUrl.Text = currentUrl ?? "Current tab";
-            TxtCacheUsage.Text = $"Cache: {FormatBytes(stats.CachedBytes)}";
-            TxtDownloadUsage.Text = $"Download: {FormatBytes(stats.DownloadedBytes)}";
-            TxtTotalUsage.Text = $"Total: {FormatBytes(stats.TotalBytes)}";
+            TxtStatusUrl.Text = currentUrl ?? "آماده";
+            TxtCacheUsage.Text = FormatBytes(stats.CachedBytes);
+            TxtDownloadUsage.Text = FormatBytes(stats.DownloadedBytes);
+            TxtTotalUsage.Text = FormatBytes(stats.TotalBytes);
 
             if (_currentSettings.AutoHideStatus)
             {
@@ -813,10 +813,16 @@ namespace imgsaver
 
         private string FormatBytes(long bytes)
         {
-            string[] Suffix = { "B", "KB", "MB", "GB" };
-            int i; double dblSByte = bytes;
-            for (i = 0; i < Suffix.Length && bytes >= 1024; i++, bytes /= 1024) { dblSByte = bytes / 1024.0; }
-            return string.Format("{0:0.##} {1}", dblSByte, Suffix[i]);
+            if (bytes <= 0) return "0 B";
+            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
+            double len = bytes;
+            int order = 0;
+            while (len >= 1024.0 && order < suffixes.Length - 1)
+            {
+                order++;
+                len /= 1024.0;
+            }
+            return $"{len:0.#} {suffixes[order]}";
         }
 
         private bool IsTrackerOrAd(string uri) => uri.Contains("google-analytics.com") || uri.Contains("doubleclick.net") || uri.Contains("googletagmanager.com") || uri.Contains("facebook.net") || uri.Contains("adservice.google") || uri.Contains("analytics.") || uri.Contains("/ads/") || uri.Contains("pixel.");
@@ -1096,54 +1102,9 @@ namespace imgsaver
         }
 
 
-        private async void BtnBrowserSettings_Click(object? sender, RoutedEventArgs e)
+        private void BtnBrowserSettings_Click(object? sender, RoutedEventArgs e)
         {
-            var settingsWin = new BrowserSettingsWindow();
-            settingsWin.Owner = this;
-            settingsWin.ShowDialog();
-
-            if (settingsWin.RequestClearData)
-            {
-                var browser = GetCurrentBrowser();
-                if (browser?.CoreWebView2 != null)
-                {
-                    if (settingsWin.RequestDeleteLoginData)
-                        await browser.CoreWebView2.Profile.ClearBrowsingDataAsync();
-
-                    DeleteDirectoryContents(_permanentCacheFolder);
-                    CustomMessageBox.Show(settingsWin.RequestDeleteLoginData
-                        ? "Browser cache, cookies, and login data have been cleared."
-                        : "Browser cache has been cleared.",
-                        "Success");
-                    browser.Reload();
-                }
-            }
-
-            // Check if proxy settings changed BEFORE refreshing
-            bool proxyChanged = false;
-            var oldSettings = _currentSettings;
-            var newSettings = BrowserSettings.Load();
-            proxyChanged = (oldSettings.ProxyMode ?? "system") != (newSettings.ProxyMode ?? "system") ||
-                          oldSettings.ProxyAddress != newSettings.ProxyAddress ||
-                          oldSettings.ProxyPort != newSettings.ProxyPort ||
-                          oldSettings.ProxyType != newSettings.ProxyType;
-
-            RefreshSettings();
-            BrowserRecordingFloatingWindowManager.SyncWithSettings(newSettings);
-
-            if (proxyChanged)
-            {
-                SyncDownloadProxySettings();
-                CustomMessageBox.Show("Proxy settings updated instantly. Active tabs do not need to be reloaded.", "Proxy Updated");
-            }
-            else
-            {
-                // For other settings, just apply them to existing tabs
-                foreach (TabItem tab in BrowserTabs.Items)
-                {
-                    if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null) ApplyBrowserSettingsTo(state.PrimaryWebView);
-                }
-            }
+            OpenSettingsTab();
         }
 
         private async void BtnClearSiteData_Click(object? sender, RoutedEventArgs e)

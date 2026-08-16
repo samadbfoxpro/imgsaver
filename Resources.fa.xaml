@@ -8,9 +8,7 @@
     <sys:String x:Key="Btn_ExtraFloat">اکسترا فلوت</sys:String>
     <sys:String x:Key="Btn_Persona">پرسونا</sys:String>
     <sys:String x:Key="Btn_Gallery">گالری</sys:String>
-    <sys:String x:Key="Btn_ClipSaver">ذخیره‌ساز کلیپ‌بورد</sys:String>
     <sys:String x:Key="Btn_Snippets">اسنیپت‌ها</sys:String>
-    <sys:String x:Key="Btn_QuickSave">ذخیره سریع</sys:String>
     <sys:String x:Key="Btn_Remote">کنترل از راه دور</sys:String>
     <sys:String x:Key="Btn_CloudLink">لینک ابری</sys:String>
     <sys:String x:Key="Btn_Archive">آرشیو</sys:String>

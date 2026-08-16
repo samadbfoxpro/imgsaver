@@ -57,8 +57,20 @@ namespace imgsaver
         {
             if (window == null) return;
             
-            // Keep Browser, BrowserSettings and MiniClipboard windows always LeftToRight
-            if (window is BrowserWindow || window is BrowserSettingsWindow || window is MiniClipboardWindow)
+            // Keep Browser, BrowserSettings, MiniClipboard, PromptTagger, Gallery, ImageViewer, AuthLock, PersonaInjector and prompt editors always LeftToRight
+            if (window is BrowserWindow || 
+                window is BrowserSettingsWindow || 
+                window is MiniClipboardWindow || 
+                window is PromptTaggerWindow || 
+                window is GalleryWindow || 
+                window is ImageViewerWindow || 
+                window is AuthLockWindow ||
+                window is PersonaInjectorWindow ||
+                window is CharacterEditorWindow ||
+                window is PromptEditorWindow ||
+                window is ExtraItemEditorWindow ||
+                window is ExtraPromptEditorWindow ||
+                window is PromptSurgeonWindow)
             {
                 window.FlowDirection = System.Windows.FlowDirection.LeftToRight;
                 return;

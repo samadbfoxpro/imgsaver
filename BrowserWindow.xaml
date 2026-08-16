@@ -4,11 +4,11 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:local="clr-namespace:imgsaver"
         Title="Browser" Width="1024" Height="768"
-        Background="Transparent"
-        WindowStyle="None" AllowsTransparency="True"
+        MinHeight="500" MinWidth="700"
+        Background="#18191C"
         WindowStartupLocation="CenterScreen">
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="32" GlassFrameThickness="0" CornerRadius="0" ResizeBorderThickness="6"/>
+        <WindowChrome CaptionHeight="38" GlassFrameThickness="0" CornerRadius="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
     
     <Window.Resources>
@@ -99,178 +99,285 @@
     <Border x:Name="MainBorder" Style="{StaticResource MainBorderStyle}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="32"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="38"/>
+                <RowDefinition Height="46"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Title Bar -->
-            <Border x:Name="TitleBarBorder" Grid.Row="0" Background="{StaticResource TitleBarBrush}" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <!-- ROW 0: TITLE BAR -->
+            <Border x:Name="TitleBarBorder" Grid.Row="0" Background="#18191C" CornerRadius="8,8,0,0" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
-                        <TextBlock Text="🌐 Dataset Browser" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" Margin="0,0,12,0"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Title & Profile Badge -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <!-- Globe Icon -->
+                        <Path Data="{StaticResource IconGlobe}" Fill="#949BA4" Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Dataset Browser" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#949BA4" Margin="0,0,12,0"/>
 
                         <!-- Active Account Profile Badge Button -->
-                        <Button x:Name="BtnAccountProfile" Click="BtnAccountProfile_Click" WindowChrome.IsHitTestVisibleInChrome="True"
-                                Height="22" Padding="8,0" Cursor="Hand" ToolTip="Click to switch or launch Account Profile">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="bd" Background="#25FFFFFF" BorderBrush="#2ECC71" BorderThickness="1.2" CornerRadius="11">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0">
-                                            <TextBlock x:Name="TxtProfileIcon" Text="👤" FontSize="11" Margin="0,0,4,0"/>
-                                            <TextBlock x:Name="TxtProfileName" Text="Account 1" FontSize="10" FontWeight="Bold" Foreground="White"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="bd" Property="Background" Value="#45FFFFFF"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
+                        <Button x:Name="BtnAccountProfile"
+                                Style="{StaticResource ProfileAvatarBtnStyle}"
+                                Click="BtnAccountProfile_Click"
+                                ToolTip="حساب کاربری و تغییر پروفایل"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border x:Name="UserProfileAvatarBorder" Width="22" Height="22" CornerRadius="11" Background="#3B82F6" Margin="0,0,6,0">
+                                    <Path x:Name="UserProfileAvatarPath" Data="{StaticResource IconUser}" Fill="White" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock x:Name="TxtProfileName" Text="Account 1" FontSize="11" FontWeight="SemiBold" Foreground="#F2F3F5" VerticalAlignment="Center" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
                         </Button>
                     </StackPanel>
 
-                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="─" Style="{StaticResource TitleBarButtonStyle}" Click="BtnMinimize_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
-                        <Button Content="□" Style="{StaticResource TitleBarButtonStyle}" Click="BtnMaximize_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
-                        <Button Content="✕" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <!-- Window Caption Buttons (Lock, Minimize, Maximize, Close) -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button x:Name="BtnAppLock" Style="{StaticResource CaptionBtnStyle}" Click="BtnAppLock_Click" ToolTip="قفل برنامه (Ctrl + L)" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Path Data="{StaticResource IconLock}" Fill="#F87171" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnMinimize" Style="{StaticResource CaptionBtnStyle}" Click="BtnMinimize_Click" ToolTip="کوچک کردن" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Path Data="{StaticResource IconMinimize}" Fill="#949BA4" Width="10" Height="2" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnMaximize" Style="{StaticResource CaptionBtnStyle}" Click="BtnMaximize_Click" ToolTip="بزرگ کردن" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Path x:Name="MaximizeIconPath" Data="{StaticResource IconMaximize}" Fill="#949BA4" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnClose" Style="{StaticResource CaptionCloseBtnStyle}" Click="BtnClose_Click" ToolTip="بستن" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Path Data="{StaticResource IconClose}" Fill="#949BA4" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Navigation Bar -->
-            <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" Padding="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-                <DockPanel LastChildFill="True">
-                    <!-- Left Buttons -->
-                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                        <Button Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnBack_Click" ToolTip="Back">
-                            <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+            <!-- ROW 1: NAVIGATION & OMNIBOX BAR -->
+            <Border Grid.Row="1" Background="#2B2D30" BorderBrush="#36393E" BorderThickness="0,0,0,1" VerticalAlignment="Stretch">
+                <Grid Margin="8,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/> <!-- Navigation Buttons -->
+                        <ColumnDefinition Width="*"/>    <!-- Omnibox Address Bar -->
+                        <ColumnDefinition Width="Auto"/> <!-- Right Action Buttons -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Navigation Buttons -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                        <Button x:Name="BtnBack" Style="{StaticResource NavIconButton}" Click="BtnBack_Click" ToolTip="بازگشت (Alt+Left)">
+                            <Path Data="{StaticResource IconBack}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
-                        <Button Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnForward_Click" ToolTip="Forward">
-                            <TextBlock Text="&#xE72A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                        <Button x:Name="BtnForward" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnForward_Click" ToolTip="جلو (Alt+Right)">
+                            <Path Data="{StaticResource IconForward}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
-                        <Button Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnReload_Click" ToolTip="Reload">
-                            <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                        <Button x:Name="BtnReload" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnReload_Click" ToolTip="تازه‌سازی (F5)">
+                            <Path Data="{StaticResource IconRefresh}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
-                        <Button x:Name="BtnStop" Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,4,0" Click="BtnStop_Click" ToolTip="Stop">
-                            <TextBlock Text="⏹" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                        <Button x:Name="BtnStop" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnStop_Click" ToolTip="توقف">
+                            <Path Data="{StaticResource IconStop}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
-                        <Button Width="36" Height="36" Style="{StaticResource SecondaryButtonStyle}" Padding="0" Margin="0,0,8,0" Click="BtnNewTab_Click" ToolTip="New Tab">
-                            <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                        <Button Width="34" Height="34" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnNewTab_Click" ToolTip="تب جدید (Ctrl+T)">
+                            <Path Data="{StaticResource IconPlus}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="Uniform"/>
                         </Button>
                     </StackPanel>
 
-                    <!-- Right Buttons -->
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button Width="44" Height="36" Margin="8,0,0,0" Click="BtnGo_Click" ToolTip="Go" Padding="0">
-                            <TextBlock Text="&#xE751;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button Width="36" Height="36" Margin="8,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnAddBookmark_Click" ToolTip="Bookmark this page" Padding="0">
-                            <TextBlock Text="&#xE8A9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnClearSiteData" Width="36" Height="36" Margin="4,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnClearSiteData_Click" ToolTip="Clear data for this site" Padding="0">
-                            <TextBlock Text="&#xE894;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnSplitView" Width="36" Height="36" Margin="4,0,0,0" Style="{StaticResource SecondaryButtonStyle}" Click="BtnSplitView_Click" ToolTip="Split View / Dual Screen (Ctrl+Shift+S)" Padding="0">
-                            <TextBlock Text="&#xE740;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnBrowserRecord" Width="36" Height="36" Margin="4,0,0,0"
-                                Style="{StaticResource SecondaryButtonStyle}" ToolTip="Record browser mouse and keyboard" Click="BtnBrowserRecord_Click" Padding="0">
-                            <TextBlock x:Name="TxtBrowserRecordIcon" Text="●" Foreground="{StaticResource ForegroundBrush}" FontSize="17" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnBrowserPlayRec" Width="36" Height="36" Margin="4,0,0,0"
-                                Style="{StaticResource SecondaryButtonStyle}" ToolTip="Play browser recording" Click="BtnBrowserPlayRec_Click" Padding="0">
-                            <TextBlock Text="▶" Foreground="{StaticResource ForegroundBrush}" FontSize="17" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnOpenMainMiniClip" Width="36" Height="36" Margin="4,0,0,0" 
-                                Style="{StaticResource SecondaryButtonStyle}" ToolTip="Open Main Mini Clip Window" Click="BtnOpenMainMiniClip_Click" Padding="0">
-                            <TextBlock Text="📋" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                        <Button x:Name="BtnBrowserSettings" Width="36" Height="36" Margin="4,0,0,0" 
-                                Style="{StaticResource SecondaryButtonStyle}" ToolTip="Browser Settings" Click="BtnBrowserSettings_Click" Padding="0">
-                            <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
-                    </StackPanel>
-
-                    <!-- Modern Omnibox Address Bar (Chrome/Edge Rounded Style) -->
-                    <Border Background="#1A1B20" BorderBrush="#2D2F38" BorderThickness="1" CornerRadius="17" Height="34" Margin="4,0">
-                        <Grid>
+                    <!-- Modern Omnibox Address Bar (Webino Style) -->
+                    <Border Grid.Column="1"
+                            Background="#25272B"
+                            BorderBrush="#36393E"
+                            BorderThickness="1"
+                            CornerRadius="18"
+                            Height="34"
+                            Margin="4,0"
+                            VerticalAlignment="Center">
+                        <Grid Margin="10,0,6,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/> <!-- Security Lock -->
+                                <ColumnDefinition Width="*"/>    <!-- Text Input -->
+                                <ColumnDefinition Width="Auto"/> <!-- Bookmark Star -->
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="🔒" FontSize="11" Foreground="#38BDF8" VerticalAlignment="Center" Margin="10,0,4,0"/>
-                            <TextBox x:Name="TxtUrl" Grid.Column="1" Padding="4,0,10,0" VerticalContentAlignment="Center" 
-                                     FontSize="13" Foreground="#F1F5F9" Background="Transparent" BorderThickness="0" 
-                                     CaretBrush="#00E5FF" KeyDown="TxtUrl_KeyDown" ToolTip="Search or enter web address"/>
+
+                            <!-- Security Lock Icon -->
+                            <Path Grid.Column="0"
+                                  Data="{StaticResource IconLock}"
+                                  Fill="#10B981"
+                                  Width="13" Height="13"
+                                  Stretch="Uniform"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  ToolTip="اتصال امن (HTTPS)"/>
+
+                            <!-- Address Input -->
+                            <TextBox x:Name="TxtUrl"
+                                     Grid.Column="1"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="#F2F3F5"
+                                     CaretBrush="#00E5FF"
+                                     FontSize="13"
+                                     Padding="4,0"
+                                     VerticalAlignment="Center"
+                                     VerticalContentAlignment="Center"
+                                     KeyDown="TxtUrl_KeyDown"
+                                     ToolTip="Search or enter web address">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="#F2F3F5"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="CaretBrush" Value="#00E5FF"/>
+                                        <Setter Property="SelectionBrush" Value="#3B82F6"/>
+                                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="TextBox">
+                                                    <ScrollViewer x:Name="PART_ContentHost"
+                                                                  Focusable="False"
+                                                                  HorizontalScrollBarVisibility="Hidden"
+                                                                  VerticalScrollBarVisibility="Hidden"
+                                                                  VerticalAlignment="Center"
+                                                                  Margin="0"/>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+
+                            <!-- Bookmark Current Page Star Button -->
+                            <Button x:Name="BtnAddBookmark"
+                                    Grid.Column="2"
+                                    Style="{StaticResource NavIconButton}"
+                                    Width="28" Height="28"
+                                    Click="BtnAddBookmark_Click"
+                                    ToolTip="افزودن به بوک‌مارک‌ها (Ctrl+D)">
+                                <Path Data="{StaticResource IconStarOutline}"
+                                      Fill="#949BA4"
+                                      Width="14" Height="14"
+                                      Stretch="Uniform"/>
+                            </Button>
                         </Grid>
                     </Border>
-                </DockPanel>
+
+                    <!-- Right Action Toolbar -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
+                        <Button x:Name="BtnGo" Style="{StaticResource NavIconButton}" Click="BtnGo_Click" ToolTip="برو">
+                            <Path Data="{StaticResource IconChevronRight}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
+                        </Button>
+                        <Button x:Name="BtnSplitView" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnSplitView_Click" ToolTip="نمای دوگانه (Ctrl+Shift+S)">
+                            <Path Data="{StaticResource IconGallery}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
+                        </Button>
+                        <Button x:Name="BtnBrowserRecord" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnBrowserRecord_Click" ToolTip="ضبط مرورگر">
+                            <TextBlock x:Name="TxtBrowserRecordIcon" Text="●" Foreground="{StaticResource ForegroundBrush}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnBrowserPlayRec" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnBrowserPlayRec_Click" ToolTip="پخش ضبط">
+                            <Path Data="{StaticResource IconPlay}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
+                        </Button>
+                        <Button x:Name="BtnOpenMainMiniClip" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnOpenMainMiniClip_Click" ToolTip="کلیپ‌بورد اصلی">
+                            <Path Data="{StaticResource IconCopy}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
+                        </Button>
+                        <Button x:Name="BtnBrowserSettings" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnBrowserSettings_Click" ToolTip="تنظیمات">
+                            <Path Data="{StaticResource IconSettings}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
+                        </Button>
+                        <Button x:Name="BtnBrowserLock" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnAppLock_Click" ToolTip="قفل سریع برنامه (Ctrl+L)">
+                            <Path Data="{StaticResource IconLock}" Fill="#F87171" Width="14" Height="14" Stretch="Uniform"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <!-- Bookmarks Bar -->
-            <Border x:Name="BookmarksBorder" Grid.Row="2" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Height="32" SizeChanged="BookmarksBorder_SizeChanged">
+            <!-- ROW 2: BOOKMARKS BAR -->
+            <Border x:Name="BookmarksBorder" Grid.Row="2" Background="#2B2D30" BorderBrush="#36393E" BorderThickness="0,0,0,1" Height="32" SizeChanged="BookmarksBorder_SizeChanged">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     
-                    <StackPanel x:Name="BookmarksPanel" Orientation="Horizontal" Margin="4,0" ClipToBounds="True" />
+                    <StackPanel x:Name="BookmarksPanel" Orientation="Horizontal" Margin="8,0" ClipToBounds="True" />
                     
                     <Button x:Name="BtnBookmarksOverflow" Grid.Column="1" Width="24" Height="24" Margin="2,0,4,0" Padding="0"
-                            Style="{StaticResource SecondaryButtonStyle}" Visibility="Collapsed" Click="BtnBookmarksOverflow_Click" ToolTip="More bookmarks">
-                        <TextBlock Text="⋮" Foreground="{StaticResource ForegroundBrush}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            Style="{StaticResource NavIconButton}" Visibility="Collapsed" Click="BtnBookmarksOverflow_Click" ToolTip="بوک‌مارک‌های بیشتر">
+                        <TextBlock Text="⋮" Foreground="#F2F3F5" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
                     <Popup x:Name="BookmarksOverflowPopup" PlacementTarget="{Binding ElementName=BtnBookmarksOverflow}" Placement="Bottom" StaysOpen="False">
-                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4">
+                        <Border Background="#25272B" BorderBrush="#36393E" BorderThickness="1" CornerRadius="6">
                             <StackPanel x:Name="BookmarksOverflowPanel" Orientation="Vertical" Margin="2" />
                         </Border>
                     </Popup>
                 </Grid>
             </Border>
 
-            <!-- Tabs and WebView -->
-            <Grid Grid.Row="3">
-                <TabControl x:Name="BrowserTabs" Background="Transparent" BorderThickness="0" SelectionChanged="BrowserTabs_SelectionChanged">
+            <!-- ROW 3: TABS & WEBVIEW -->
+            <Grid Grid.Row="3" Background="#121316">
+                <TabControl x:Name="BrowserTabs" Background="#121316" BorderThickness="0" SelectionChanged="BrowserTabs_SelectionChanged">
                     <TabControl.Resources>
                         <Style TargetType="TabItem">
                             <Setter Property="Header" Value="New Tab"/>
-                            <Setter Property="Foreground" Value="#8A8F9D"/>
+                            <Setter Property="Foreground" Value="#949BA4"/>
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">
-                                        <Border x:Name="Border" Background="#141418" BorderBrush="#2D2F36" BorderThickness="1,1,1,0" CornerRadius="8,8,0,0" Margin="2,2,2,0" Padding="8,4" MouseRightButtonUp="TabItem_MouseRightButtonUp" Cursor="Hand">
+                                        <Border x:Name="TabBorder"
+                                                Height="34"
+                                                MinWidth="120"
+                                                MaxWidth="200"
+                                                Margin="2,4,2,0"
+                                                CornerRadius="8,8,0,0"
+                                                Cursor="Hand"
+                                                MouseRightButtonUp="TabItem_MouseRightButtonUp">
                                             <Border.ContextMenu>
-                                                <ContextMenu>
-                                                    <MenuItem Header="Close" Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
+                                                <ContextMenu Background="#25272B" Foreground="#F2F3F5">
+                                                    <MenuItem Header="Close Tab" Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                            <Grid>
-                                                <Border x:Name="TopAccent" Height="2" VerticalAlignment="Top" Background="#00E5FF" CornerRadius="1,1,0,0" Visibility="Collapsed" Margin="-8,-4,-8,0"/>
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True" Margin="2,0,6,0"/>
-                                                    <Button x:Name="BtnCloseTab" Content="✕" Width="18" Height="18" FontSize="9" Opacity="0"
-                                                            Style="{StaticResource TitleBarCloseButtonStyle}" 
-                                                            Click="BtnCloseTab_Click" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"/>
-                                                </StackPanel>
+
+                                            <Grid Margin="10,0,6,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/> <!-- Globe Icon -->
+                                                    <ColumnDefinition Width="*"/>    <!-- Title -->
+                                                    <ColumnDefinition Width="Auto"/> <!-- Close Button -->
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Globe Icon -->
+                                                <Path x:Name="GlobeIcon" Grid.Column="0"
+                                                      Data="{StaticResource IconGlobe}"
+                                                      Fill="{TemplateBinding Foreground}"
+                                                      Width="13" Height="13"
+                                                      Stretch="Uniform"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,6,0"/>
+
+                                                <!-- Tab Title -->
+                                                <ContentPresenter Grid.Column="1"
+                                                                  ContentSource="Header"
+                                                                  TextElement.FontSize="12"
+                                                                  VerticalAlignment="Center"
+                                                                  RecognizesAccessKey="True"
+                                                                  Margin="0,0,6,0"/>
+
+                                                <!-- Close Tab Button -->
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource TabCloseBtnStyle}"
+                                                        Click="BtnCloseTab_Click"
+                                                        Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                                        ToolTip="بستن تب (Ctrl+W)"/>
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Border" Property="Background" Value="#1C1D24"/>
-                                                <Setter TargetName="BtnCloseTab" Property="Opacity" Value="0.75"/>
+                                                <Setter TargetName="TabBorder" Property="Background" Value="#25272B"/>
+                                                <Setter Property="Foreground" Value="#F2F3F5"/>
                                             </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Border" Property="Background" Value="#1E1F26"/>
-                                                <Setter TargetName="TopAccent" Property="Visibility" Value="Visible"/>
-                                                <Setter TargetName="BtnCloseTab" Property="Opacity" Value="1"/>
-                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter TargetName="TabBorder" Property="Background" Value="#2B2D30"/>
+                                                <Setter Property="Foreground" Value="#F2F3F5"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -308,19 +415,19 @@
                     <!-- Header: Short Title, Auto-Base & Close -->
                     <Grid Grid.Row="0" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="⚡" FontSize="13" Foreground="#00E5FF" Margin="0,0,6,0"/>
+                            <Path Data="{StaticResource IconFlash}" Fill="#00E5FF" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock Text="Base Prompt" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <CheckBox x:Name="ChkBrowserAutoBase" Content="Auto Base" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" Click="ChkBrowserAutoBase_Click" ToolTip="دریافت اتوماتیک متن اولیه کپی‌شده هنگام ترکیب"/>
-                            <Button Content="✕" Width="20" Height="20" Click="BtnCloseInlineBaseCombiner_Click" Foreground="#AAA" Background="Transparent" BorderThickness="0" Cursor="Hand" FontWeight="Bold"/>
+                            <Button Style="{StaticResource TabCloseBtnStyle}" Width="20" Height="20" Click="BtnCloseInlineBaseCombiner_Click" ToolTip="بستن"/>
                         </StackPanel>
                     </Grid>
 
                     <!-- Summary Status Badge -->
                     <Border Grid.Row="1" Margin="0,0,0,8" Background="#0F172A" CornerRadius="5" BorderBrush="#334155" BorderThickness="1" Padding="8,5">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock x:Name="TxtBrowserCombinerIcon" Text="🧩" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <Path x:Name="IcoBrowserCombinerStatus" Data="{StaticResource IconCombiner}" Fill="#00E5FF" Width="11" Height="11" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock x:Name="TxtBrowserCombinerSummary" Text="Checking active combiner options..." FontSize="10.5" Foreground="#94A3B8" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
@@ -335,7 +442,12 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
-                        <Button x:Name="BtnBrowserCombineAndCopy" Grid.Row="0" Content="⚡ Combine &amp; Copy to Clipboard" Style="{StaticResource PrimaryButtonStyle}" Height="32" Padding="0" Margin="0,0,0,6" FontWeight="Bold" Click="BtnBrowserCombineAndCopy_Click"/>
+                        <Button x:Name="BtnBrowserCombineAndCopy" Grid.Row="0" Style="{StaticResource PrimaryButtonStyle}" Height="32" Padding="0" Margin="0,0,0,6" FontWeight="Bold" Click="BtnBrowserCombineAndCopy_Click">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconFlash}" Fill="#FFFFFF" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Combine &amp; Copy to Clipboard" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
@@ -343,8 +455,18 @@
                                 <ColumnDefinition Width="8"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="📋 Copy Base" Style="{StaticResource SecondaryButtonStyle}" Height="30" FontSize="11" Padding="0" Click="BtnBrowserCopyBaseOnly_Click"/>
-                            <Button Grid.Column="2" Content="🗑️ Clear" Style="{StaticResource SecondaryButtonStyle}" Height="30" FontSize="11" Padding="0" Click="BtnBrowserClearBase_Click"/>
+                            <Button Grid.Column="0" Style="{StaticResource SecondaryButtonStyle}" Height="30" FontSize="11" Padding="0" Click="BtnBrowserCopyBaseOnly_Click">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconCopy}" Fill="{StaticResource ForegroundBrush}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Copy Base" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButtonStyle}" Height="30" FontSize="11" Padding="0" Click="BtnBrowserClearBase_Click">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconDelete}" Fill="{StaticResource ForegroundBrush}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Clear" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                         </Grid>
                     </Grid>
                 </Grid>
@@ -353,7 +475,7 @@
             </Grid>
 
             <!-- Smart Prompt Combiner Toolbar -->
-            <Border x:Name="CombinerBar" Grid.Row="5" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="46" Visibility="Collapsed">
+            <Border x:Name="CombinerBar" Grid.Row="4" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="46" Visibility="Collapsed">
                 <Grid Margin="8,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -371,7 +493,6 @@
                                 <Setter Property="Foreground" Value="#CCCCCC"/>
                                 <Setter Property="FontSize" Value="11"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
-                                <Setter Property="Content" Value="🧩 Combiner OFF"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ToggleButton">
@@ -382,8 +503,9 @@
                                                     CornerRadius="13"
                                                     Padding="{TemplateBinding Padding}">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path x:Name="icoCombiner" Data="{StaticResource IconCombiner}" Fill="{TemplateBinding Foreground}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                                     <TextBlock x:Name="txtContent" 
-                                                               Text="{TemplateBinding Content}" 
+                                                               Text="Combiner OFF" 
                                                                Foreground="{TemplateBinding Foreground}"
                                                                FontSize="{TemplateBinding FontSize}"
                                                                FontWeight="{TemplateBinding FontWeight}"
@@ -402,9 +524,10 @@
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsChecked" Value="True">
                                                     <Setter TargetName="border" Property="Background" Value="#1A382B"/>
-                                                    <Setter Property="BorderBrush" Value="#2ECC71"/>
+                                                    <Setter TargetName="border" Property="BorderBrush" Value="#2ECC71"/>
                                                     <Setter Property="Foreground" Value="#2ECC71"/>
-                                                    <Setter Property="Content" Value="🧩 Combiner ON"/>
+                                                    <Setter TargetName="txtContent" Property="Text" Value="Combiner ON"/>
+                                                    <Setter TargetName="icoCombiner" Property="Fill" Value="#2ECC71"/>
                                                     <Setter TargetName="bdCountBadge" Property="Background" Value="#2ECC71"/>
                                                 </Trigger>
                                                 <Trigger Property="IsMouseOver" Value="True">
@@ -530,41 +653,83 @@
                         <Button x:Name="BtnClearCustomInput" Grid.Column="2" Content="✕" Width="24" Height="28" Style="{StaticResource SecondaryButtonStyle}" Margin="4,0,0,0" Padding="0" Click="BtnClearCustomInput_Click" ToolTip="Clear Custom Text &amp; Title"/>
                     </Grid>
 
-                    <!-- Fast Combine Action Buttons: MIX ⚡ | Base 📝 | Settings ⚙ -->
+                    <!-- Fast Combine Action Buttons: MIX | Base | Settings -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Border Background="#0F2838" BorderBrush="#00E5FF" BorderThickness="1" CornerRadius="5" Height="28" Margin="4,0,0,0">
+                        <Border Background="#0F2838" BorderBrush="#00E5FF" BorderThickness="1" CornerRadius="6" Height="28" Margin="4,0,0,0">
                             <StackPanel Orientation="Horizontal">
-                                <Button x:Name="BtnCombBase" Content="⚡ MIX" Height="26" Padding="10,0" FontSize="11" FontWeight="Bold" Background="Transparent" Foreground="#00E5FF" BorderThickness="0" Click="BtnCombBase_Click" MouseRightButtonUp="BtnCombBase_MouseRightButtonUp" ToolTip="Combine Base Prompt with active snippets (Right-click to view/edit Base Prompt)"/>
-                                <Border Width="1" Background="#00E5FF" Opacity="0.4" Margin="0,3"/>
-                                <Button x:Name="BtnViewBasePrompt" Content="📝" Height="26" Width="28" Background="Transparent" Foreground="#00E5FF" BorderThickness="0" Padding="0" FontSize="11" Click="BtnViewBasePrompt_Click" ToolTip="View &amp; Edit Base Prompt Text"/>
+                                <Button x:Name="BtnCombBase" Height="26" Padding="8,0" Background="Transparent" Foreground="#00E5FF" BorderThickness="0" Click="BtnCombBase_Click" MouseRightButtonUp="BtnCombBase_MouseRightButtonUp" ToolTip="Combine Base Prompt with active snippets (Right-click to view/edit Base Prompt)">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconFlash}" Fill="#00E5FF" Width="11" Height="11" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="MIX" FontSize="11" FontWeight="Bold" Foreground="#00E5FF" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Border Width="1" Background="#00E5FF" Opacity="0.3" Margin="0,4"/>
+                                <Button x:Name="BtnViewBasePrompt" Height="26" Width="28" Background="Transparent" Foreground="#00E5FF" BorderThickness="0" Padding="0" Click="BtnViewBasePrompt_Click" ToolTip="View &amp; Edit Base Prompt Text">
+                                    <Path Data="{StaticResource IconEdit}" Fill="#00E5FF" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
                             </StackPanel>
                         </Border>
 
                         <!-- Hidden Placement Rule Badge (Rule is configured inside Manager) -->
                         <Button x:Name="BtnCombinerRuleBadge" Visibility="Collapsed" Click="BtnCombinerRuleBadge_Click"/>
 
-                        <!-- Manager Button (Gear Icon Only) -->
-                        <Button x:Name="BtnOpenCombinerManager" Content="⚙" Style="{StaticResource SecondaryButtonStyle}" Height="28" Width="30" Padding="0" FontSize="14" FontWeight="Bold" Margin="6,0,0,0" Click="BtnOpenCombinerManager_Click" ToolTip="Open Prompt Combiner Manager"/>
+                        <!-- Manager Button (Gear Vector Icon) -->
+                        <Button x:Name="BtnOpenCombinerManager" Style="{StaticResource SecondaryButtonStyle}" Height="28" Width="30" Padding="0" Margin="6,0,0,0" Click="BtnOpenCombinerManager_Click" ToolTip="Open Prompt Combiner Manager">
+                            <Path Data="{StaticResource IconSettings}" Fill="{StaticResource ForegroundBrush}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Network Status Bar -->
-            <Border x:Name="StatusOverlay" Grid.Row="6" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Height="36" Opacity="0" Visibility="Collapsed">
+            <!-- Network Status Bar (Compact Sleek Persian Metrics) -->
+            <Border x:Name="StatusOverlay" Grid.Row="5" Background="#131417" BorderBrush="#22252B" BorderThickness="0,1,0,0" Height="26" Opacity="0" Visibility="Collapsed">
                 <Grid Margin="10,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
+
+                    <!-- Left: URL / Activity Status & Skip Button -->
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock x:Name="TxtStatusUrl" Foreground="{StaticResource ForegroundBrush}" FontSize="11" TextTrimming="CharacterEllipsis" Opacity="0.75" MaxWidth="500"/>
-                        <Button x:Name="BtnSkipRequest" Content="✕ Skip" Style="{StaticResource SecondaryButtonStyle}" Height="22" Padding="8,0" FontSize="10" Margin="10,0,0,0" Click="BtnSkipRequest_Click" ToolTip="Skip and block this request address" Cursor="Hand"/>
+                        <Border Width="5" Height="5" CornerRadius="2.5" Background="#38BDF8" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="TxtStatusUrl" Foreground="#94A3B8" FontSize="10.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" MaxWidth="500"/>
+                        <Button x:Name="BtnSkipRequest" Style="{StaticResource SecondaryButtonStyle}" Height="18" Padding="6,0" Margin="8,0,0,0" Click="BtnSkipRequest_Click" ToolTip="رد کردن و مسدودسازی موقت این درخواست" Cursor="Hand" Background="#1A1C22" BorderBrush="#2A2D36">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconClose}" Fill="#EF4444" Width="7" Height="7" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="رد کردن" FontSize="9.5" Foreground="#CBD5E1" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
-                    <TextBlock x:Name="TxtCacheUsage" Grid.Column="1" Foreground="#FF4CAF50" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    <TextBlock x:Name="TxtDownloadUsage" Grid.Column="2" Foreground="#FFF44336" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    <TextBlock x:Name="TxtTotalUsage" Grid.Column="3" Foreground="#FF64B5F6" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+
+                    <!-- Right: Ultra-Compact Metrics Badges (Cache, Download, Total) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Cache Saved Badge -->
+                        <Border Background="#0C2417" BorderBrush="#14532D" BorderThickness="1" CornerRadius="4" Padding="5,1" Margin="4,0,0,0" ToolTip="حجم داده‌های خوانده شده از کش محلی">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconCheck}" Fill="#4ADE80" Width="8" Height="8" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="کش: " Foreground="#86EFAC" FontSize="10" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtCacheUsage" Foreground="#4ADE80" FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Download Usage Badge -->
+                        <Border Background="#28180E" BorderBrush="#7C2D12" BorderThickness="1" CornerRadius="4" Padding="5,1" Margin="4,0,0,0" ToolTip="حجم داده‌های دانلود شده از شبکه">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconDownload}" Fill="#FB923C" Width="8" Height="8" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="دانلود: " Foreground="#FDBA74" FontSize="10" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtDownloadUsage" Foreground="#FB923C" FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Total Tab Traffic Badge -->
+                        <Border Background="#0E1D2E" BorderBrush="#075985" BorderThickness="1" CornerRadius="4" Padding="5,1" Margin="4,0,0,0" ToolTip="مجموع کل ترافیک این تب">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconGlobe}" Fill="#38BDF8" Width="8" Height="8" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="کل: " Foreground="#7DD3FC" FontSize="10" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="TxtTotalUsage" Foreground="#38BDF8" FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

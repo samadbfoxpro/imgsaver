@@ -25,7 +25,7 @@ namespace imgsaver
         private bool _isLocallyRevealed = false;
         private string _currentFileName = "";
 
-        public ImageViewerWindow(string imagePath, System.Collections.Generic.List<string> allImages = null, int index = -1)
+        public ImageViewerWindow(string imagePath, System.Collections.Generic.List<string>? allImages = null, int index = -1)
         {
             InitializeComponent();
 
@@ -51,7 +51,7 @@ namespace imgsaver
             Loaded += async (_, _) => await LoadImageAsync();
         }
 
-        private void OnPrivacyModeChanged(object sender, EventArgs e)
+        private void OnPrivacyModeChanged(object? sender, EventArgs e)
         {
             UpdatePrivacyOverlay();
         }
@@ -65,10 +65,14 @@ namespace imgsaver
             BtnRevealPrivacy.Visibility = GalleryWindow.IsPrivacyMode ? Visibility.Visible : Visibility.Collapsed;
             
             // Update Reveal button icon
-            if (BtnRevealPrivacy.Template.FindName("txt", BtnRevealPrivacy) is TextBlock txt)
+            if (BtnRevealPrivacy.Template.FindName("RevealIconPath", BtnRevealPrivacy) is System.Windows.Shapes.Path iconPath)
             {
-                txt.Text = _isLocallyRevealed ? "🔒" : "👁️";
+                if (_isLocallyRevealed && TryFindResource("IconEyeOff") is StreamGeometry offGeom)
+                    iconPath.Data = offGeom;
+                else if (!_isLocallyRevealed && TryFindResource("IconEye") is StreamGeometry onGeom)
+                    iconPath.Data = onGeom;
             }
+            BtnRevealPrivacy.ToolTip = _isLocallyRevealed ? "مخفی‌سازی مجدد تصویر" : "نمایش موقت تصویر";
         }
 
         private void BtnRevealPrivacy_Click(object sender, RoutedEventArgs e)
@@ -94,7 +98,7 @@ namespace imgsaver
                 var fileInfo = new FileInfo(_imagePath);
                 TxtFileName.Text = fileInfo.Name;
                 TxtFileInfo.Text = $"{FormatFileSize(fileInfo.Length)} • {_detectedExtension.Replace(".", "").ToUpper()}";
-                TxtDate.Text = fileInfo.LastWriteTime.ToString("MMM dd, yyyy HH:mm");
+                TxtDate.Text = fileInfo.LastWriteTime.ToString("yyyy/MM/dd HH:mm");
 
                 // Make filename interactive (clickable to copy)
                 MakeFileNameInteractive(fileInfo.Name);
@@ -113,7 +117,6 @@ namespace imgsaver
                             bitmap.StreamSource = stream;
                             
                             // Optimization: Downscale huge images to fit standard screen height (e.g. 1440p)
-                            // This saves HUGE amounts of memory for 4k/8k images
                             bitmap.DecodePixelHeight = 1440; 
                             
                             bitmap.EndInit();
@@ -158,8 +161,7 @@ namespace imgsaver
                 }
                 else
                 {
-                    // Fallback for corrupt internal loading
-                    System.Windows.MessageBox.Show("Failed to load image data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show("خطا در بارگذاری تصویر.", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
 
                 // Load associated text file
@@ -167,7 +169,7 @@ namespace imgsaver
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error loading image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"خطا در بارگذاری تصویر: {ex.Message}", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -203,22 +205,18 @@ namespace imgsaver
         {
             TxtPositive.Visibility = Visibility.Visible;
             TxtPositiveEditor.Visibility = Visibility.Collapsed;
-            BtnEditPositive.Content = "✏️";
             BtnSavePositive.Visibility = Visibility.Collapsed;
 
             TxtBasePrompt.Visibility = Visibility.Visible;
             TxtBasePromptEditor.Visibility = Visibility.Collapsed;
-            BtnEditBasePrompt.Content = "✏️";
             BtnSaveBasePrompt.Visibility = Visibility.Collapsed;
 
             TxtNegative.Visibility = Visibility.Visible;
             TxtNegativeEditor.Visibility = Visibility.Collapsed;
-            BtnEditNegative.Content = "✏️";
             BtnSaveNegative.Visibility = Visibility.Collapsed;
 
             TxtDescription.Visibility = Visibility.Visible;
             TxtDescriptionEditor.Visibility = Visibility.Collapsed;
-            BtnEditDescription.Content = "✏️";
             BtnSaveDescription.Visibility = Visibility.Collapsed;
             
             _originalPositive = "";
@@ -232,8 +230,8 @@ namespace imgsaver
             try
             {
                 PromptsPanel.Visibility = Visibility.Collapsed;
-                TxtPositive.Text = "No positive prompt found.";
-                TxtNegative.Text = "No negative prompt found.";
+                TxtPositive.Text = "پرامپت مثبتی یافت نشد.";
+                TxtNegative.Text = "پرامپت منفی یافت نشد.";
 
                 string baseName = Path.GetFileNameWithoutExtension(_imagePath);
                 string? directory = Path.GetDirectoryName(_imagePath);
@@ -247,7 +245,6 @@ namespace imgsaver
                     if (!string.IsNullOrWhiteSpace(content))
                     {
                         // Parse positive, base, negative, and description
-                        // Run parsing on background thread to avoid freezing UI for large text files
                         await Task.Run(() => 
                         {
                             var lines = content.Split('\n');
@@ -266,7 +263,6 @@ namespace imgsaver
                                 string currentLine = line.Trim();
                                 if (string.IsNullOrWhiteSpace(currentLine)) continue;
 
-                                // Robust case-insensitive check
                                 string lowerLine = currentLine.ToLower();
 
                                 if (lowerLine.StartsWith("positive prompt"))
@@ -398,13 +394,12 @@ namespace imgsaver
             for (int i = 0; i < segments.Length; i++)
             {
                 string segment = segments[i];
-                // Preserve leading/trailing spaces for visual flow, but trim for copy
                 string trimSegment = segment.Trim();
                 
                 if (string.IsNullOrWhiteSpace(trimSegment)) continue;
 
-                Run run = new Run(segment); // Use original segment to keep spaces if any (though split eats commas)
-                run.Foreground = defaultColor; // Use passed default color
+                Run run = new Run(segment);
+                run.Foreground = defaultColor;
                 run.Cursor = System.Windows.Input.Cursors.Hand;
                 
                 // Events for interactivity
@@ -421,7 +416,6 @@ namespace imgsaver
                             r.Foreground = System.Windows.Media.Brushes.LimeGreen;
                             Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() => 
                             { 
-                                // Reset to hover color if mouse is still over, or default if not
                                 r.Foreground = r.IsMouseOver ? System.Windows.Media.Brushes.Yellow : defaultColor; 
                             }));
                         }
@@ -441,12 +435,9 @@ namespace imgsaver
 
         private void BtnCopyPositive_Click(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(TxtPositive.Text) && TxtPositive.Text != "No positive prompt found.")
+            if (!string.IsNullOrEmpty(TxtPositive.Text) && !TxtPositive.Text.StartsWith("پرامپت"))
             {
                 System.Windows.Clipboard.SetText(TxtPositive.Text);
-                var originalContent = BtnCopyPositive.Content;
-                BtnCopyPositive.Content = "✓";
-                Task.Delay(1500).ContinueWith(_ => Dispatcher.Invoke(() => BtnCopyPositive.Content = "Copy"));
             }
         }
 
@@ -455,19 +446,14 @@ namespace imgsaver
             if (!string.IsNullOrEmpty(TxtBasePrompt.Text))
             {
                 System.Windows.Clipboard.SetText(TxtBasePrompt.Text);
-                BtnCopyBasePrompt.Content = "✓";
-                Task.Delay(1500).ContinueWith(_ => Dispatcher.Invoke(() => BtnCopyBasePrompt.Content = "Copy"));
             }
         }
 
         private void BtnCopyNegative_Click(object sender, RoutedEventArgs e)
         {
-             if (!string.IsNullOrEmpty(TxtNegative.Text) && TxtNegative.Text != "No negative prompt found.")
+             if (!string.IsNullOrEmpty(TxtNegative.Text) && !TxtNegative.Text.StartsWith("پرامپت"))
             {
                 System.Windows.Clipboard.SetText(TxtNegative.Text);
-                var originalContent = BtnCopyNegative.Content;
-                BtnCopyNegative.Content = "✓";
-                Task.Delay(1500).ContinueWith(_ => Dispatcher.Invoke(() => BtnCopyNegative.Content = "Copy"));
             }
         }
 
@@ -476,8 +462,6 @@ namespace imgsaver
             if (!string.IsNullOrEmpty(TxtDescription.Text))
             {
                 System.Windows.Clipboard.SetText(TxtDescription.Text);
-                BtnCopyDescription.Content = "✓";
-                Task.Delay(1500).ContinueWith(_ => Dispatcher.Invoke(() => BtnCopyDescription.Content = "Copy"));
             }
         }
 
@@ -494,20 +478,16 @@ namespace imgsaver
                 editor.Visibility = Visibility.Visible;
                 editor.Text = originalValue;
                 editor.Focus();
-                editBtn.Content = "✕"; // Change to cancel icon
             }
             else
             {
                 display.Visibility = Visibility.Visible;
                 editor.Visibility = Visibility.Collapsed;
-                editBtn.Content = "✏️";
-                // Reset save button visibility if cancelled
                 if (editor == TxtPositiveEditor) BtnSavePositive.Visibility = Visibility.Collapsed;
                 if (editor == TxtBasePromptEditor) BtnSaveBasePrompt.Visibility = Visibility.Collapsed;
                 if (editor == TxtNegativeEditor) BtnSaveNegative.Visibility = Visibility.Collapsed;
                 if (editor == TxtDescriptionEditor) BtnSaveDescription.Visibility = Visibility.Collapsed;
                 
-                // Restore focus to window to re-enable keyboard navigation
                 this.Focus();
             }
         }
@@ -573,12 +553,11 @@ namespace imgsaver
                     SetInteractiveText(TxtDescription, _originalDescription, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
                 }
 
-                // Ensure focus is on the window to enable keyboard navigation
                 this.Focus();
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error saving changes: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"خطا در ذخیره تغییرات: {ex.Message}", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -597,11 +576,51 @@ namespace imgsaver
 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
         private void BtnMinimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void BtnMaximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         
+        private void Window_StateChanged(object? sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+            {
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بازگردانی";
+                    if (MaximizeIconPath != null && TryFindResource("IconRestore") is StreamGeometry restoreGeom)
+                    {
+                        MaximizeIconPath.Data = restoreGeom;
+                    }
+                }
+                var resizeThickness = SystemParameters.WindowResizeBorderThickness;
+                MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
+                MainBorder.CornerRadius = new CornerRadius(0);
+                MainBorder.BorderThickness = new Thickness(0);
+            }
+            else
+            {
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بزرگ کردن";
+                    if (MaximizeIconPath != null && TryFindResource("IconMaximize") is StreamGeometry maxGeom)
+                    {
+                        MaximizeIconPath.Data = maxGeom;
+                    }
+                }
+                MainBorder.Margin = new Thickness(0);
+                MainBorder.CornerRadius = new CornerRadius(8);
+                MainBorder.BorderThickness = new Thickness(1);
+            }
+        }
+
         private void DragWindow(object sender, MouseButtonEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed)
+            if (e.ClickCount == 2)
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
+            else if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
+            {
                 DragMove();
+            }
         }
 
         private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)
@@ -623,7 +642,7 @@ namespace imgsaver
             {
                 if (string.IsNullOrEmpty(_imagePath) || !File.Exists(_imagePath)) return;
 
-                var res = System.Windows.MessageBox.Show("Delete this image and its associated .txt file?", "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var res = System.Windows.MessageBox.Show("آیا از حذف این تصویر و فایل متنی متناظر آن اطمینان دارید؟", "تأیید حذف", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (res != MessageBoxResult.Yes) return;
 
                 string? txtPath = null;
@@ -635,7 +654,7 @@ namespace imgsaver
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"Failed to delete: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show($"خطا در حذف: {ex.Message}", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
@@ -646,7 +665,6 @@ namespace imgsaver
                     {
                         if (w is GalleryWindow gw)
                         {
-                            // trigger async refresh
                             _ = gw.RefreshAfterExternalChange();
                         }
                     }
@@ -681,32 +699,30 @@ namespace imgsaver
 
         private void MakeFileNameInteractive(string fileName)
         {
-            // Store only the filename without extension
-           _currentFileName = Path.GetFileNameWithoutExtension(fileName);
-     TxtFileName.Cursor = System.Windows.Input.Cursors.Hand;
+            _currentFileName = Path.GetFileNameWithoutExtension(fileName);
+            TxtFileName.Cursor = System.Windows.Input.Cursors.Hand;
             TxtFileName.MouseEnter += OnFileNameMouseEnter;
-   TxtFileName.MouseLeave += OnFileNameMouseLeave;
-     TxtFileName.MouseLeftButtonDown += OnFileNameMouseDown;
+            TxtFileName.MouseLeave += OnFileNameMouseLeave;
+            TxtFileName.MouseLeftButtonDown += OnFileNameMouseDown;
         }
 
         private void OnFileNameMouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
         {
-    if (sender is TextBlock tb)
-              tb.Foreground = System.Windows.Media.Brushes.Yellow;
-  }
+            if (sender is TextBlock tb)
+                tb.Foreground = System.Windows.Media.Brushes.Yellow;
+        }
 
-      private void OnFileNameMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-     {
-    if (sender is TextBlock tb)
-    tb.Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush");
- }
+        private void OnFileNameMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is TextBlock tb)
+                tb.Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush");
+        }
 
         private void OnFileNameMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             try
             {
                 System.Windows.Clipboard.SetText(_currentFileName);
-                // Visual feedback: Flash Green
                 if (sender is TextBlock tb)
                 {
                     tb.Foreground = System.Windows.Media.Brushes.LimeGreen;
@@ -731,7 +747,7 @@ namespace imgsaver
         {
             if (sender is TextBlock tb)
             {
-                tb.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(238, 238, 238));
+                tb.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248));
             }
         }
 
@@ -743,11 +759,10 @@ namespace imgsaver
                 if (!string.IsNullOrEmpty(widthVal) && widthVal != "--")
                 {
                     System.Windows.Clipboard.SetText(widthVal);
-                    // Flash Green on click
                     TxtWidth.Foreground = System.Windows.Media.Brushes.LimeGreen;
                     Task.Delay(350).ContinueWith(_ => Dispatcher.Invoke(() =>
                     {
-                        TxtWidth.Foreground = TxtWidth.IsMouseOver ? System.Windows.Media.Brushes.Yellow : new SolidColorBrush(System.Windows.Media.Color.FromRgb(238, 238, 238));
+                        TxtWidth.Foreground = TxtWidth.IsMouseOver ? System.Windows.Media.Brushes.Yellow : new SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248));
                     }));
                 }
             }
@@ -762,11 +777,10 @@ namespace imgsaver
                 if (!string.IsNullOrEmpty(heightVal) && heightVal != "--")
                 {
                     System.Windows.Clipboard.SetText(heightVal);
-                    // Flash Green on click
                     TxtHeight.Foreground = System.Windows.Media.Brushes.LimeGreen;
                     Task.Delay(350).ContinueWith(_ => Dispatcher.Invoke(() =>
                     {
-                        TxtHeight.Foreground = TxtHeight.IsMouseOver ? System.Windows.Media.Brushes.Yellow : new SolidColorBrush(System.Windows.Media.Color.FromRgb(238, 238, 238));
+                        TxtHeight.Foreground = TxtHeight.IsMouseOver ? System.Windows.Media.Brushes.Yellow : new SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248));
                     }));
                 }
             }

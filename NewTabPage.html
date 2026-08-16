@@ -1,533 +1,486 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تب جدید</title>
     <style>
+        :root {
+            --bg-deep: #0b0f17;
+            --card-bg: rgba(23, 30, 44, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-border-hover: rgba(56, 189, 248, 0.4);
+            --accent-blue: #38bdf8;
+            --accent-purple: #818cf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, 'Vazirmatn', sans-serif;
+            background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(56, 189, 248, 0.15), transparent 70%),
+                        radial-gradient(ellipse 60% 50% at 50% 110%, rgba(129, 140, 248, 0.1), transparent 70%),
+                        var(--bg-deep);
+            color: var(--text-main);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+            padding: 24px;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Glow Background Effect */
+        .ambient-glow {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(129, 140, 248, 0.03) 50%, transparent 80%);
+            filter: blur(60px);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 780px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 40px;
-            max-width: 1000px;
-            width: 100%;
+            gap: 32px;
+            animation: fadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Header */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Clock & Date Header */
         .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             text-align: center;
-            margin-top: 60px;
-            animation: slideDown 0.6s ease-out;
+            gap: 6px;
         }
 
-        .logo {
-            font-size: 64px;
-            margin-bottom: 16px;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        .title {
-            font-size: 32px;
-            font-weight: 300;
+        .time-display {
+            font-size: 58px;
+            font-weight: 200;
+            letter-spacing: -1px;
             color: #ffffff;
-            letter-spacing: 1px;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.25);
+            line-height: 1.1;
         }
 
-        .subtitle {
+        .date-display {
             font-size: 14px;
-            color: #888;
-            margin-top: 8px;
+            font-weight: 400;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
         }
 
         /* Search Section */
-        .search-container {
+        .search-wrapper {
             width: 100%;
-            max-width: 600px;
-            animation: slideUp 0.6s ease-out 0.2s both;
+            max-width: 640px;
+            position: relative;
         }
 
         .search-box {
             display: flex;
-            gap: 12px;
             align-items: center;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 16px 24px;
-            border-radius: 50px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+            gap: 12px;
+            background: rgba(18, 24, 38, 0.75);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 10px 14px 10px 20px;
+            border-radius: 999px;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .search-box:focus-within {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 20px rgba(74, 144, 226, 0.2);
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(22, 30, 48, 0.9);
+            box-shadow: 0 12px 36px -4px rgba(56, 189, 248, 0.2), 0 0 0 2px rgba(56, 189, 248, 0.25);
+            transform: translateY(-1px);
         }
 
-        .search-icon {
-            font-size: 20px;
-            color: #888;
+        .search-engine-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--accent-blue);
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
         }
 
         .search-input {
             flex: 1;
             background: transparent;
             border: none;
-            color: #ffffff;
-            font-size: 16px;
             outline: none;
+            color: #ffffff;
+            font-size: 15px;
+            font-family: inherit;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         .search-input::placeholder {
-            color: #666;
+            color: var(--text-dim);
+            font-weight: 300;
         }
 
-        .search-button {
-            background: linear-gradient(135deg, #4a90e2, #357abd);
+        .search-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
             border: none;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .search-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
-        }
-
-        /* Features Section */
-        .features {
-            width: 100%;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            animation: slideUp 0.6s ease-out 0.4s both;
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 24px;
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .feature-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(74, 144, 226, 0.3);
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.15);
-        }
-
-        .feature-icon {
-            font-size: 36px;
-            margin-bottom: 12px;
-            display: block;
-        }
-
-        .feature-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
+            outline: none;
             color: #ffffff;
-        }
-
-        .feature-description {
-            font-size: 13px;
-            color: #aaa;
-            line-height: 1.5;
-        }
-
-        /* Stats Section */
-        .stats {
-            width: 100%;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            animation: slideUp 0.6s ease-out 0.6s both;
-            margin-top: 20px;
-        }
-
-        .stat-card {
-            background: rgba(74, 144, 226, 0.1);
-            border: 1px solid rgba(74, 144, 226, 0.2);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            background: rgba(74, 144, 226, 0.15);
-            border-color: rgba(74, 144, 226, 0.4);
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4a90e2;
-            margin-bottom: 4px;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Browser Performance */
-        .performance {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 24px;
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
-            animation: slideUp 0.6s ease-out 0.8s both;
-        }
-
-        .performance-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #ffffff;
-        }
-
-        .performance-item {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex-shrink: 0;
         }
 
-        .performance-item:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
+        .search-btn:hover {
+            transform: scale(1.06);
+            box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
         }
 
-        .performance-label {
-            font-size: 14px;
-            color: #aaa;
+        .search-btn:active {
+            transform: scale(0.96);
         }
 
-        .performance-value {
-            font-size: 14px;
-            font-weight: 600;
-            color: #4a90e2;
+        .search-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        .progress-bar {
-            width: 200px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
+        /* Quick Links Grid */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            width: 100%;
+            max-width: 640px;
+        }
+
+        .shortcut-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
             overflow: hidden;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4a90e2, #00d4ff);
-            border-radius: 3px;
+        .shortcut-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
         }
 
-        /* Animations */
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .shortcut-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--card-border-hover);
+            background: rgba(30, 41, 59, 0.8);
+            box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.35);
         }
 
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .shortcut-card:hover::before {
+            opacity: 1;
         }
 
-        @keyframes float {
-            0%, 100% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-10px);
-            }
+        .shortcut-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
 
-        /* Footer */
-        .footer {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
+        .icon-google { background: linear-gradient(135deg, #4285f4, #34a853); color: #fff; }
+        .icon-chatgpt { background: linear-gradient(135deg, #10a37f, #0d8a6b); color: #fff; }
+        .icon-youtube { background: linear-gradient(135deg, #ff0000, #cc0000); color: #fff; }
+        .icon-github { background: linear-gradient(135deg, #333333, #24292e); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+        .icon-civitai { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+        .icon-seaart { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; }
+        .icon-pinterest { background: linear-gradient(135deg, #e60023, #ad081b); color: #fff; }
+        .icon-settings { background: linear-gradient(135deg, #475569, #334155); color: #94a3b8; }
+
+        .shortcut-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            text-align: right;
+        }
+
+        .shortcut-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .shortcut-desc {
+            font-size: 11px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Footer & Shortcuts Help */
+        .footer-hint {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             font-size: 12px;
-            color: #666;
-            animation: slideUp 0.6s ease-out 1s both;
+            color: var(--text-dim);
+            margin-top: 8px;
         }
 
-        .footer a {
-            color: #4a90e2;
-            text-decoration: none;
-            transition: color 0.3s ease;
+        .key-badge {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-family: monospace;
+            color: var(--text-muted);
         }
 
-        .footer a:hover {
-            color: #00d4ff;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .title {
-                font-size: 24px;
+        @media (max-width: 640px) {
+            .shortcuts-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
-
-            .logo {
-                font-size: 48px;
-            }
-
-            .features {
-                grid-template-columns: 1fr;
-            }
-
-            .container {
-                gap: 30px;
-            }
-
-            .header {
-                margin-top: 30px;
+            .time-display {
+                font-size: 44px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="logo">🌐</div>
-            <div class="title">Dataset Browser</div>
-            <div class="subtitle">یک مرورگر سریع و قدرتمند برای تصفح اینترنت</div>
-        </div>
+    <div class="ambient-glow"></div>
 
-        <!-- Search Section -->
-        <div class="search-container">
+    <div class="container">
+        <!-- Minimal Clock & Date Header -->
+        <header class="header">
+            <div class="time-display" id="time">--:--</div>
+            <div class="date-display" id="date">در حال بارگذاری...</div>
+        </header>
+
+        <!-- Search Bar -->
+        <div class="search-wrapper">
             <div class="search-box">
-                <span class="search-icon">🔍</span>
+                <div class="search-engine-badge">G</div>
                 <input 
                     type="text" 
                     class="search-input" 
-                    id="searchInput"
-                    placeholder="جستجو یا URL را وارد کنید..."
+                    id="searchInput" 
+                    placeholder="جستجو در وب یا وارد کردن آدرس سایت..." 
                     autocomplete="off"
-                >
-                <button class="search-button" id="searchBtn">جستجو</button>
+                    spellcheck="false"
+                    autofocus
+                />
+                <button class="search-btn" id="searchBtn" title="جستجو">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
             </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-value" id="tabCount">1</div>
-                <div class="stat-label">تب باز</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="memoryUsage">0 MB</div>
-                <div class="stat-label">حافظه استفاده شده</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="uptime">0 دقیقه</div>
-                <div class="stat-label">زمان اتصال</div>
-            </div>
+        <!-- Shortcuts Quick Access Grid -->
+        <div class="shortcuts-grid">
+            <a class="shortcut-card" href="https://www.google.com">
+                <div class="shortcut-icon-wrapper icon-google">G</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">Google</span>
+                    <span class="shortcut-desc">موتور جستجو</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://chatgpt.com">
+                <div class="shortcut-icon-wrapper icon-chatgpt">AI</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">ChatGPT</span>
+                    <span class="shortcut-desc">هوش مصنوعی</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://www.youtube.com">
+                <div class="shortcut-icon-wrapper icon-youtube">YT</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">YouTube</span>
+                    <span class="shortcut-desc">ویدیو و کلیپ</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://github.com">
+                <div class="shortcut-icon-wrapper icon-github">GH</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">GitHub</span>
+                    <span class="shortcut-desc">مخازن کد</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://civitai.com">
+                <div class="shortcut-icon-wrapper icon-civitai">CV</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">Civitai</span>
+                    <span class="shortcut-desc">مدل‌های AI</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://www.seaart.ai">
+                <div class="shortcut-icon-wrapper icon-seaart">SA</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">SeaArt</span>
+                    <span class="shortcut-desc">تولید تصویر هوش</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="https://www.pinterest.com">
+                <div class="shortcut-icon-wrapper icon-pinterest">PT</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">Pinterest</span>
+                    <span class="shortcut-desc">ایده و تصاویر</span>
+                </div>
+            </a>
+
+            <a class="shortcut-card" href="imgsaver://settings">
+                <div class="shortcut-icon-wrapper icon-settings">⚙</div>
+                <div class="shortcut-info">
+                    <span class="shortcut-title">تنظیمات</span>
+                    <span class="shortcut-desc">تنظیمات مرورگر</span>
+                </div>
+            </a>
         </div>
 
-        <!-- Features -->
-        <div class="features">
-            <div class="feature-card">
-                <span class="feature-icon">⚡</span>
-                <div class="feature-title">سرعت بالا</div>
-                <div class="feature-description">مرورگر بهینه‌شده برای بارگیری سریع صفحات و کاهش مصرف دیتا</div>
-            </div>
-            <div class="feature-card">
-                <span class="feature-icon">🔒</span>
-                <div class="feature-title">امنیت</div>
-                <div class="feature-description">حفاظت از اطلاعات شخصی و جلوگیری از ردیابی وب‌سایت‌ها</div>
-            </div>
-            <div class="feature-card">
-                <span class="feature-icon">📊</span>
-                <div class="feature-title">مدیریت تب‌ها</div>
-                <div class="feature-description">مدیریت آسان تب‌های متعدد و ذخیره تاریخچه جلسه</div>
-            </div>
-            <div class="feature-card">
-                <span class="feature-icon">🎨</span>
-                <div class="feature-title">تم تاریک</div>
-                <div class="feature-description">رابط کاربری تاریک و زیبا برای راحتی بیشتر چشم</div>
-            </div>
-            <div class="feature-card">
-                <span class="feature-icon">📱</span>
-                <div class="feature-title">واکنش‌پذیر</div>
-                <div class="feature-description">کار بر روی تمام دستگاه‌ها و اندازه‌های صفحه</div>
-            </div>
-            <div class="feature-card">
-                <span class="feature-icon">🔌</span>
-                <div class="feature-title">پروکسی</div>
-                <div class="feature-description">پشتیبانی از تنظیمات پروکسی و VPN</div>
-            </div>
+        <!-- Minimal Keyboard Shortcut Hint -->
+        <div class="footer-hint">
+            <span>برای جستجوی سریع کلید</span>
+            <span class="key-badge">Enter ↵</span>
+            <span>را فشار دهید</span>
         </div>
-
-        <!-- Browser Performance -->
-        <div class="performance">
-            <div class="performance-title">📈 کارایی مرورگر</div>
-            
-            <div class="performance-item">
-                <span class="performance-label">سرعت بارگیری صفحه</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 92%"></div>
-                    </div>
-                    <span class="performance-value">92%</span>
-                </div>
-            </div>
-
-            <div class="performance-item">
-                <span class="performance-label">مصرف حافظه</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 65%"></div>
-                    </div>
-                    <span class="performance-value">65%</span>
-                </div>
-            </div>
-
-            <div class="performance-item">
-                <span class="performance-label">سرعت اسکریپت‌ها</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 88%"></div>
-                    </div>
-                    <span class="performance-value">88%</span>
-                </div>
-            </div>
-
-            <div class="performance-item">
-                <span class="performance-label">قابلیت سازگاری</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 95%"></div>
-                    </div>
-                    <span class="performance-value">95%</span>
-                </div>
-            </div>
-
-            <div class="performance-item">
-                <span class="performance-label">حالت آفلاین</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 100%"></div>
-                    </div>
-                    <span class="performance-value">✓</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-        <span>Dataset Browser v1.0 © 2026</span>
     </div>
 
     <script>
-        // Search functionality
+        // Clock & Persian/Gregorian Date
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('time').textContent = `${hours}:${minutes}`;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            try {
+                document.getElementById('date').textContent = now.toLocaleDateString('fa-IR', options);
+            } catch (e) {
+                document.getElementById('date').textContent = now.toLocaleDateString(undefined, options);
+            }
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Search & Navigate logic
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
 
         function performSearch() {
-            const query = searchInput.value.trim();
+            let query = searchInput.value.trim();
             if (!query) return;
 
-            // Check if it's a URL or a search query
-            if (isValidURL(query)) {
-                window.location.href = query;
-            } else {
-                window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+            if (query === 'imgsaver://settings' || query === 'about:settings' || query === 'settings') {
+                window.location.href = 'imgsaver://settings';
+                return;
             }
-        }
 
-        function isValidURL(string) {
-            try {
-                new URL(string);
-                return true;
-            } catch (_) {
-                return string.includes('.') && !string.includes(' ');
+            if (/^(https?:\/\/)/i.test(query)) {
+                window.location.href = query;
+            } else if (query.includes('.') && !query.includes(' ')) {
+                window.location.href = 'https://' + query;
+            } else {
+                window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(query);
             }
         }
 
         searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performSearch();
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch();
+            }
         });
 
-        // Focus search input on page load
-        searchInput.focus();
-
-        // Update stats
-        function updateStats() {
-            // Update tab count
-            if (window.chrome && window.chrome.webview) {
-                window.chrome.webview.postMessage({ type: 'getStats' });
-            }
-
-            // Update uptime
-            const uptime = Math.floor((Date.now() - performance.timing.navigationStart) / 60000);
-            document.getElementById('uptime').textContent = uptime > 0 ? `${uptime} دقیقه` : 'زیر یک دقیقه';
-
-            // Estimate memory usage (rough)
-            if (performance.memory) {
-                const mb = Math.round(performance.memory.usedJSHeapSize / 1048576);
-                document.getElementById('memoryUsage').textContent = `${mb} MB`;
-            }
-        }
-
-        updateStats();
-        setInterval(updateStats, 2000);
-
-        // Add click handlers for feature cards
-        document.querySelectorAll('.feature-card').forEach(card => {
-            card.style.cursor = 'pointer';
+        // Autofocus input
+        window.addEventListener('DOMContentLoaded', () => {
+            searchInput.focus();
         });
     </script>
 </body>

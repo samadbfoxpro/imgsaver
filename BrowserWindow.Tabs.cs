@@ -245,8 +245,14 @@ namespace imgsaver
                 if (!Directory.Exists(_userDataFolder)) Directory.CreateDirectory(_userDataFolder);
                 if (!Directory.Exists(_permanentCacheFolder)) Directory.CreateDirectory(_permanentCacheFolder);
 
-                var webView = new WebView2();
-                var tabItem = new TabItem();
+                var webView = new WebView2
+                {
+                    DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22)
+                };
+                var tabItem = new TabItem
+                {
+                    Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 19, 22))
+                };
 
                 var headerText = new TextBlock
                 {
@@ -314,6 +320,9 @@ namespace imgsaver
                 if (webView.CoreWebView2 == null) throw new Exception("CoreWebView2 initialization failed");
                 _coreWebViewTabMap[webView.CoreWebView2] = tabItem;
 
+                webView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22);
+                try { webView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark; } catch { }
+
                 webView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
                 webView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
                 webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
@@ -331,8 +340,47 @@ namespace imgsaver
 
                 webView.NavigationStarting += (s, e) =>
                 {
+                    if (BrowserSettingsPageHelper.IsSettingsUrl(e.Uri))
+                    {
+                        e.Cancel = true;
+                        _tabStates[tabItem].IsSettingsTab = true;
+                        _tabStates[tabItem].IsCombinerTab = false;
+                        _internalNewTabs.Remove(tabItem);
+                        UpdateTabHeader(tabItem, "⚙", "تنظیمات مرورگر");
+                        if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserSettingsPageHelper.SettingsUrl;
+                        SetTabLoadingState(tabItem, false);
+                        UpdateStopButtonState();
+                        UpdateTabStatusOverlay(tabItem);
+                        webView.CoreWebView2.NavigateToString(BrowserSettingsPageHelper.GetSettingsHtml());
+                        return;
+                    }
+
+                    if (BrowserCombinerPageHelper.IsCombinerUrl(e.Uri))
+                    {
+                        e.Cancel = true;
+                        _tabStates[tabItem].IsCombinerTab = true;
+                        _tabStates[tabItem].IsSettingsTab = false;
+                        _internalNewTabs.Remove(tabItem);
+                        UpdateTabHeader(tabItem, "🧩", "مدیریت کمباینر");
+                        if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerPageHelper.CombinerUrl;
+                        SetTabLoadingState(tabItem, false);
+                        UpdateStopButtonState();
+                        UpdateTabStatusOverlay(tabItem);
+                        webView.CoreWebView2.NavigateToString(BrowserCombinerPageHelper.GetCombinerHtml());
+                        return;
+                    }
+
                     if (_internalNewTabs.Contains(tabItem) && !string.IsNullOrWhiteSpace(e.Uri) && e.Uri != "about:blank")
                         _internalNewTabs.Remove(tabItem);
+
+                    if (BrowserTabs.SelectedItem == tabItem && GetCurrentBrowser() == webView && TxtUrl != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(e.Uri) && e.Uri != "about:blank" && !e.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            TxtUrl.Text = e.Uri;
+                        }
+                    }
+
                     UpdateTabHeader(tabItem, GetIconForUrl(e.Uri), "Loading...");
                     SetTabLoadingState(tabItem, true);
                     ResetTabNetworkStats(tabItem);
@@ -340,6 +388,13 @@ namespace imgsaver
 
                 webView.NavigationCompleted += (s, e) =>
                 {
+                    if (BrowserTabs.SelectedItem == tabItem && GetCurrentBrowser() == webView && TxtUrl != null)
+                    {
+                        string? currentUrl = webView.CoreWebView2?.Source ?? webView.Source?.ToString();
+                        bool isInternalNewTab = _internalNewTabs.Contains(tabItem) && (string.IsNullOrEmpty(currentUrl) || currentUrl == "about:blank" || currentUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase));
+                        TxtUrl.Text = isInternalNewTab ? "" : currentUrl ?? "";
+                    }
+
                     if (!e.IsSuccess)
                     {
                         UpdateTabHeader(tabItem, "!", "Failed to load");
@@ -366,20 +421,53 @@ namespace imgsaver
                     UpdateTabHeader(tabItem, "+", "New Tab");
                     if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = "";
                 }
+                else if (BrowserSettingsPageHelper.IsSettingsUrl(url))
+                {
+                    _tabStates[tabItem].IsSettingsTab = true;
+                    _tabStates[tabItem].IsCombinerTab = false;
+                    UpdateTabHeader(tabItem, "⚙", "تنظیمات مرورگر");
+                    if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserSettingsPageHelper.SettingsUrl;
+                    webView.CoreWebView2.NavigateToString(BrowserSettingsPageHelper.GetSettingsHtml());
+                }
+                else if (BrowserCombinerPageHelper.IsCombinerUrl(url))
+                {
+                    _tabStates[tabItem].IsCombinerTab = true;
+                    _tabStates[tabItem].IsSettingsTab = false;
+                    UpdateTabHeader(tabItem, "🧩", "مدیریت کمباینر");
+                    if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerPageHelper.CombinerUrl;
+                    webView.CoreWebView2.NavigateToString(BrowserCombinerPageHelper.GetCombinerHtml());
+                }
                 else
                 {
+                    if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = url;
                     webView.CoreWebView2.Navigate(url);
                 }
 
-                webView.SourceChanged += (s, e) =>
+                void SyncUrlToBar()
                 {
-                    string? currentUrl = webView.Source?.ToString();
-                    bool isInternalNewTab = _internalNewTabs.Contains(tabItem) && (string.IsNullOrEmpty(currentUrl) || currentUrl == "about:blank");
-                    if (BrowserTabs.SelectedItem == tabItem && GetCurrentBrowser() == webView)
+                    if (_tabStates.TryGetValue(tabItem, out var tabState))
+                    {
+                        if (tabState.IsSettingsTab)
+                        {
+                            if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserSettingsPageHelper.SettingsUrl;
+                            UpdateTabHeader(tabItem, "⚙", "تنظیمات مرورگر");
+                            return;
+                        }
+                        if (tabState.IsCombinerTab)
+                        {
+                            if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerPageHelper.CombinerUrl;
+                            UpdateTabHeader(tabItem, "🧩", "مدیریت کمباینر");
+                            return;
+                        }
+                    }
+
+                    string? currentUrl = webView.CoreWebView2?.Source ?? webView.Source?.ToString();
+                    bool isInternalNewTab = _internalNewTabs.Contains(tabItem) && (string.IsNullOrEmpty(currentUrl) || currentUrl == "about:blank" || currentUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase));
+                    if (BrowserTabs.SelectedItem == tabItem && (GetCurrentBrowser() == webView || BrowserTabs.Items.Count <= 1))
                     {
                         if (TxtUrl != null) TxtUrl.Text = isInternalNewTab ? "" : currentUrl ?? "";
                     }
-                    if (!string.IsNullOrEmpty(currentUrl) && currentUrl != "about:blank")
+                    if (!string.IsNullOrEmpty(currentUrl) && currentUrl != "about:blank" && !currentUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
                     {
                         _internalNewTabs.Remove(tabItem);
                         _currentSettings.LastUrl = currentUrl;
@@ -388,7 +476,10 @@ namespace imgsaver
                         string title = webView.CoreWebView2?.DocumentTitle ?? "Loading...";
                         UpdateTabHeader(tabItem, icon, title);
                     }
-                };
+                }
+
+                webView.SourceChanged += (s, e) => SyncUrlToBar();
+                webView.CoreWebView2.SourceChanged += (s, e) => SyncUrlToBar();
                 return tabItem;
             }
             catch (Exception ex) { CustomMessageBox.Show($"Failed to create tab: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error); System.Diagnostics.Debug.WriteLine(ex); return null; }
@@ -491,6 +582,8 @@ namespace imgsaver
             public WebView2? PrimaryWebView { get; set; }
             public WebView2? ActiveWebView { get; set; }
             public bool IsPinned { get; set; }
+            public bool IsSettingsTab { get; set; }
+            public bool IsCombinerTab { get; set; }
 
             // Split View Properties
             public bool IsSplitView { get; set; }
@@ -582,10 +675,18 @@ namespace imgsaver
         private void BrowserTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             var browser = GetCurrentBrowser();
-            if (browser != null && TxtUrl != null && browser.CoreWebView2 != null)
+            if (browser != null && TxtUrl != null)
             {
-                bool isInternalNewTab = BrowserTabs.SelectedItem is TabItem tab && _internalNewTabs.Contains(tab);
-                TxtUrl.Text = isInternalNewTab ? "" : browser.Source?.ToString() ?? "";
+                if (BrowserTabs.SelectedItem is TabItem selTab && _tabStates.TryGetValue(selTab, out var state) && state.IsSettingsTab)
+                {
+                    TxtUrl.Text = BrowserSettingsPageHelper.SettingsUrl;
+                }
+                else
+                {
+                    bool isInternalNewTab = BrowserTabs.SelectedItem is TabItem tab && _internalNewTabs.Contains(tab);
+                    string? url = browser.CoreWebView2?.Source ?? browser.Source?.ToString();
+                    TxtUrl.Text = (isInternalNewTab || url == "about:blank" || (url != null && url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))) ? "" : url ?? "";
+                }
             }
             UpdateStopButtonState();
             UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem);
@@ -812,7 +913,10 @@ namespace imgsaver
 
             state.IsSplitView = true;
 
-            WebView2 secondaryWebView = existingSecondaryWebView ?? new WebView2();
+            WebView2 secondaryWebView = existingSecondaryWebView ?? new WebView2
+            {
+                DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22)
+            };
             state.SecondaryWebView = secondaryWebView;
 
             // Build SplitContainer Grid FIRST so secondaryWebView is attached to the Visual Tree
@@ -821,7 +925,7 @@ namespace imgsaver
             splitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6, GridUnitType.Pixel) });
             splitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Create Left Pane (WebView fills 100%)
+            // Create Left Pane
             var leftPaneGrid = new Grid();
 
             DetachFromParent(state.PrimaryWebView);
@@ -840,9 +944,8 @@ namespace imgsaver
             splitGrid.Children.Add(leftBorder);
             state.LeftPaneBorder = leftBorder;
 
-            var leftPopup = CreatePaneHeaderPopup(leftBorder,
-                onSwap: () => SwapSplitPanes(tabItem),
-                onNewTab: () => UnsplitSecondaryToNewTab(tabItem, moveLeft: true),
+            var leftPopup = CreatePaneBottomPopup(leftBorder,
+                onSwap: () => SetActivePane(tabItem, 0),
                 onClose: () => CloseSplitView(tabItem, keepLeft: false));
             state.LeftHeaderPopup = leftPopup;
 
@@ -858,7 +961,7 @@ namespace imgsaver
             Grid.SetColumn(splitter, 1);
             splitGrid.Children.Add(splitter);
 
-            // Create Right Pane (WebView fills 100%)
+            // Create Right Pane
             var rightPaneGrid = new Grid();
 
             DetachFromParent(secondaryWebView);
@@ -876,9 +979,8 @@ namespace imgsaver
             splitGrid.Children.Add(rightBorder);
             state.RightPaneBorder = rightBorder;
 
-            var rightPopup = CreatePaneHeaderPopup(rightBorder,
-                onSwap: () => SwapSplitPanes(tabItem),
-                onNewTab: () => UnsplitSecondaryToNewTab(tabItem, moveLeft: false),
+            var rightPopup = CreatePaneBottomPopup(rightBorder,
+                onSwap: () => SetActivePane(tabItem, 1),
                 onClose: () => CloseSplitView(tabItem, keepLeft: true));
             state.RightHeaderPopup = rightPopup;
 
@@ -933,6 +1035,8 @@ namespace imgsaver
                     if (secondaryWebView.CoreWebView2 != null)
                     {
                         _coreWebViewTabMap[secondaryWebView.CoreWebView2] = tabItem;
+                        secondaryWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22);
+                        try { secondaryWebView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark; } catch { }
                         secondaryWebView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
                         secondaryWebView.CoreWebView2.Settings.IsGeneralAutofillEnabled = false;
                         secondaryWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
@@ -950,6 +1054,20 @@ namespace imgsaver
 
                         secondaryWebView.NavigationStarting += (s, e) =>
                         {
+                            if (BrowserSettingsPageHelper.IsSettingsUrl(e.Uri))
+                            {
+                                e.Cancel = true;
+                                if (state.ActiveWebView == secondaryWebView)
+                                {
+                                    SetTabLoadingState(tabItem, false);
+                                    UpdateStopButtonState();
+                                    UpdateTabStatusOverlay(tabItem);
+                                    if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserSettingsPageHelper.SettingsUrl;
+                                }
+                                secondaryWebView.CoreWebView2.NavigateToString(BrowserSettingsPageHelper.GetSettingsHtml());
+                                return;
+                            }
+
                             if (state.ActiveWebView == secondaryWebView)
                             {
                                 SetTabLoadingState(tabItem, true);
@@ -1002,71 +1120,49 @@ namespace imgsaver
             SetActivePane(tabItem, 0);
         }
 
-        private System.Windows.Controls.Primitives.Popup CreatePaneHeaderPopup(FrameworkElement placementTarget, Action onSwap, Action onNewTab, Action onClose)
+        private System.Windows.Controls.Primitives.Popup CreatePaneBottomPopup(FrameworkElement placementTarget, Action onSwap, Action onClose)
         {
-            var segoeFont = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
-
             var toolsPanel = new StackPanel
             {
                 Orientation = System.Windows.Controls.Orientation.Horizontal,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(1, 1, 1, 1)
+                Margin = new Thickness(4, 2, 4, 2)
             };
 
-            var btnSwap = new System.Windows.Controls.Button
+            var btnIcon = new System.Windows.Controls.Button
             {
-                ToolTip = "Swap Left and Right Panes",
-                Width = 22, Height = 20,
-                Margin = new Thickness(1, 0, 1, 0),
+                ToolTip = "تغییر / جابجایی صفحه (Switch / Swap)",
+                Width = 22, Height = 22,
+                Margin = new Thickness(0, 0, 3, 0),
                 Padding = new Thickness(0),
-                Style = (Style)FindResource("SecondaryButtonStyle"),
-                Content = new TextBlock
+                Style = (Style)FindResource("ProfileAvatarBtnStyle"),
+                Content = new System.Windows.Shapes.Path
                 {
-                    Text = "\uE8AB",
-                    FontFamily = segoeFont,
-                    FontSize = 10,
-                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                    Data = (Geometry)FindResource("IconChrome"),
+                    Fill = (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush"),
+                    Width = 14, Height = 14,
+                    Stretch = Stretch.Uniform,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 }
             };
-            btnSwap.Click += (s, e) => onSwap();
-            toolsPanel.Children.Add(btnSwap);
-
-            var btnNewTab = new System.Windows.Controls.Button
-            {
-                ToolTip = "Open as Standalone Tab",
-                Width = 22, Height = 20,
-                Margin = new Thickness(1, 0, 1, 0),
-                Padding = new Thickness(0),
-                Style = (Style)FindResource("SecondaryButtonStyle"),
-                Content = new TextBlock
-                {
-                    Text = "\uE8A7",
-                    FontFamily = segoeFont,
-                    FontSize = 10,
-                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
-                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                }
-            };
-            btnNewTab.Click += (s, e) => onNewTab();
-            toolsPanel.Children.Add(btnNewTab);
+            btnIcon.Click += (s, e) => onSwap();
+            toolsPanel.Children.Add(btnIcon);
 
             var btnClose = new System.Windows.Controls.Button
             {
-                ToolTip = "Close Split View",
-                Width = 22, Height = 20,
-                Margin = new Thickness(1, 0, 2, 0),
+                ToolTip = "بستن این صفحه اسپلیت (Close)",
+                Width = 20, Height = 20,
+                Margin = new Thickness(0),
                 Padding = new Thickness(0),
-                Style = (Style)FindResource("TitleBarCloseButtonStyle"),
-                Content = new TextBlock
+                Style = (Style)FindResource("TabCloseBtnStyle"),
+                Content = new System.Windows.Shapes.Path
                 {
-                    Text = "\uE711",
-                    FontFamily = segoeFont,
-                    FontSize = 10,
-                    Foreground = (System.Windows.Media.Brush)FindResource("ForegroundBrush"),
+                    Data = (Geometry)FindResource("IconClose"),
+                    Fill = (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush"),
+                    Width = 9, Height = 9,
+                    Stretch = Stretch.Uniform,
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 }
@@ -1076,12 +1172,12 @@ namespace imgsaver
 
             var badgeBorder = new Border
             {
-                Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush"),
-                BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush"),
-                BorderThickness = new Thickness(1, 0, 0, 1),
-                CornerRadius = new CornerRadius(0, 0, 0, 8),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(235, 0x1E, 0x1F, 0x22)),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 0x3E, 0x42, 0x48)),
+                BorderThickness = new Thickness(1, 1, 0, 0),
+                CornerRadius = new CornerRadius(6, 0, 0, 0),
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Bottom,
                 Child = toolsPanel
             };
 
@@ -1097,7 +1193,20 @@ namespace imgsaver
 
             popup.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
             {
-                return new[] { new System.Windows.Controls.Primitives.CustomPopupPlacement(new System.Windows.Point(targetSize.Width - popupSize.Width - 1, 1), System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal) };
+                // Align to bottom-right corner inside placement target
+                double x = Math.Max(0, targetSize.Width - popupSize.Width - 1);
+                double y = Math.Max(0, targetSize.Height - popupSize.Height - 1);
+                return new[] { new System.Windows.Controls.Primitives.CustomPopupPlacement(new System.Windows.Point(x, y), System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal) };
+            };
+
+            // Keep popup position 100% updated in real-time on resize / split drag
+            placementTarget.SizeChanged += (s, e) =>
+            {
+                if (popup.IsOpen)
+                {
+                    popup.HorizontalOffset += 0.0001;
+                    popup.HorizontalOffset -= 0.0001;
+                }
             };
 
             return popup;
@@ -1210,14 +1319,12 @@ namespace imgsaver
 
                 if (state.PrimaryWebView != null)
                 {
-                    Grid.SetRow(state.PrimaryWebView, 1);
-                    leftGrid.Children.Add(state.PrimaryWebView);
+                    leftGrid.Children.Insert(0, state.PrimaryWebView);
                 }
 
                 if (state.SecondaryWebView != null)
                 {
-                    Grid.SetRow(state.SecondaryWebView, 1);
-                    rightGrid.Children.Add(state.SecondaryWebView);
+                    rightGrid.Children.Insert(0, state.SecondaryWebView);
                 }
             }
 
@@ -1334,15 +1441,72 @@ namespace imgsaver
             UpdateTabStatusOverlay(tabItem);
         }
 
+        public async void OpenSettingsTab()
+        {
+            foreach (TabItem item in BrowserTabs.Items)
+            {
+                if (_tabStates.TryGetValue(item, out var state) && state.IsSettingsTab)
+                {
+                    BrowserTabs.SelectedItem = item;
+                    return;
+                }
+            }
+
+            var newTab = await AddNewTab(BrowserSettingsPageHelper.SettingsUrl, selectTab: true);
+            if (newTab != null && _tabStates.TryGetValue(newTab, out var s))
+            {
+                s.IsSettingsTab = true;
+            }
+        }
+
+        public async void OpenCombinerTab()
+        {
+            foreach (TabItem item in BrowserTabs.Items)
+            {
+                if (_tabStates.TryGetValue(item, out var state) && state.IsCombinerTab)
+                {
+                    BrowserTabs.SelectedItem = item;
+                    return;
+                }
+            }
+
+            var newTab = await AddNewTab(BrowserCombinerPageHelper.CombinerUrl, selectTab: true);
+            if (newTab != null && _tabStates.TryGetValue(newTab, out var s))
+            {
+                s.IsCombinerTab = true;
+            }
+        }
+
         private void Navigate()
         {
             string url = TxtUrl.Text.Trim();
             if (string.IsNullOrEmpty(url)) return;
+
+            if (BrowserSettingsPageHelper.IsSettingsUrl(url))
+            {
+                OpenSettingsTab();
+                return;
+            }
+
+            if (BrowserCombinerPageHelper.IsCombinerUrl(url))
+            {
+                OpenCombinerTab();
+                return;
+            }
+
             if (!url.Contains(".") && !url.StartsWith("http")) url = "https://www.google.com/search?q=" + Uri.EscapeDataString(url);
             else if (!url.StartsWith("http")) url = "https://" + url;
             try
             {
-                if (BrowserTabs.SelectedItem is TabItem tab) _internalNewTabs.Remove(tab);
+                if (BrowserTabs.SelectedItem is TabItem tab)
+                {
+                    _internalNewTabs.Remove(tab);
+                    if (_tabStates.TryGetValue(tab, out var state))
+                    {
+                        state.IsSettingsTab = false;
+                        state.IsCombinerTab = false;
+                    }
+                }
                 GetCurrentBrowser()?.CoreWebView2.Navigate(url);
             }
             catch { }
