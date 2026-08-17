@@ -7,3 +7,5 @@ data/
 *.bat
 webhost/
 logs/
+docs/
+*.txt
