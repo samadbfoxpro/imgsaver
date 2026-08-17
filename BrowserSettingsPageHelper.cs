@@ -472,6 +472,36 @@ namespace imgsaver
             </div>
             <div class=""row"">
                 <div class=""row-info"">
+                    <h3>پیست و کلیک خودکار (Auto Quick Paste & Action)</h3>
+                    <p>جایگزینی خودکار متن جدید کلیپ‌بورد در موقعیت تعیین‌شده و کلیک روی دکمه مقصد</p>
+                </div>
+                <label class=""switch"">
+                    <input type=""checkbox"" id=""chkEnableAutoQuickPaste"" onchange=""saveAllSettings()"">
+                    <span class=""slider""></span>
+                </label>
+            </div>
+            <div class=""row"">
+                <div class=""row-info"">
+                    <h3>نمایش پین‌های شناور تنظیم موقعیت (Auto Pins)</h3>
+                    <p>نمایش نشانگرهای شناور برای جابجایی و تعیین نقطه فیلد متن (۱) و دکمه اقدام (۲)</p>
+                </div>
+                <label class=""switch"">
+                    <input type=""checkbox"" id=""chkShowAutoPastePins"" onchange=""saveAllSettings()"">
+                    <span class=""slider""></span>
+                </label>
+            </div>
+            <div class=""row"">
+                <div class=""row-info"">
+                    <h3>میزان شفافیت پین‌های شناور (Opacity)</h3>
+                    <p>تنظیم شفافیت پین‌های ۱ و ۲ از ۰٪ (نامرئی کامل) تا ۱۰۰٪ (کاملاً واضح)</p>
+                </div>
+                <div style=""display:flex; align-items:center; gap:10px;"">
+                    <input type=""range"" id=""rngPinsOpacity"" min=""0"" max=""100"" value=""100"" style=""width:120px; accent-color:var(--accent); cursor:pointer;"" oninput=""document.getElementById('lblPinsOpacityVal').innerText = this.value + '%'; saveAllSettings();"">
+                    <span id=""lblPinsOpacityVal"" style=""font-weight:bold; min-width:40px; text-align:left; font-size:13px; color:var(--text-secondary);"">100%</span>
+                </div>
+            </div>
+            <div class=""row"">
+                <div class=""row-info"">
                     <h3>پلیر شناور ضبط و بازپخش مرورگر</h3>
                     <p>نمایش کنترل‌های شناور هنگام ضبط یا پخش سناریوهای مرورگر</p>
                 </div>
@@ -592,6 +622,9 @@ namespace imgsaver
                 AutoImportImagesToMiniClip: document.getElementById('chkAutoImportImages').checked,
                 ShowMiniClipImageImportButtons: document.getElementById('chkShowImportButtons').checked,
                 ShowQuickPasteButton: document.getElementById('chkShowQuickPaste').checked,
+                EnableAutoQuickPaste: document.getElementById('chkEnableAutoQuickPaste').checked,
+                ShowAutoPastePins: document.getElementById('chkShowAutoPastePins').checked,
+                AutoPastePinsOpacity: parseInt(document.getElementById('rngPinsOpacity').value) || 100,
                 ShowFloatingRecordPlayer: document.getElementById('chkShowRecordPlayer').checked,
                 AutoHideStatus: document.getElementById('chkAutoHideStatus').checked,
                 ProxyMode: document.getElementById('selProxyMode').value,
@@ -632,6 +665,12 @@ namespace imgsaver
             if (s.AutoImportImagesToMiniClip !== undefined) document.getElementById('chkAutoImportImages').checked = s.AutoImportImagesToMiniClip;
             if (s.ShowMiniClipImageImportButtons !== undefined) document.getElementById('chkShowImportButtons').checked = s.ShowMiniClipImageImportButtons;
             if (s.ShowQuickPasteButton !== undefined) document.getElementById('chkShowQuickPaste').checked = s.ShowQuickPasteButton;
+            if (s.EnableAutoQuickPaste !== undefined) document.getElementById('chkEnableAutoQuickPaste').checked = s.EnableAutoQuickPaste;
+            if (s.ShowAutoPastePins !== undefined) document.getElementById('chkShowAutoPastePins').checked = s.ShowAutoPastePins;
+            if (s.AutoPastePinsOpacity !== undefined) {
+                document.getElementById('rngPinsOpacity').value = s.AutoPastePinsOpacity;
+                document.getElementById('lblPinsOpacityVal').innerText = s.AutoPastePinsOpacity + '%';
+            }
             if (s.ShowFloatingRecordPlayer !== undefined) document.getElementById('chkShowRecordPlayer').checked = s.ShowFloatingRecordPlayer;
             if (s.AutoHideStatus !== undefined) document.getElementById('chkAutoHideStatus').checked = s.AutoHideStatus;
             

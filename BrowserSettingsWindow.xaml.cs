@@ -89,6 +89,9 @@ namespace imgsaver
                 ChkReplaceMiniClipImageOnImport.Content = "جایگزینی تصویر فعلی مینی کلیپ هنگام ایمپورت از مرورگر";
                 ChkShowFloatingRecordPlayer.Content = "نمایش پلیر شناور ضبط ویدیو مرورگر";
                 ChkShowQuickPasteButton.Content = "نمایش دکمه پیست BR روی کادرهای ورودی";
+                ChkEnableAutoQuickPaste.Content = "فعال‌سازی پیست و لمس خودکار از کلیپ‌بورد (Auto Quick Paste)";
+                ChkShowAutoPastePins.Content = "نمایش پین‌های شناور تنظیم موقعیت (فیلد ۱ و اقدام ۲)";
+                TxtPinsOpacityLabel.Text = "میزان شفافیت پین‌ها:";
                 ChkEnableCombinerBar.Content = "فعال‌سازی نوار ترکیب هوشمند پرامپت (Combiner) در پایین مرورگر";
                 ChkAutoFocusMiniClip.Content = "فوکوس اتوماتیک به پنجره اصلی مینی کلیپ هنگام دریافت داده‌ها";
                 ChkAutoHideStatus.Content = "مخفی کردن نوار وضعیت پایین مرورگر";
@@ -121,6 +124,9 @@ namespace imgsaver
                 ChkReplaceMiniClipImageOnImport.Content = "Replace current Mini Clip image when importing from browser";
                 ChkShowFloatingRecordPlayer.Content = "Show floating browser recording player";
                 ChkShowQuickPasteButton.Content = "Show BR Paste button on input fields";
+                ChkEnableAutoQuickPaste.Content = "Enable Auto Quick Paste & Action from Clipboard";
+                ChkShowAutoPastePins.Content = "Show floating location pins (Input 1 & Action 2)";
+                TxtPinsOpacityLabel.Text = "Pins Opacity:";
                 ChkEnableCombinerBar.Content = "Enable Smart Prompt Combiner toolbar at bottom of browser";
                 ChkAutoFocusMiniClip.Content = "Automatically focus main Mini Clip window when capturing data";
                 ChkAutoHideStatus.Content = "Hide Status Bar";
@@ -139,6 +145,10 @@ namespace imgsaver
             ChkReplaceMiniClipImageOnImport.IsChecked = settings.ReplaceMiniClipImageOnImport;
             ChkShowFloatingRecordPlayer.IsChecked = settings.ShowFloatingRecordPlayer;
             ChkShowQuickPasteButton.IsChecked = settings.ShowQuickPasteButton;
+            ChkEnableAutoQuickPaste.IsChecked = settings.EnableAutoQuickPaste;
+            ChkShowAutoPastePins.IsChecked = settings.ShowAutoPastePins;
+            SldPinsOpacity.Value = Math.Max(0, Math.Min(100, settings.AutoPastePinsOpacity));
+            TxtPinsOpacityValue.Text = $"{(int)SldPinsOpacity.Value}%";
             ChkEnableCombinerBar.IsChecked = settings.EnableCombinerBar;
             ChkAutoFocusMiniClip.IsChecked = settings.AutoFocusMiniClip;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
@@ -372,6 +382,9 @@ namespace imgsaver
                 settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
                 settings.ShowFloatingRecordPlayer = ChkShowFloatingRecordPlayer.IsChecked == true;
                 settings.ShowQuickPasteButton = ChkShowQuickPasteButton.IsChecked == true;
+                settings.EnableAutoQuickPaste = ChkEnableAutoQuickPaste.IsChecked == true;
+                settings.ShowAutoPastePins = ChkShowAutoPastePins.IsChecked == true;
+                settings.AutoPastePinsOpacity = (int)SldPinsOpacity.Value;
                 settings.EnableCombinerBar = ChkEnableCombinerBar.IsChecked == true;
                 settings.AutoFocusMiniClip = ChkAutoFocusMiniClip.IsChecked == true;
                 settings.AutoHideStatus = ChkAutoHideStatus.IsChecked == true;
@@ -386,6 +399,14 @@ namespace imgsaver
                 settings.Save(_currentProfile);
             }
             catch { }
+        }
+
+        private void SldPinsOpacity_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (TxtPinsOpacityValue != null)
+            {
+                TxtPinsOpacityValue.Text = $"{(int)e.NewValue}%";
+            }
         }
 
         private void BtnAddNoCacheSite_Click(object? sender, RoutedEventArgs e)

@@ -1201,6 +1201,19 @@ namespace imgsaver
                         }
                         UpdateState();
                         CheckAutoSaveTrigger();
+
+                        // If browser auto quick paste & action is enabled, forward prompt to active browser window
+                        try
+                        {
+                            foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                            {
+                                if (win is BrowserWindow bw && bw.IsLoaded)
+                                {
+                                    _ = bw.ExecuteAutoQuickPasteAndActionAsync(text);
+                                }
+                            }
+                        }
+                        catch { }
                     }
                 }
             }

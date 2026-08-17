@@ -17,7 +17,14 @@ namespace imgsaver
         {
             bool showMiniClipImageImportButtons = _currentSettings?.ShowMiniClipImageImportButtons == true;
             bool showQuickPasteButton = _currentSettings?.ShowQuickPasteButton == true;
-            string script = BuildSnippetHelperScript(showMiniClipImageImportButtons, showQuickPasteButton);
+            bool enableAutoQuickPaste = _currentSettings?.EnableAutoQuickPaste == true;
+            bool showAutoPastePins = _currentSettings?.ShowAutoPastePins == true;
+            int autoPastePinsOpacity = _currentSettings?.AutoPastePinsOpacity ?? 100;
+            double targetInputPinX = _currentSettings?.TargetInputPinX ?? 100;
+            double targetInputPinY = _currentSettings?.TargetInputPinY ?? 150;
+            double targetActionPinX = _currentSettings?.TargetActionPinX ?? 100;
+            double targetActionPinY = _currentSettings?.TargetActionPinY ?? 220;
+            string script = BuildSnippetHelperScript(showMiniClipImageImportButtons, showQuickPasteButton, enableAutoQuickPaste, showAutoPastePins, autoPastePinsOpacity, targetInputPinX, targetInputPinY, targetActionPinX, targetActionPinY);
             webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
             webView.CoreWebView2.ExecuteScriptAsync(script);
 
@@ -65,7 +72,14 @@ namespace imgsaver
             {
                 bool showMiniClip = _currentSettings?.ShowMiniClipImageImportButtons == true;
                 bool showQuickPaste = _currentSettings?.ShowQuickPasteButton == true;
-                string script = BuildSnippetHelperScript(showMiniClip, showQuickPaste);
+                bool enableAutoQuickPaste = _currentSettings?.EnableAutoQuickPaste == true;
+                bool showAutoPastePins = _currentSettings?.ShowAutoPastePins == true;
+                int autoPastePinsOpacity = _currentSettings?.AutoPastePinsOpacity ?? 100;
+                double targetInputPinX = _currentSettings?.TargetInputPinX ?? 100;
+                double targetInputPinY = _currentSettings?.TargetInputPinY ?? 150;
+                double targetActionPinX = _currentSettings?.TargetActionPinX ?? 100;
+                double targetActionPinY = _currentSettings?.TargetActionPinY ?? 220;
+                string script = BuildSnippetHelperScript(showMiniClip, showQuickPaste, enableAutoQuickPaste, showAutoPastePins, autoPastePinsOpacity, targetInputPinX, targetInputPinY, targetActionPinX, targetActionPinY);
                 string result = await frame.ExecuteScriptAsync(script);
                 DebugLog($"[C#] Injected Quick Paste script into frame '{frame.Name}', ExecuteScriptAsync result='{result}'");
             }
@@ -75,7 +89,7 @@ namespace imgsaver
             }
         }
 
-        private string BuildSnippetHelperScript(bool showMiniClipImageImportButtons, bool showQuickPasteButton)
+        private string BuildSnippetHelperScript(bool showMiniClipImageImportButtons, bool showQuickPasteButton, bool enableAutoQuickPaste, bool showAutoPastePins, int autoPastePinsOpacity, double targetInputPinX, double targetInputPinY, double targetActionPinX, double targetActionPinY)
         {
             string script = @"
                 (function() {
@@ -366,6 +380,128 @@ namespace imgsaver
                         window.imgsaver_quickPasteHooked = true;
                     }
 
+                    // --- Draggable Visual Target Action & Input Pins (Auto Quick Paste Target Pins) ---
+                    if (window === window.top) {
+                        (function() {
+                            const showPins = __SHOW_AUTO_PASTE_PINS__;
+                            const existingPin1 = document.getElementById('imgsaver_pin_input');
+                            const existingPin2 = document.getElementById('imgsaver_pin_action');
+                            if (!showPins) {
+                                if (existingPin1) existingPin1.remove();
+                                if (existingPin2) existingPin2.remove();
+                                return;
+                            }
+
+                            const targetOpacity = (__AUTO_PASTE_PINS_OPACITY__ / 100).toFixed(2);
+
+                            function createPin(id, label, initialX, initialY, bgColor, tooltip, onSavePos) {
+                                let pin = document.getElementById(id);
+                                if (pin) {
+                                    pin.style.left = initialX + 'px';
+                                    pin.style.top = initialY + 'px';
+                                    pin.style.opacity = targetOpacity;
+                                    pin.style.display = 'flex';
+                                    return pin;
+                                }
+
+                                pin = document.createElement('div');
+                                pin.id = id;
+                                pin.setAttribute('title', tooltip);
+                                pin.style.position = 'fixed';
+                                pin.style.left = initialX + 'px';
+                                pin.style.top = initialY + 'px';
+                                pin.style.width = '36px';
+                                pin.style.height = '36px';
+                                pin.style.borderRadius = '50%';
+                                pin.style.background = bgColor;
+                                pin.style.color = '#FFFFFF';
+                                pin.style.fontWeight = 'bold';
+                                pin.style.fontSize = '15px';
+                                pin.style.display = 'flex';
+                                pin.style.alignItems = 'center';
+                                pin.style.justifyContent = 'center';
+                                pin.style.boxShadow = '0 5px 16px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.85)';
+                                pin.style.cursor = 'grab';
+                                pin.style.zIndex = '2147483647';
+                                pin.style.userSelect = 'none';
+                                pin.style.touchAction = 'none';
+                                pin.style.opacity = targetOpacity;
+                                pin.style.transition = 'transform 0.1s, box-shadow 0.1s, opacity 0.2s';
+                                pin.innerText = label;
+
+                                let isDragging = false;
+                                let startX = 0, startY = 0;
+                                let startLeft = 0, startTop = 0;
+
+                                pin.addEventListener('pointerdown', (e) => {
+                                    isDragging = true;
+                                    pin.style.cursor = 'grabbing';
+                                    pin.style.transform = 'scale(1.22)';
+                                    pin.setPointerCapture(e.pointerId);
+                                    startX = e.clientX;
+                                    startY = e.clientY;
+                                    startLeft = parseFloat(pin.style.left) || initialX;
+                                    startTop = parseFloat(pin.style.top) || initialY;
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }, true);
+
+                                pin.addEventListener('pointermove', (e) => {
+                                    if (!isDragging) return;
+                                    const dx = e.clientX - startX;
+                                    const dy = e.clientY - startY;
+                                    let newLeft = Math.max(0, Math.min(window.innerWidth - 38, startLeft + dx));
+                                    let newTop = Math.max(0, Math.min(window.innerHeight - 38, startTop + dy));
+                                    pin.style.left = newLeft + 'px';
+                                    pin.style.top = newTop + 'px';
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }, true);
+
+                                const endDrag = (e) => {
+                                    if (!isDragging) return;
+                                    isDragging = false;
+                                    pin.style.cursor = 'grab';
+                                    pin.style.transform = 'scale(1)';
+                                    try { pin.releasePointerCapture(e.pointerId); } catch(err){}
+                                    const curX = parseFloat(pin.style.left) || 0;
+                                    const curY = parseFloat(pin.style.top) || 0;
+                                    onSavePos(curX, curY);
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                };
+
+                                pin.addEventListener('pointerup', endDrag, true);
+                                pin.addEventListener('pointercancel', endDrag, true);
+
+                                (document.body || document.documentElement).appendChild(pin);
+                                return pin;
+                            }
+
+                            createPin('imgsaver_pin_input', '①', __TARGET_INPUT_PIN_X__, __TARGET_INPUT_PIN_Y__, 'linear-gradient(135deg, #3B82F6, #1D4ED8)', 'پین ۱: محل فیلد ورودی متن (Drag to move)', (x, y) => {
+                                if (window.chrome && window.chrome.webview) {
+                                    window.chrome.webview.postMessage({
+                                        type: 'update_target_pin',
+                                        pin: 'input',
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            });
+
+                            createPin('imgsaver_pin_action', '②', __TARGET_ACTION_PIN_X__, __TARGET_ACTION_PIN_Y__, 'linear-gradient(135deg, #10B981, #059669)', 'پین ۲: محل دکمه لمس/اقدام نهایی (Drag to move)', (x, y) => {
+                                if (window.chrome && window.chrome.webview) {
+                                    window.chrome.webview.postMessage({
+                                        type: 'update_target_pin',
+                                        pin: 'action',
+                                        x: x,
+                                        y: y
+                                    });
+                                }
+                            });
+                        })();
+                    }
+
                     window.imgsaver_miniClipEnabled = imgsaverShowMiniClipImageImportButtons;
                     if (!imgsaverShowMiniClipImageImportButtons) {
                         document.querySelectorAll('[data-imgsaver-mini-clip-import-button=""true""]').forEach(btn => btn.remove());
@@ -648,7 +784,13 @@ window.addEventListener('focus', function() {
                 })();";
              return script
                  .Replace("__SHOW_MINI_CLIP_IMAGE_IMPORT_BUTTONS__", showMiniClipImageImportButtons ? "true" : "false")
-                 .Replace("__SHOW_QUICK_PASTE_BUTTON__", showQuickPasteButton ? "true" : "false");
+                 .Replace("__SHOW_QUICK_PASTE_BUTTON__", showQuickPasteButton ? "true" : "false")
+                 .Replace("__SHOW_AUTO_PASTE_PINS__", showAutoPastePins ? "true" : "false")
+                 .Replace("__AUTO_PASTE_PINS_OPACITY__", autoPastePinsOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                 .Replace("__TARGET_INPUT_PIN_X__", targetInputPinX.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                 .Replace("__TARGET_INPUT_PIN_Y__", targetInputPinY.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                 .Replace("__TARGET_ACTION_PIN_X__", targetActionPinX.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                 .Replace("__TARGET_ACTION_PIN_Y__", targetActionPinY.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         private async void CoreWebView2_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
@@ -724,6 +866,9 @@ window.addEventListener('focus', function() {
                         if (sData["AutoImportImagesToMiniClip"] != null) _currentSettings.AutoImportImagesToMiniClip = sData["AutoImportImagesToMiniClip"]!.Value<bool>();
                         if (sData["ShowMiniClipImageImportButtons"] != null) _currentSettings.ShowMiniClipImageImportButtons = sData["ShowMiniClipImageImportButtons"]!.Value<bool>();
                         if (sData["ShowQuickPasteButton"] != null) _currentSettings.ShowQuickPasteButton = sData["ShowQuickPasteButton"]!.Value<bool>();
+                        if (sData["EnableAutoQuickPaste"] != null) _currentSettings.EnableAutoQuickPaste = sData["EnableAutoQuickPaste"]!.Value<bool>();
+                        if (sData["ShowAutoPastePins"] != null) _currentSettings.ShowAutoPastePins = sData["ShowAutoPastePins"]!.Value<bool>();
+                        if (sData["AutoPastePinsOpacity"] != null) _currentSettings.AutoPastePinsOpacity = sData["AutoPastePinsOpacity"]!.Value<int>();
                         if (sData["ShowFloatingRecordPlayer"] != null) _currentSettings.ShowFloatingRecordPlayer = sData["ShowFloatingRecordPlayer"]!.Value<bool>();
                         if (sData["AutoHideStatus"] != null) _currentSettings.AutoHideStatus = sData["AutoHideStatus"]!.Value<bool>();
                         if (sData["ProxyMode"] != null) _currentSettings.ProxyMode = sData["ProxyMode"]!.ToString();
@@ -794,6 +939,25 @@ window.addEventListener('focus', function() {
                 if (type == "debug_log")
                 {
                     DebugLog("[JS] " + (data["message"]?.ToString() ?? ""));
+                }
+
+                if (type == "update_target_pin")
+                {
+                    string? pin = data["pin"]?.ToString();
+                    double x = data["x"]?.ToObject<double>() ?? 0;
+                    double y = data["y"]?.ToObject<double>() ?? 0;
+                    if (pin == "input")
+                    {
+                        _currentSettings.TargetInputPinX = x;
+                        _currentSettings.TargetInputPinY = y;
+                    }
+                    else if (pin == "action")
+                    {
+                        _currentSettings.TargetActionPinX = x;
+                        _currentSettings.TargetActionPinY = y;
+                    }
+                    _currentSettings.Save(CurrentProfile);
+                    return;
                 }
 
                 if (type == "quick_paste_click")
@@ -1074,8 +1238,162 @@ window.addEventListener('focus', function() {
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, animScale);
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, animScale);
             DoubleAnimation animFade = new DoubleAnimation(1, 0, duration);
-            animFade.Completed += (s, e) => { ParticleCanvas.Children.Remove(particle); };
             particle.BeginAnimation(UIElement.OpacityProperty, animFade);
         }
+
+        /// <summary>
+        /// Automatically performs the 2-step Quick Paste & Action sequence completely in the background:
+        /// 1) Injects & replaces new prompt into the specified input coordinates (Pin 1)
+        /// 2) Simulates web touch/click at the target action coordinates (Pin 2)
+        /// NOTE: Does NOT steal OS focus, activate windows, or move/click physical mouse, so user can keep working in Chrome etc.
+        /// </summary>
+        public async Task ExecuteAutoQuickPasteAndActionAsync(string textToPaste)
+        {
+            if (_currentSettings == null || !_currentSettings.EnableAutoQuickPaste) return;
+
+            try
+            {
+                var browser = GetCurrentBrowser();
+                if (browser == null || browser.CoreWebView2 == null) return;
+
+                double pin1X = _currentSettings.TargetInputPinX;
+                double pin1Y = _currentSettings.TargetInputPinY;
+                double pin2X = _currentSettings.TargetActionPinX;
+                double pin2Y = _currentSettings.TargetActionPinY;
+
+                // Step 1: Pure in-browser text replacement at Pin 1 without touching OS foreground or mouse
+                string encodedText = System.Text.Json.JsonSerializer.Serialize(textToPaste);
+                string pasteScript = $@"
+                (function() {{
+                    try {{
+                        const x = {pin1X.ToString(System.Globalization.CultureInfo.InvariantCulture)};
+                        const y = {pin1Y.ToString(System.Globalization.CultureInfo.InvariantCulture)};
+                        
+                        function findDeepInput(rootX, rootY) {{
+                            let el = document.elementFromPoint(rootX, rootY);
+                            if (!el) return null;
+                            if (el.tagName === 'IFRAME') {{
+                                try {{
+                                    const rect = el.getBoundingClientRect();
+                                    const innerDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
+                                    if (innerDoc && innerDoc.elementFromPoint) {{
+                                        const innerTarget = innerDoc.elementFromPoint(rootX - rect.left, rootY - rect.top);
+                                        if (innerTarget) return innerTarget;
+                                    }}
+                                }} catch (err) {{}}
+                            }}
+                            if (el.shadowRoot && el.shadowRoot.elementFromPoint) {{
+                                const inner = el.shadowRoot.elementFromPoint(rootX, rootY);
+                                if (inner) return inner;
+                            }}
+                            return el;
+                        }}
+
+                        let target = findDeepInput(x, y);
+                        if (target) {{
+                            const inputLike = target.closest('input:not([type=""hidden""]):not([type=""checkbox""]):not([type=""radio""]), textarea, [contenteditable=""true""], [role=""textbox""]');
+                            if (inputLike) target = inputLike;
+
+                            if (typeof target.focus === 'function') target.focus();
+
+                            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {{
+                                const proto = target.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+                                const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+                                if (desc && desc.set) {{
+                                    desc.set.call(target, {encodedText});
+                                }} else {{
+                                    target.value = {encodedText};
+                                }}
+                                target.setSelectionRange({encodedText}.length, {encodedText}.length);
+                                ['input', 'change'].forEach(ev => target.dispatchEvent(new Event(ev, {{ bubbles: true }})));
+                            }} else if (target.isContentEditable || target.getAttribute('contenteditable') === 'true') {{
+                                target.innerText = {encodedText};
+                                target.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                            }} else {{
+                                // Generic fallback for custom wrappers (e.g. Monaco/CodeMirror)
+                                const childInput = target.querySelector('textarea, input, [contenteditable=""true""]');
+                                if (childInput) {{
+                                    if (typeof childInput.focus === 'function') childInput.focus();
+                                    if (childInput.tagName === 'INPUT' || childInput.tagName === 'TEXTAREA') {{
+                                        childInput.value = {encodedText};
+                                        ['input', 'change'].forEach(ev => childInput.dispatchEvent(new Event(ev, {{ bubbles: true }})));
+                                    }} else {{
+                                        childInput.innerText = {encodedText};
+                                        childInput.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                    }}
+                                }}
+                            }}
+                        }}
+                    }} catch (e) {{}}
+                }})();";
+                await browser.CoreWebView2.ExecuteScriptAsync(pasteScript);
+
+                // Step 2: Touch/Click target action button (Pin 2) inside browser without taking over OS mouse/window
+                int delay = Math.Max(100, _currentSettings.AutoActionDelayMs);
+                await Task.Delay(delay);
+
+                string clickScript = $@"
+                (function() {{
+                    try {{
+                        const x = {pin2X.ToString(System.Globalization.CultureInfo.InvariantCulture)};
+                        const y = {pin2Y.ToString(System.Globalization.CultureInfo.InvariantCulture)};
+                        
+                        function findDeepTarget(rootX, rootY) {{
+                            let el = document.elementFromPoint(rootX, rootY);
+                            if (!el) return null;
+                            if (el.tagName === 'IFRAME') {{
+                                try {{
+                                    const rect = el.getBoundingClientRect();
+                                    const innerDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
+                                    if (innerDoc && innerDoc.elementFromPoint) {{
+                                        const innerTarget = innerDoc.elementFromPoint(rootX - rect.left, rootY - rect.top);
+                                        if (innerTarget) return innerTarget;
+                                    }}
+                                }} catch (err) {{}}
+                            }}
+                            if (el.shadowRoot && el.shadowRoot.elementFromPoint) {{
+                                const inner = el.shadowRoot.elementFromPoint(rootX, rootY);
+                                if (inner) return inner;
+                            }}
+                            return el;
+                        }}
+
+                        let target = findDeepTarget(x, y);
+                        if (target) {{
+                            const btnLike = target.closest('button, [role=""button""], a, input[type=""submit""], input[type=""button""], div[tabindex]');
+                            if (btnLike) target = btnLike;
+
+                            const opts = {{
+                                bubbles: true,
+                                cancelable: true,
+                                composed: true,
+                                view: window,
+                                clientX: x,
+                                clientY: y,
+                                pointerId: 1,
+                                width: 1,
+                                height: 1,
+                                pressure: 0.5,
+                                isPrimary: true,
+                                button: 0,
+                                buttons: 1
+                            }};
+
+                            try {{ target.dispatchEvent(new PointerEvent('pointerdown', opts)); }} catch (e) {{}}
+                            try {{ target.dispatchEvent(new MouseEvent('mousedown', opts)); }} catch (e) {{}}
+                            opts.buttons = 0;
+                            try {{ target.dispatchEvent(new PointerEvent('pointerup', opts)); }} catch (e) {{}}
+                            try {{ target.dispatchEvent(new MouseEvent('mouseup', opts)); }} catch (e) {{}}
+                            try {{ target.dispatchEvent(new MouseEvent('click', opts)); }} catch (e) {{}}
+                            if (typeof target.click === 'function') {{
+                                target.click();
+                            }}
+                        }}
+                    }} catch (e) {{}}
+                }})();";
+                await browser.CoreWebView2.ExecuteScriptAsync(clickScript);
+            }
+            catch { }
+        }
     }
-}
+}

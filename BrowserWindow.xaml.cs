@@ -252,6 +252,22 @@ namespace imgsaver
                 StatusOverlay.Opacity = 1;
                 _statusFadeTimer?.Stop();
             }
+
+            // Re-apply settings and reinject helper scripts to all active webviews
+            try
+            {
+                if (BrowserTabs != null)
+                {
+                    foreach (TabItem tab in BrowserTabs.Items)
+                    {
+                        if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null)
+                        {
+                            ApplyBrowserSettingsTo(state.PrimaryWebView);
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         private bool ProxySettingsChanged()

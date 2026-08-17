@@ -9,15 +9,43 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 
 using WinForms = System.Windows.Forms;
+using Color = System.Windows.Media.Color;
 
 namespace imgsaver
 {
     public partial class GalleryWindow : Window
     {
-        public static bool IsPrivacyMode { get; private set; } = false;
+        private const string PrivacyConfigFileName = "gallery_privacy.txt";
+        public static bool IsPrivacyMode { get; private set; } = LoadPrivacyMode();
         public static event EventHandler PrivacyModeChanged;
+
+        private static bool LoadPrivacyMode()
+        {
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath(PrivacyConfigFileName);
+                if (File.Exists(configPath))
+                {
+                    string content = File.ReadAllText(configPath).Trim();
+                    if (bool.TryParse(content, out bool val)) return val;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static void SavePrivacyMode(bool isPrivacy)
+        {
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath(PrivacyConfigFileName);
+                File.WriteAllText(configPath, isPrivacy.ToString());
+            }
+            catch { }
+        }
 
         private string _galleryPath = "";
         private const string GalleryConfigFileName = "gallery_config.txt";
@@ -48,6 +76,10 @@ namespace imgsaver
         {
             InitializeComponent();
 
+            SourceInitialized += (s, e) => WindowResizingHelper.ApplyModernWindowStyle(this);
+
+            SizeChanged += Window_SizeChanged;
+
             // Responsive sizing: ensure window fits screen
             double screenWidth = SystemParameters.WorkArea.Width;
             double screenHeight = SystemParameters.WorkArea.Height;
@@ -65,7 +97,12 @@ namespace imgsaver
                 _galleryPath = defaultPath ?? "";
             }
 
-            Loaded += async (_, _) => await LoadGalleryAsync();
+            Loaded += async (_, _) =>
+            {
+                UpdatePrivacyButtonUI();
+                UpdateGridColumns();
+                await LoadGalleryAsync();
+            };
         }
 
         private string LoadGalleryPath()
@@ -360,7 +397,9 @@ namespace imgsaver
                     Height = 45,
                     Margin = new Thickness(2),
                     CornerRadius = new CornerRadius(8),
-                    Background = hasImages ? (System.Windows.Media.Brush)FindResource("PrimaryBrush") : System.Windows.Media.Brushes.Transparent,
+                    Background = hasImages ? new SolidColorBrush(Color.FromRgb(18, 32, 64)) : System.Windows.Media.Brushes.Transparent,
+                    BorderBrush = hasImages ? new SolidColorBrush(Color.FromRgb(29, 78, 216)) : System.Windows.Media.Brushes.Transparent,
+                    BorderThickness = hasImages ? new Thickness(1) : new Thickness(0),
                     Cursor = hasImages ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow,
                     Tag = dateKey
                 };
@@ -371,9 +410,9 @@ namespace imgsaver
                 {
                     Text = day.ToString(),
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                    FontSize = 14,
+                    FontSize = 13,
                     FontWeight = FontWeights.Bold,
-                    Foreground = hasImages ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Gray
+                    Foreground = hasImages ? System.Windows.Media.Brushes.White : new SolidColorBrush(Color.FromRgb(71, 85, 105))
                 };
                 dayStack.Children.Add(dayText);
 
@@ -383,11 +422,23 @@ namespace imgsaver
                     {
                         Text = $"{imageCount}",
                         HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                        FontSize = 10,
-                        Foreground = System.Windows.Media.Brushes.White,
-                        Opacity = 0.8
+                        FontSize = 9.5,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+                        Opacity = 0.95
                     };
                     dayStack.Children.Add(countText);
+
+                    dayBorder.MouseEnter += (s, e) =>
+                    {
+                        dayBorder.Background = new SolidColorBrush(Color.FromRgb(29, 78, 216));
+                        dayBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(56, 189, 248));
+                    };
+                    dayBorder.MouseLeave += (s, e) =>
+                    {
+                        dayBorder.Background = new SolidColorBrush(Color.FromRgb(18, 32, 64));
+                        dayBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(29, 78, 216));
+                    };
 
                     dayBorder.MouseLeftButtonUp += (s, e) =>
                     {
@@ -565,24 +616,40 @@ namespace imgsaver
 
         #region Image Cards
 
+        private static readonly Color CardBgNormal = Color.FromRgb(12, 18, 34);
+        private static readonly Color CardBgHover = Color.FromRgb(20, 30, 56);
+        private static readonly Color CardBorderNormal = Color.FromRgb(28, 39, 68);
+        private static readonly Color CardBorderHover = Color.FromRgb(56, 189, 248);
+        private static readonly Color CardBorderSelected = Color.FromRgb(56, 189, 248);
+        private static readonly Color ShadowGlowSelected = Color.FromRgb(56, 189, 248);
+        private static readonly Color ShadowGlowHover = Color.FromArgb(140, 56, 189, 248);
+        private static readonly Color ShadowNormal = Color.FromRgb(0, 0, 0);
+        private static readonly IEasingFunction CardEase = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+
         private Border CreateImageCard(string imagePath)
         {
+            bool isSelected = _selectedImages.Contains(imagePath);
+
+            var bgBrush = new SolidColorBrush(CardBgNormal);
+            var borderBrush = new SolidColorBrush(isSelected ? CardBorderSelected : CardBorderNormal);
+            var dropShadow = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = isSelected ? 14 : 10,
+                Color = isSelected ? ShadowGlowSelected : ShadowNormal,
+                Opacity = isSelected ? 0.45 : 0.35,
+                ShadowDepth = 2
+            };
+
             var card = new Border
             {
-                Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush"),
-                BorderBrush = _selectedImages.Contains(imagePath) ? (System.Windows.Media.Brush)FindResource("AccentBrush") : (System.Windows.Media.Brush)FindResource("BorderBrush"),
-                BorderThickness = _selectedImages.Contains(imagePath) ? new Thickness(2) : new Thickness(1),
+                Background = bgBrush,
+                BorderBrush = borderBrush,
+                BorderThickness = isSelected ? new Thickness(2) : new Thickness(1),
                 CornerRadius = new CornerRadius(12),
                 Margin = new Thickness(6),
                 Cursor = System.Windows.Input.Cursors.Hand,
                 Tag = imagePath,
-                Effect = new System.Windows.Media.Effects.DropShadowEffect
-                {
-                    BlurRadius = 10,
-                    Color = System.Windows.Media.Colors.Black,
-                    Opacity = 0.35,
-                    ShadowDepth = 2
-                }
+                Effect = dropShadow
             };
 
             var grid = new Grid();
@@ -595,7 +662,7 @@ namespace imgsaver
             {
                 var checkBox = new System.Windows.Controls.CheckBox
                 {
-                    IsChecked = _selectedImages.Contains(imagePath),
+                    IsChecked = isSelected,
                     Margin = new Thickness(8),
                     HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
                     VerticalAlignment = System.Windows.VerticalAlignment.Top,
@@ -607,17 +674,18 @@ namespace imgsaver
             var thumbnailBorder = new Border
             {
                 Height = 185,
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 15, 18)),
+                Background = new SolidColorBrush(Color.FromRgb(5, 8, 17)),
                 CornerRadius = new CornerRadius(12, 12, 0, 0),
                 ClipToBounds = true
             };
 
+            var thumbnailScale = new ScaleTransform(1.0, 1.0);
             var thumbnail = new System.Windows.Controls.Image
             {
                 Stretch = Stretch.Uniform,
                 Margin = new Thickness(4),
                 RenderTransformOrigin = new System.Windows.Point(0.5, 0.5),
-                RenderTransform = new ScaleTransform(1.0, 1.0)
+                RenderTransform = thumbnailScale
             };
 
             // Badge indicator for HasPrompt
@@ -625,7 +693,9 @@ namespace imgsaver
             {
                 var promptBadge = new Border
                 {
-                    Background = (System.Windows.Media.Brush)FindResource("AccentBrush"),
+                    Background = new SolidColorBrush(Color.FromRgb(29, 78, 216)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
+                    BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(6),
                     Padding = new Thickness(6, 2, 6, 2),
                     Margin = new Thickness(8),
@@ -651,7 +721,9 @@ namespace imgsaver
                 string resTag = fileInfo.Length > 2 * 1024 * 1024 ? "4K" : "HD";
                 var resBadge = new Border
                 {
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 20, 20, 25)),
+                    Background = new SolidColorBrush(Color.FromArgb(200, 9, 21, 44)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(30, 58, 138)),
+                    BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(4),
                     Padding = new Thickness(4, 1, 4, 1),
                     Margin = new Thickness(8),
@@ -664,19 +736,17 @@ namespace imgsaver
                     Text = resTag,
                     FontSize = 9,
                     FontWeight = FontWeights.Bold,
-                    Foreground = System.Windows.Media.Brushes.Gray
+                    Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248))
                 };
                 resBadge.Child = resBadgeText;
                 grid.Children.Add(resBadge);
             }
             catch { }
 
-
-
             var privacyOverlay = new Border
             {
                 Name = "PrivacyOverlay",
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 10, 10, 10)),
+                Background = new SolidColorBrush(Color.FromArgb(230, 5, 7, 15)),
                 CornerRadius = new CornerRadius(12, 12, 0, 0),
                 Height = 185,
                 VerticalAlignment = VerticalAlignment.Top,
@@ -690,7 +760,7 @@ namespace imgsaver
                 FontSize = 48,
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
                 VerticalAlignment = System.Windows.VerticalAlignment.Center,
-                Opacity = 0.5
+                Opacity = 0.6
             };
             privacyOverlay.Child = eyeIcon;
             grid.Children.Add(privacyOverlay);
@@ -730,8 +800,9 @@ namespace imgsaver
             var fileName = new TextBlock
             {
                 Text = Path.GetFileNameWithoutExtension(imagePath),
-                Foreground = (System.Windows.Media.Brush)FindResource("OnSurfaceBrush"),
+                Foreground = new SolidColorBrush(Color.FromRgb(203, 213, 225)),
                 FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(8, 6, 8, 6),
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 ToolTip = Path.GetFileName(imagePath)
@@ -745,8 +816,17 @@ namespace imgsaver
                     if (_selectedImages.Contains(imagePath))
                     {
                         _selectedImages.Remove(imagePath);
-                        card.BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
                         card.BorderThickness = new Thickness(1);
+
+                        borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, 
+                            new ColorAnimation(CardBorderNormal, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+                        dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.ColorProperty, 
+                            new ColorAnimation(ShadowNormal, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+                        dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, 
+                            new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+                        dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty, 
+                            new DoubleAnimation(10, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+
                         // Find and uncheck checkbox if exists
                         if (card.Child is Grid g)
                         {
@@ -759,8 +839,17 @@ namespace imgsaver
                     else
                     {
                         _selectedImages.Add(imagePath);
-                        card.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentBrush");
                         card.BorderThickness = new Thickness(2);
+
+                        borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, 
+                            new ColorAnimation(CardBorderSelected, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+                        dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.ColorProperty, 
+                            new ColorAnimation(ShadowGlowSelected, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+                        dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, 
+                            new DoubleAnimation(0.45, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+                        dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty, 
+                            new DoubleAnimation(14, TimeSpan.FromMilliseconds(200)) { EasingFunction = CardEase });
+
                         // Find and check checkbox if exists
                         if (card.Child is Grid g)
                         {
@@ -779,27 +868,54 @@ namespace imgsaver
 
             card.MouseEnter += (s, e) =>
             {
-                card.Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush");
-                card.BorderBrush = (System.Windows.Media.Brush)FindResource("AccentBrush");
-                if (thumbnail.RenderTransform is ScaleTransform st)
+                // Smooth background fade
+                bgBrush.BeginAnimation(SolidColorBrush.ColorProperty, 
+                    new ColorAnimation(CardBgHover, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
+
+                // Smooth border & glow fade if not selected
+                if (!_selectedImages.Contains(imagePath))
                 {
-                    st.ScaleX = 1.05;
-                    st.ScaleY = 1.05;
+                    borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, 
+                        new ColorAnimation(CardBorderHover, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
+                    dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.ColorProperty, 
+                        new ColorAnimation(ShadowGlowHover, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
+                    dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, 
+                        new DoubleAnimation(0.55, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
+                    dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty, 
+                        new DoubleAnimation(16, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
                 }
+
+                // Smooth thumbnail zoom
+                thumbnailScale.BeginAnimation(ScaleTransform.ScaleXProperty, 
+                    new DoubleAnimation(1.045, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
+                thumbnailScale.BeginAnimation(ScaleTransform.ScaleYProperty, 
+                    new DoubleAnimation(1.045, TimeSpan.FromMilliseconds(220)) { EasingFunction = CardEase });
             };
 
             card.MouseLeave += (s, e) =>
             {
-                card.Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush");
+                // Smooth background fade back
+                bgBrush.BeginAnimation(SolidColorBrush.ColorProperty, 
+                    new ColorAnimation(CardBgNormal, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
+
+                // Smooth border & glow fade back if not selected
                 if (!_selectedImages.Contains(imagePath))
                 {
-                    card.BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush");
+                    borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, 
+                        new ColorAnimation(CardBorderNormal, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
+                    dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.ColorProperty, 
+                        new ColorAnimation(ShadowNormal, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
+                    dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, 
+                        new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
+                    dropShadow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty, 
+                        new DoubleAnimation(10, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
                 }
-                if (thumbnail.RenderTransform is ScaleTransform st)
-                {
-                    st.ScaleX = 1.0;
-                    st.ScaleY = 1.0;
-                }
+
+                // Smooth thumbnail zoom back
+                thumbnailScale.BeginAnimation(ScaleTransform.ScaleXProperty, 
+                    new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
+                thumbnailScale.BeginAnimation(ScaleTransform.ScaleYProperty, 
+                    new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(260)) { EasingFunction = CardEase });
             };
 
             return card;
@@ -808,21 +924,29 @@ namespace imgsaver
         private void BtnPrivacyMode_Click(object sender, RoutedEventArgs e)
         {
             IsPrivacyMode = !IsPrivacyMode;
+            SavePrivacyMode(IsPrivacyMode);
             
-            // Update button UI vector icon
-            if (BtnPrivacyMode.Template.FindName("PrivacyIconPath", BtnPrivacyMode) is System.Windows.Shapes.Path iconPath)
-            {
-                if (IsPrivacyMode && TryFindResource("IconEyeOff") is StreamGeometry offGeom)
-                    iconPath.Data = offGeom;
-                else if (!IsPrivacyMode && TryFindResource("IconEye") is StreamGeometry onGeom)
-                    iconPath.Data = onGeom;
-            }
-            BtnPrivacyMode.ToolTip = IsPrivacyMode ? "غیرفعال‌سازی حالت حریم خصوصی" : "حالت حریم خصوصی (تار کردن تصاویر)";
-
+            UpdatePrivacyButtonUI();
             UpdatePrivacyUI();
 
             // Notify listeners (like ImageViewer)
             PrivacyModeChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void UpdatePrivacyButtonUI()
+        {
+            if (BtnPrivacyMode != null)
+            {
+                BtnPrivacyMode.Tag = IsPrivacyMode ? "Active" : "";
+                BtnPrivacyMode.ToolTip = IsPrivacyMode ? "غیرفعال‌سازی حالت حریم خصوصی" : "حالت حریم خصوصی (تار کردن تصاویر)";
+                if (BtnPrivacyMode.Template?.FindName("PrivacyIconPath", BtnPrivacyMode) is System.Windows.Shapes.Path iconPath)
+                {
+                    if (IsPrivacyMode && TryFindResource("IconEyeOff") is StreamGeometry offGeom)
+                        iconPath.Data = offGeom;
+                    else if (!IsPrivacyMode && TryFindResource("IconEye") is StreamGeometry onGeom)
+                        iconPath.Data = onGeom;
+                }
+            }
         }
 
         private void UpdatePrivacyUI()
@@ -955,7 +1079,10 @@ namespace imgsaver
             {
                 WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
             }
-            else if (e.ClickCount == 1) DragMove();
+            else if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed)
+            {
+                DragMove();
+            }
         }
 
         private void BtnLockApp_Click(object sender, RoutedEventArgs e)
@@ -1032,11 +1159,17 @@ namespace imgsaver
             int startIndex = (_currentPage - 1) * PageSize;
             var pageImages = _currentImagesList.Skip(startIndex).Take(PageSize).ToList();
 
+            UpdateGridColumns();
+
             foreach (var imagePath in pageImages)
             {
                 var card = CreateImageCard(imagePath);
                 ImageGrid.Children.Add(card);
             }
+
+            // Smooth page transition animation
+            ImageGrid.BeginAnimation(UIElement.OpacityProperty, 
+                new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
 
         private void BtnPrevPage_Click(object sender, RoutedEventArgs e)
@@ -1059,6 +1192,25 @@ namespace imgsaver
         }
 
         #endregion
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateGridColumns();
+        }
+
+        private void UpdateGridColumns()
+        {
+            if (ImageGrid == null) return;
+            double availableWidth = ActualWidth - 56;
+            if (availableWidth > 200)
+            {
+                int cols = Math.Clamp((int)(availableWidth / 240), 3, 10);
+                if (ImageGrid.Columns != cols)
+                {
+                    ImageGrid.Columns = cols;
+                }
+            }
+        }
 
         private sealed class GalleryImageInfo
         {
@@ -1102,6 +1254,8 @@ namespace imgsaver
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.BorderThickness = new Thickness(1);
             }
+
+            UpdateGridColumns();
         }
     }
 }

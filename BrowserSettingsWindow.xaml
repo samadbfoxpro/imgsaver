@@ -192,6 +192,13 @@
                                         <CheckBox x:Name="ChkReplaceMiniClipImageOnImport" Content="Replace current Mini Clip image when importing from browser" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowFloatingRecordPlayer" Content="Show floating browser recording player" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowQuickPasteButton" Content="Show BR Paste button on input fields" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkEnableAutoQuickPaste" Content="Enable Auto Quick Paste &amp; Action from Clipboard" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkShowAutoPastePins" Content="Show floating location pins (Input 1 &amp; Action 2)" Margin="0,0,0,10"/>
+                                        <StackPanel Orientation="Horizontal" Margin="24,0,0,14">
+                                            <TextBlock x:Name="TxtPinsOpacityLabel" Text="Pins Opacity:" FontSize="12" Foreground="{StaticResource ForegroundMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <Slider x:Name="SldPinsOpacity" Minimum="0" Maximum="100" Value="100" Width="140" VerticalAlignment="Center" ValueChanged="SldPinsOpacity_ValueChanged"/>
+                                            <TextBlock x:Name="TxtPinsOpacityValue" Text="100%" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="10,0,0,0" Width="36"/>
+                                        </StackPanel>
                                         <CheckBox x:Name="ChkEnableCombinerBar" Content="Enable Smart Prompt Combiner toolbar at bottom of browser" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoFocusMiniClip" Content="Automatically focus main Mini Clip window when capturing data" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoHideStatus" Content="Hide Status Bar" Margin="0,0,0,0"/>

@@ -4,11 +4,9 @@
         Title="Image Saver Pro" Width="1020"
         Height="700"
         MinHeight="600" MinWidth="880"
-        Background="Transparent"
+        Background="#090D1A"
         WindowStartupLocation="CenterScreen"
         FontFamily="{StaticResource AppFontFamily}" 
-        WindowStyle="None"
-        AllowsTransparency="True"
         ResizeMode="CanResize"
         PreviewKeyDown="Window_PreviewKeyDown"
         StateChanged="Window_StateChanged">
@@ -16,21 +14,20 @@
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="38" 
                       ResizeBorderThickness="6" 
-                      GlassFrameThickness="0" 
-                      CornerRadius="14"/>
+                      GlassFrameThickness="1" 
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
-    <Border x:Name="MainBorder" CornerRadius="14" BorderThickness="1" BorderBrush="#1C2438" Margin="10">
-        <Border.Effect>
-            <DropShadowEffect Color="#000818" BlurRadius="30" ShadowDepth="4" Opacity="0.8"/>
-        </Border.Effect>
-        <Border.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#090D1A" Offset="0"/>
-                <GradientStop Color="#05070F" Offset="1"/>
-            </LinearGradientBrush>
-        </Border.Background>
+    <Window.Resources>
+        <!-- Vector Icon Geometries -->
+        <StreamGeometry x:Key="IconMinimize">M0,0 L10,0</StreamGeometry>
+        <StreamGeometry x:Key="IconMaximize">M1,1 L9,1 L9,9 L1,9 Z M0,0 L10,0 L10,10 L0,10 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconRestore">M3,1 L9,1 L9,7 L8,7 L8,2 L3,2 Z M1,3 L7,3 L7,9 L1,9 Z M0,2 L8,2 L8,10 L0,10 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconClose">M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z</StreamGeometry>
+    </Window.Resources>
 
+    <Border x:Name="MainBorder" CornerRadius="8" BorderThickness="1" BorderBrush="#1C2438" Margin="0" Background="#090D1A">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="38"/>
@@ -40,7 +37,7 @@
             <!-- ════════════════════════════════════════════════════════════════ -->
             <!-- 1. CUSTOM TOP TITLEBAR -->
             <!-- ════════════════════════════════════════════════════════════════ -->
-            <Border Grid.Row="0" Background="#0C1122" CornerRadius="14,14,0,0"
+            <Border Grid.Row="0" Background="#0C1122" CornerRadius="8,8,0,0"
                     FlowDirection="LeftToRight"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                     BorderThickness="0,0,0,1" BorderBrush="#161E34">
@@ -51,7 +48,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Border CornerRadius="8" Width="26" Height="26" Margin="0,0,10,0">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -71,19 +68,22 @@
                         </Border>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button x:Name="BtnLockApp" Click="BtnLockApp_Click"
-                                Style="{StaticResource TitleBarButtonStyle}" ToolTip="قفل سریع برنامه (Ctrl + L)" Width="36">
+                                Style="{StaticResource CaptionBtnStyle}" ToolTip="قفل سریع برنامه (Ctrl + L)" Width="38" WindowChrome.IsHitTestVisibleInChrome="True">
                             <Border Background="#132347" CornerRadius="6" Width="24" Height="24">
                                 <Path Data="{StaticResource IconLock}" Fill="#38BDF8" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                         </Button>
-                        <Button x:Name="BtnMinimize" Content="─" Click="BtnMinimize_Click"
-                                Style="{StaticResource TitleBarButtonStyle}"/>
-                        <Button x:Name="BtnMaximize" Content="□" Click="BtnMaximize_Click"
-                                Style="{StaticResource TitleBarButtonStyle}"/>
-                        <Button x:Name="BtnClose" Content="✕" Click="BtnClose_Click"
-                                Style="{StaticResource TitleBarCloseButtonStyle}"/>
+                        <Button x:Name="BtnMinimize" Style="{StaticResource CaptionBtnStyle}" Click="BtnMinimize_Click" ToolTip="کوچک کردن" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Rectangle Width="10" Height="1.5" Fill="#949BA4" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnMaximize" Style="{StaticResource CaptionBtnStyle}" Click="BtnMaximize_Click" ToolTip="بزرگ کردن" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Path x:Name="MaximizeIconPath" Data="{StaticResource IconMaximize}" Fill="#949BA4" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="BtnClose" Style="{StaticResource CaptionCloseBtnStyle}" Click="BtnClose_Click" ToolTip="بستن" WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Path Data="{StaticResource IconClose}" Fill="#949BA4" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>

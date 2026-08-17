@@ -12,7 +12,7 @@
         KeyDown="Window_KeyDown">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+        <WindowChrome CaptionHeight="38" ResizeBorderThickness="6" GlassFrameThickness="1" CornerRadius="0" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -52,8 +52,22 @@
                 <!-- Fallback Background -->
                 <Border Background="#060709"/>
 
-                <!-- Main Image Display -->
-                <Image x:Name="ImgDisplay" Stretch="Uniform" Margin="24" RenderOptions.BitmapScalingMode="Fant"/>
+                <!-- Main Image Display Container -->
+                <Grid x:Name="ImageContainer" ClipToBounds="True">
+                    <!-- Base / Current Image -->
+                    <Image x:Name="ImgDisplay" Stretch="Uniform" Margin="24" RenderOptions.BitmapScalingMode="Fant" RenderTransformOrigin="0.5,0.5">
+                        <Image.RenderTransform>
+                            <TranslateTransform x:Name="ImgDisplayTranslate" X="0" Y="0"/>
+                        </Image.RenderTransform>
+                    </Image>
+
+                    <!-- Transition Incoming Image -->
+                    <Image x:Name="ImgNextDisplay" Stretch="Uniform" Margin="24" RenderOptions.BitmapScalingMode="Fant" RenderTransformOrigin="0.5,0.5" Opacity="0" Visibility="Collapsed">
+                        <Image.RenderTransform>
+                            <TranslateTransform x:Name="ImgNextTranslate" X="0" Y="0"/>
+                        </Image.RenderTransform>
+                    </Image>
+                </Grid>
 
                 <!-- Privacy Overlay -->
                 <Border x:Name="PrivacyOverlay" Background="#F208090C" Visibility="Collapsed">
@@ -164,7 +178,7 @@
                         <!-- Standard Caption Controls (Right) -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True">
                             <Button x:Name="BtnMinimize" Style="{StaticResource CaptionBtnStyle}" Click="BtnMinimize_Click" ToolTip="کوچک کردن" WindowChrome.IsHitTestVisibleInChrome="True">
-                                <Path Data="{StaticResource IconMinimize}" Fill="#949BA4" Width="10" Height="2" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Rectangle Width="10" Height="1.5" Fill="#949BA4" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
                             <Button x:Name="BtnMaximize" Style="{StaticResource CaptionBtnStyle}" Click="BtnMaximize_Click" ToolTip="بزرگ کردن" WindowChrome.IsHitTestVisibleInChrome="True">
                                 <Path x:Name="MaximizeIconPath" Data="{StaticResource IconMaximize}" Fill="#949BA4" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>

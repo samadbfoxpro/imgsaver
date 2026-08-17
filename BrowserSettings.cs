@@ -33,6 +33,14 @@ namespace imgsaver
         public bool ReplaceMiniClipImageOnImport { get; set; } = false;
         public bool ShowFloatingRecordPlayer { get; set; } = false;
         public bool ShowQuickPasteButton { get; set; } = true;
+        public bool EnableAutoQuickPaste { get; set; } = false;
+        public bool ShowAutoPastePins { get; set; } = false;
+        public int AutoPastePinsOpacity { get; set; } = 100;
+        public double TargetInputPinX { get; set; } = 100;
+        public double TargetInputPinY { get; set; } = 150;
+        public double TargetActionPinX { get; set; } = 100;
+        public double TargetActionPinY { get; set; } = 220;
+        public int AutoActionDelayMs { get; set; } = 300;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
 

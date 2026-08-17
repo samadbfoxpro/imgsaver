@@ -100,12 +100,12 @@ namespace imgsaver
         {
             StartupProfiler.Log("MainWindow Constructor ENTER");
             InitializeComponent();
+            SourceInitialized += (s, e) => WindowResizingHelper.ApplyModernWindowStyle(this);
             StartupProfiler.Log("MainWindow Constructor -> InitializeComponent END");
             LanguageManager.ApplyWindowLanguage(this);
             StartupProfiler.Log("MainWindow Constructor -> ApplyWindowLanguage END");
             LoadSettings();
             StartupProfiler.Log("MainWindow Constructor -> LoadSettings END");
-            this.MaxHeight = SystemParameters.WorkArea.Height;
             VersionManager.Load();
             TxtVersion.Text = $"v{VersionManager.CurrentVersion}";
 
@@ -289,14 +289,21 @@ namespace imgsaver
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2) BtnMaximize_Click(sender, e);
-            else this.DragMove();
+            else if (e.ClickCount == 1 && e.LeftButton == MouseButtonState.Pressed) this.DragMove();
         }
 
         private void Window_StateChanged(object sender, EventArgs e)
         {
             if (WindowState == WindowState.Maximized)
             {
-                this.SizeToContent = SizeToContent.Manual;
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بازگردانی";
+                    if (MaximizeIconPath != null && TryFindResource("IconRestore") is StreamGeometry restoreGeom)
+                    {
+                        MaximizeIconPath.Data = restoreGeom;
+                    }
+                }
                 var resizeThickness = SystemParameters.WindowResizeBorderThickness;
                 MainBorder.Margin = new Thickness(resizeThickness.Left, resizeThickness.Top, resizeThickness.Right, resizeThickness.Bottom);
                 MainBorder.CornerRadius = new CornerRadius(0);
@@ -304,8 +311,15 @@ namespace imgsaver
             }
             else
             {
-                this.SizeToContent = SizeToContent.Height;
-                MainBorder.Margin = new Thickness(20);
+                if (BtnMaximize != null)
+                {
+                    BtnMaximize.ToolTip = "بزرگ کردن";
+                    if (MaximizeIconPath != null && TryFindResource("IconMaximize") is StreamGeometry maxGeom)
+                    {
+                        MaximizeIconPath.Data = maxGeom;
+                    }
+                }
+                MainBorder.Margin = new Thickness(0);
                 MainBorder.CornerRadius = new CornerRadius(8);
                 MainBorder.BorderThickness = new Thickness(1);
             }

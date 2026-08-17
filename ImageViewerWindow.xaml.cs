@@ -7,6 +7,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 
 namespace imgsaver
 {
@@ -28,6 +29,8 @@ namespace imgsaver
         public ImageViewerWindow(string imagePath, System.Collections.Generic.List<string>? allImages = null, int index = -1)
         {
             InitializeComponent();
+
+            SourceInitialized += (s, e) => WindowResizingHelper.ApplyModernWindowStyle(this);
 
             // Responsive sizing: ensure window fits screen
             double screenWidth = SystemParameters.WorkArea.Width;
@@ -87,14 +90,21 @@ namespace imgsaver
             base.OnClosed(e);
         }
 
-        private async Task LoadImageAsync()
+        private static readonly IEasingFunction SlideEase = new CubicEase { EasingMode = EasingMode.EaseOut };
+        private CancellationTokenSource? _navigationCts;
+        private DateTime _lastNavTime = DateTime.MinValue;
+        private int _rapidStreak = 0;
+
+        private async Task LoadImageAsync(int slideDirection = 0, int streak = 0)
         {
+            // Cancel any previous in-flight load
+            _navigationCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _navigationCts = cts;
+
             try
             {
-                // Small delay to ensure UI renders "Loading..." state before heavy work
-                await Task.Delay(10);
-
-                // Update file info
+                // Update file info immediately
                 var fileInfo = new FileInfo(_imagePath);
                 TxtFileName.Text = fileInfo.Name;
                 TxtFileInfo.Text = $"{FormatFileSize(fileInfo.Length)} • {_detectedExtension.Replace(".", "").ToUpper()}";
@@ -103,7 +113,7 @@ namespace imgsaver
                 // Make filename interactive (clickable to copy)
                 MakeFileNameInteractive(fileInfo.Name);
 
-                // Load image safely
+                // Load image safely in background
                 BitmapImage? bitmap = null;
                 await Task.Run(() =>
                 {
@@ -129,6 +139,9 @@ namespace imgsaver
                     }
                 });
 
+                // If user already navigated again, abandon this stale load
+                if (cts.Token.IsCancellationRequested) return;
+
                 // Load real pixel dimensions of original image
                 int originalWidth = 0;
                 int originalHeight = 0;
@@ -149,15 +162,31 @@ namespace imgsaver
                     catch { }
                 });
 
+                if (cts.Token.IsCancellationRequested) return;
+
                 TxtWidth.Text = originalWidth > 0 ? originalWidth.ToString() : "--";
                 TxtHeight.Text = originalHeight > 0 ? originalHeight.ToString() : "--";
                 TxtWidth.Tag = originalWidth.ToString();
                 TxtHeight.Tag = originalHeight.ToString();
 
+                LoadingPanel.Visibility = Visibility.Collapsed;
+
                 if (bitmap != null)
                 {
-                    ImgDisplay.Source = bitmap;
-                    LoadingPanel.Visibility = Visibility.Collapsed;
+                    if (slideDirection == 0 || ImgDisplay.Source == null)
+                    {
+                        // Initial load or instant: smooth fade-in
+                        SnapTransitionToEnd();
+                        ImgDisplay.Source = bitmap;
+                        ImgDisplayTranslate.X = 0;
+                        ImgDisplay.BeginAnimation(UIElement.OpacityProperty, 
+                            new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = SlideEase });
+                    }
+                    else
+                    {
+                        // Smooth adaptive slide transition
+                        PerformSlideTransition(bitmap, slideDirection, streak);
+                    }
                 }
                 else
                 {
@@ -165,12 +194,106 @@ namespace imgsaver
                 }
 
                 // Load associated text file
-                await LoadTextContentAsync();
+                if (!cts.Token.IsCancellationRequested)
+                    await LoadTextContentAsync(_imagePath, streak, cts.Token);
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"خطا در بارگذاری تصویر: {ex.Message}", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (!cts.Token.IsCancellationRequested)
+                    System.Windows.MessageBox.Show($"خطا در بارگذاری تصویر: {ex.Message}", "خطا", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>
+        /// Instantly snap any in-progress slide/fade animation to its final state
+        /// so the next transition starts from a clean, stable visual state.
+        /// </summary>
+        private void SnapTransitionToEnd()
+        {
+            // Stop all running animations by setting them to null (snaps to last value)
+            ImgDisplay.BeginAnimation(UIElement.OpacityProperty, null);
+            ImgDisplayTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+            ImgNextDisplay.BeginAnimation(UIElement.OpacityProperty, null);
+            ImgNextTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+
+            // If ImgNextDisplay has a pending image, commit it to ImgDisplay
+            if (ImgNextDisplay.Source != null && ImgNextDisplay.Visibility == Visibility.Visible)
+            {
+                ImgDisplay.Source = ImgNextDisplay.Source;
+            }
+
+            // Reset to clean state
+            ImgDisplay.Opacity = 1.0;
+            ImgDisplayTranslate.X = 0;
+            ImgNextDisplay.Visibility = Visibility.Collapsed;
+            ImgNextDisplay.Source = null;
+            ImgNextDisplay.Opacity = 0;
+            ImgNextTranslate.X = 0;
+        }
+
+        private void PerformSlideTransition(BitmapImage newBitmap, int direction, int streak = 0)
+        {
+            // Snap any previous animation to end before starting new one
+            SnapTransitionToEnd();
+
+            // Adaptive animation timing and displacement based on navigation speed/streak:
+            // streak 0 (single/relaxed click): 240ms duration, 70px offset
+            // streak 1 (fast successive click): 140ms duration, 45px offset
+            // streak 2 (faster click rate): 85ms duration, 30px offset
+            // streak >= 3 (blazing fast/held key): 45ms duration, 18px offset
+            double baseOffset = streak switch
+            {
+                0 => 70.0,
+                1 => 45.0,
+                2 => 30.0,
+                _ => 18.0
+            };
+            double offset = direction > 0 ? baseOffset : -baseOffset;
+
+            int durationMs = streak switch
+            {
+                0 => 240,
+                1 => 140,
+                2 => 85,
+                _ => 45
+            };
+            TimeSpan duration = TimeSpan.FromMilliseconds(durationMs);
+            TimeSpan fadeOutDuration = TimeSpan.FromMilliseconds(Math.Max(30, (int)(durationMs * 0.8)));
+
+            // Prepare incoming image
+            ImgNextDisplay.Source = newBitmap;
+            ImgNextDisplay.Visibility = Visibility.Visible;
+            ImgNextDisplay.Opacity = 0;
+            ImgNextTranslate.X = offset;
+
+            // Animate incoming image
+            var nextSlideAnim = new DoubleAnimation(0, duration) { EasingFunction = SlideEase };
+            var nextFadeAnim = new DoubleAnimation(1.0, duration) { EasingFunction = SlideEase };
+
+            // Animate outgoing image
+            var currentSlideAnim = new DoubleAnimation(-offset, duration) { EasingFunction = SlideEase };
+            var currentFadeAnim = new DoubleAnimation(0.0, fadeOutDuration) { EasingFunction = SlideEase };
+
+            nextSlideAnim.Completed += (s, e) =>
+            {
+                // Commit: move new image to primary layer
+                ImgDisplay.Source = newBitmap;
+                ImgDisplay.Opacity = 1.0;
+                ImgDisplayTranslate.X = 0;
+                ImgDisplayTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+                ImgDisplay.BeginAnimation(UIElement.OpacityProperty, null);
+
+                ImgNextDisplay.Visibility = Visibility.Collapsed;
+                ImgNextDisplay.Source = null;
+                ImgNextTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+                ImgNextDisplay.BeginAnimation(UIElement.OpacityProperty, null);
+            };
+
+            ImgNextTranslate.BeginAnimation(TranslateTransform.XProperty, nextSlideAnim);
+            ImgNextDisplay.BeginAnimation(UIElement.OpacityProperty, nextFadeAnim);
+
+            ImgDisplayTranslate.BeginAnimation(TranslateTransform.XProperty, currentSlideAnim);
+            ImgDisplay.BeginAnimation(UIElement.OpacityProperty, currentFadeAnim);
         }
 
         private async void Navigate(int delta)
@@ -179,6 +302,22 @@ namespace imgsaver
 
             int newIndex = _currentIndex + delta;
             if (newIndex < 0 || newIndex >= _allImages.Count) return;
+
+            // Calculate navigation speed/streak for adaptive animation acceleration
+            var now = DateTime.UtcNow;
+            double elapsedMs = (now - _lastNavTime).TotalMilliseconds;
+            _lastNavTime = now;
+
+            if (elapsedMs < 350)
+            {
+                _rapidStreak = Math.Min(_rapidStreak + 1, 4);
+            }
+            else
+            {
+                _rapidStreak = 0;
+            }
+
+            int streak = _rapidStreak;
 
             _currentIndex = newIndex;
             _imagePath = _allImages[_currentIndex];
@@ -189,16 +328,12 @@ namespace imgsaver
             _isLocallyRevealed = false;
             UpdatePrivacyOverlay();
 
-            // Clear current view
-            ImgDisplay.Source = null;
-            LoadingPanel.Visibility = Visibility.Visible;
-
             // Remove old event handlers before loading new image
             TxtFileName.MouseEnter -= OnFileNameMouseEnter;
             TxtFileName.MouseLeave -= OnFileNameMouseLeave;
             TxtFileName.MouseLeftButtonDown -= OnFileNameMouseDown;
 
-            await LoadImageAsync();
+            await LoadImageAsync(delta, streak);
         }
 
         private void ResetEditState()
@@ -218,45 +353,36 @@ namespace imgsaver
             TxtDescription.Visibility = Visibility.Visible;
             TxtDescriptionEditor.Visibility = Visibility.Collapsed;
             BtnSaveDescription.Visibility = Visibility.Collapsed;
-            
-            _originalPositive = "";
-            _originalBase = "";
-            _originalNegative = "";
-            _originalDescription = "";
         }
 
-        private async Task LoadTextContentAsync()
+        private async Task LoadTextContentAsync(string targetImagePath, int streak = 0, CancellationToken cancellationToken = default)
         {
             try
             {
-                PromptsPanel.Visibility = Visibility.Collapsed;
-                TxtPositive.Text = "پرامپت مثبتی یافت نشد.";
-                TxtNegative.Text = "پرامپت منفی یافت نشد.";
-
-                string baseName = Path.GetFileNameWithoutExtension(_imagePath);
-                string? directory = Path.GetDirectoryName(_imagePath);
+                string baseName = Path.GetFileNameWithoutExtension(targetImagePath);
+                string? directory = Path.GetDirectoryName(targetImagePath);
                 if (string.IsNullOrEmpty(directory)) return;
 
                 string txtPath = Path.Combine(directory, baseName + ".txt");
+                string positivePrompt = "";
+                string basePrompt = "";
+                string negativePrompt = "";
+                string description = "";
+                bool hasFile = false;
 
                 if (File.Exists(txtPath))
                 {
-                    string content = await File.ReadAllTextAsync(txtPath);
+                    string content = await File.ReadAllTextAsync(txtPath, cancellationToken);
                     if (!string.IsNullOrWhiteSpace(content))
                     {
-                        // Parse positive, base, negative, and description
+                        hasFile = true;
                         await Task.Run(() => 
                         {
                             var lines = content.Split('\n');
-                            string positivePrompt = "";
-                            string basePrompt = "";
-                            string negativePrompt = "";
-                            string description = "";
                             bool isPositive = false;
                             bool isBase = false;
                             bool isNegative = false;
                             bool isDescription = false;
-                            bool hasContent = false;
 
                             foreach (var line in lines)
                             {
@@ -273,9 +399,7 @@ namespace imgsaver
                                     isDescription = false;
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
-                                    {
                                         positivePrompt += currentLine.Substring(colonIndex + 1).Trim() + "\n";
-                                    }
                                     continue;
                                 }
                                 else if (lowerLine.StartsWith("base prompt"))
@@ -286,9 +410,7 @@ namespace imgsaver
                                     isDescription = false;
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
-                                    {
                                         basePrompt += currentLine.Substring(colonIndex + 1).Trim() + "\n";
-                                    }
                                     continue;
                                 }
                                 else if (lowerLine.StartsWith("negative prompt"))
@@ -299,9 +421,7 @@ namespace imgsaver
                                     isDescription = false;
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
-                                    {
                                         negativePrompt += currentLine.Substring(colonIndex + 1).Trim() + "\n";
-                                    }
                                     continue;
                                 }
                                 else if (lowerLine.StartsWith("description"))
@@ -312,78 +432,136 @@ namespace imgsaver
                                     isNegative = false;
                                     var colonIndex = currentLine.IndexOf(':');
                                     if (colonIndex != -1 && colonIndex < currentLine.Length - 1)
-                                    {
                                         description += currentLine.Substring(colonIndex + 1).Trim() + "\n";
-                                    }
                                     continue;
                                 }
 
-                                if (isPositive)
-                                    positivePrompt += currentLine + "\n";
-                                else if (isBase)
-                                    basePrompt += currentLine + "\n";
-                                else if (isNegative)
-                                    negativePrompt += currentLine + "\n";
-                                else if (isDescription)
-                                    description += currentLine + "\n";
+                                if (isPositive) positivePrompt += currentLine + "\n";
+                                else if (isBase) basePrompt += currentLine + "\n";
+                                else if (isNegative) negativePrompt += currentLine + "\n";
+                                else if (isDescription) description += currentLine + "\n";
                             }
-
-                            // Update UI on main thread
-                            Dispatcher.Invoke(() =>
-                            {
-                                string finalPos = positivePrompt.Trim();
-                                string finalBase = basePrompt.Trim();
-                                string finalNeg = negativePrompt.Trim();
-                                string finalDesc = description.Trim();
-
-                                if (!string.IsNullOrEmpty(finalPos))
-                                {
-                                    SetInteractiveText(TxtPositive, finalPos, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
-                                    hasContent = true;
-                                }
-
-                                if (!string.IsNullOrEmpty(finalBase))
-                                {
-                                    SetInteractiveText(TxtBasePrompt, finalBase, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
-                                    BasePromptGrid.Visibility = Visibility.Visible;
-                                    hasContent = true;
-                                }
-                                else
-                                {
-                                    BasePromptGrid.Visibility = Visibility.Collapsed;
-                                }
-
-                                if (!string.IsNullOrEmpty(finalNeg))
-                                {
-                                    SetInteractiveText(TxtNegative, finalNeg, (System.Windows.Media.Brush)FindResource("ForegroundBrush"));
-                                    hasContent = true;
-                                }
-
-                                if (!string.IsNullOrEmpty(finalDesc))
-                                {
-                                    SetInteractiveText(TxtDescription, finalDesc, (System.Windows.Media.Brush)FindResource("ForegroundBrush")); 
-                                    DescriptionGrid.Visibility = Visibility.Visible;
-                                    hasContent = true;
-                                }
-                                else
-                                {
-                                    DescriptionGrid.Visibility = Visibility.Collapsed;
-                                }
-                                
-                                if (hasContent)
-                                {
-                                    _originalPositive = finalPos;
-                                    _originalBase = finalBase;
-                                    _originalNegative = finalNeg;
-                                    _originalDescription = finalDesc;
-                                    PromptsPanel.Visibility = Visibility.Visible;
-                                }
-                            });
-                        });
+                        }, cancellationToken);
                     }
                 }
+
+                if (cancellationToken.IsCancellationRequested || targetImagePath != _imagePath) return;
+
+                string finalPos = positivePrompt.Trim();
+                string finalBase = basePrompt.Trim();
+                string finalNeg = negativePrompt.Trim();
+                string finalDesc = description.Trim();
+
+                // Apply per-element smooth transitions — only changed TextBlocks animate
+                var defaultBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(226, 232, 240));
+
+                // Positive prompt
+                if (finalPos != _originalPositive)
+                {
+                    CrossfadeTextBlock(TxtPositive, () =>
+                    {
+                        if (!string.IsNullOrEmpty(finalPos))
+                            SetInteractiveText(TxtPositive, finalPos, defaultBrush);
+                        else
+                        {
+                            TxtPositive.Inlines.Clear();
+                            TxtPositive.Text = hasFile ? "بدون پرامپت مثبت" : "پرامپت مثبتی یافت نشد.";
+                        }
+                    }, streak);
+                }
+
+                // Base prompt
+                if (finalBase != _originalBase)
+                {
+                    if (!string.IsNullOrEmpty(finalBase))
+                    {
+                        BasePromptGrid.Visibility = Visibility.Visible;
+                        CrossfadeTextBlock(TxtBasePrompt, () => SetInteractiveText(TxtBasePrompt, finalBase, defaultBrush), streak);
+                    }
+                    else
+                    {
+                        CrossfadeTextBlock(TxtBasePrompt, () =>
+                        {
+                            TxtBasePrompt.Inlines.Clear();
+                            BasePromptGrid.Visibility = Visibility.Collapsed;
+                        }, streak);
+                    }
+                }
+
+                // Negative prompt
+                if (finalNeg != _originalNegative)
+                {
+                    CrossfadeTextBlock(TxtNegative, () =>
+                    {
+                        if (!string.IsNullOrEmpty(finalNeg))
+                            SetInteractiveText(TxtNegative, finalNeg, defaultBrush);
+                        else
+                        {
+                            TxtNegative.Inlines.Clear();
+                            TxtNegative.Text = hasFile ? "بدون پرامپت منفی" : "پرامپت منفی یافت نشد.";
+                        }
+                    }, streak);
+                }
+
+                // Description
+                if (finalDesc != _originalDescription)
+                {
+                    if (!string.IsNullOrEmpty(finalDesc))
+                    {
+                        DescriptionGrid.Visibility = Visibility.Visible;
+                        CrossfadeTextBlock(TxtDescription, () => SetInteractiveText(TxtDescription, finalDesc, defaultBrush), streak);
+                    }
+                    else
+                    {
+                        CrossfadeTextBlock(TxtDescription, () =>
+                        {
+                            TxtDescription.Inlines.Clear();
+                            DescriptionGrid.Visibility = Visibility.Collapsed;
+                        }, streak);
+                    }
+                }
+
+                _originalPositive = finalPos;
+                _originalBase = finalBase;
+                _originalNegative = finalNeg;
+                _originalDescription = finalDesc;
+                PromptsPanel.Visibility = Visibility.Visible;
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Smoothly crossfades a single TextBlock with adaptive timing.
+        /// Headers, borders, buttons, and icons remain completely untouched.
+        /// </summary>
+        private void CrossfadeTextBlock(TextBlock textBlock, Action applyContent, int streak = 0)
+        {
+            if (streak >= 3)
+            {
+                textBlock.BeginAnimation(UIElement.OpacityProperty, null);
+                textBlock.Opacity = 1.0;
+                applyContent();
+                return;
+            }
+
+            int fadeOutMs = streak switch { 0 => 75, 1 => 40, _ => 25 };
+            int fadeInMs = streak switch { 0 => 140, 1 => 80, _ => 45 };
+
+            textBlock.BeginAnimation(UIElement.OpacityProperty, null);
+            var fadeOut = new DoubleAnimation(textBlock.Opacity, 0.0, TimeSpan.FromMilliseconds(fadeOutMs))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            fadeOut.Completed += (s, e) =>
+            {
+                applyContent();
+                var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(fadeInMs))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                textBlock.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            };
+            textBlock.BeginAnimation(UIElement.OpacityProperty, fadeOut);
         }
 
         private void SetInteractiveText(TextBlock textBlock, string text, System.Windows.Media.Brush defaultColor)

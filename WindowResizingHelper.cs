@@ -53,6 +53,23 @@ namespace imgsaver
             public int bottom;
         }
 
+        [DllImport("dwmapi.dll", PreserveSig = true)]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWCP_ROUND = 2;
+
+        public static void ApplyModernWindowStyle(Window window)
+        {
+            try
+            {
+                var handle = new WindowInteropHelper(window).EnsureHandle();
+                int preference = DWMWCP_ROUND;
+                DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
+            }
+            catch { }
+        }
+
         public static void HookWindow(Window window)
         {
             try
