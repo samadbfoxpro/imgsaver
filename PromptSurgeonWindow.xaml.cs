@@ -410,6 +410,26 @@ namespace imgsaver
             RtfOutput_PreviewMouseLeftButtonDown(sender, null!);
         }
 
+        private void BtnCopyInput_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(TxtInput.Text))
+                    System.Windows.Clipboard.SetText(TxtInput.Text);
+            }
+            catch { }
+        }
+
+        private void BtnCopyEdit_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(TxtEdit.Text))
+                    System.Windows.Clipboard.SetText(TxtEdit.Text);
+            }
+            catch { }
+        }
+
         private void BtnClear_Click(object sender, RoutedEventArgs e)
         {
             _isSyncing = true;

@@ -848,12 +848,7 @@ namespace imgsaver
 
         private void BtnExit_Click(object sender, RoutedEventArgs e)
         {
-            var exitDlg = new ExitConfirmationWindow();
-            exitDlg.Owner = this;
-            if (exitDlg.ShowDialog() == true)
-            {
-                PerformFullApplicationShutdown();
-            }
+            PerformFullApplicationShutdown();
         }
 
         #region In-Place Settings View Logic
@@ -871,6 +866,11 @@ namespace imgsaver
             SettingsView.Visibility = Visibility.Collapsed;
             DashboardView.Visibility = Visibility.Visible;
             LoadSettings();
+        }
+
+        private void BtnHome_Click(object sender, RoutedEventArgs e)
+        {
+            ShowDashboardView();
         }
 
         private void BtnBackFromSettings_Click(object sender, RoutedEventArgs e)
