@@ -63,6 +63,7 @@
     <sys:String x:Key="Lbl_Auto_Sv">AUTO SV</sys:String>
     <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>
     <sys:String x:Key="Lbl_Br_Paste">BR PASTE</sys:String>
+    <sys:String x:Key="Lbl_Auto_Act">AUTO ACT</sys:String>
     <sys:String x:Key="Lbl_Man_Ex">MAN EX</sys:String>
     <sys:String x:Key="Lbl_Base_Pr">BASE PR</sys:String>
     <sys:String x:Key="Lbl_Ext_Fl">EXT FL</sys:String>

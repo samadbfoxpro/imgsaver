@@ -1370,6 +1370,27 @@ window.addEventListener('focus', function() {
                 int delay = Math.Max(100, _currentSettings.AutoActionDelayMs);
                 await Task.Delay(delay);
 
+                await ExecuteAutoPinActionAsync();
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Simulates web touch/click at the target action coordinates (Pin 2 / Auto Pin 2) inside the browser.
+        /// Executes the exact same click action as defined for Auto Pin 2 without stealing OS focus or moving mouse.
+        /// </summary>
+        public async Task ExecuteAutoPinActionAsync()
+        {
+            if (_currentSettings == null) return;
+
+            try
+            {
+                var browser = GetCurrentBrowser();
+                if (browser == null || browser.CoreWebView2 == null) return;
+
+                double pin2X = _currentSettings.TargetActionPinX;
+                double pin2Y = _currentSettings.TargetActionPinY;
+
                 string clickScript = $@"
                 (function() {{
                     try {{

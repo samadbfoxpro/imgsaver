@@ -2216,6 +2216,20 @@ namespace imgsaver
         private void BtnSaveBasePrompt_Click(object sender, RoutedEventArgs e) => IsSaveBasePromptEnabled = !IsSaveBasePromptEnabled;
         private void BtnAutoFill_Click(object sender, RoutedEventArgs e) => IsAutoFillEnabled = !IsAutoFillEnabled;
         private void BtnBrowserQuickPaste_Click(object sender, RoutedEventArgs e) => SetBrowserQuickPasteEnabled(!_isBrowserQuickPasteEnabled);
+        private void BtnAutoPinAction_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                {
+                    if (win is BrowserWindow bw && bw.IsLoaded)
+                    {
+                        _ = bw.ExecuteAutoPinActionAsync();
+                    }
+                }
+            }
+            catch { }
+        }
 
         private async void TriggerBrowserQuickPasteIfReady()
         {
