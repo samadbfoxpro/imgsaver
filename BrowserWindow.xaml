@@ -137,6 +137,18 @@
                         </Button>
                     </StackPanel>
 
+                    <!-- Center Network Speed Monitor Matching Mini Clipboard Style -->
+                    <Border Grid.Column="1" Background="#060A14" CornerRadius="6" BorderBrush="#141C30" BorderThickness="1" 
+                            Padding="8,3" HorizontalAlignment="Center" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="↓" FontSize="10" Foreground="#38BDF8" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                            <TextBlock x:Name="TxtDownloadSpeed" Text="0.0 KB" FontSize="10" FontWeight="SemiBold" Foreground="#38BDF8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                            <TextBlock Text="↑" FontSize="10" Foreground="#F43F5E" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                            <TextBlock x:Name="TxtUploadSpeed" Text="0.0 KB" FontSize="10" FontWeight="SemiBold" Foreground="#F43F5E" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Window Caption Buttons (Lock, Minimize, Maximize, Close) -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button x:Name="BtnAppLock" Style="{StaticResource CaptionBtnStyle}" Click="BtnAppLock_Click" ToolTip="قفل برنامه (Ctrl + L)" WindowChrome.IsHitTestVisibleInChrome="True">
@@ -270,6 +282,20 @@
                         <Button x:Name="BtnGo" Style="{StaticResource NavIconButton}" Click="BtnGo_Click" ToolTip="برو">
                             <Path Data="{StaticResource IconChevronRight}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
+
+                        <!-- Quick Toggle for Auto Quick Paste & Action (visible when feature is enabled in Settings) -->
+                        <Button x:Name="BtnToggleAutoQuickPaste"
+                                Style="{StaticResource NavIconButton}"
+                                Margin="3,0,0,0"
+                                Click="BtnToggleAutoQuickPaste_Click"
+                                ToolTip="پیست و کلیک خودکار: فعال (برای توقف موقت کلیک کنید)"
+                                Visibility="Collapsed">
+                            <Grid>
+                                <Path x:Name="IconAutoQuickPasteActive" Data="{StaticResource IconFlash}" Fill="#38BDF8" Width="14" Height="14" Stretch="Uniform"/>
+                                <Path x:Name="IconAutoQuickPastePaused" Data="{StaticResource IconFlashOff}" Fill="#94A3B8" Width="14" Height="14" Stretch="Uniform" Visibility="Collapsed"/>
+                            </Grid>
+                        </Button>
+
                         <Button x:Name="BtnSplitView" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnSplitView_Click" ToolTip="نمای دوگانه (Ctrl+Shift+S)">
                             <Path Data="{StaticResource IconGallery}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>

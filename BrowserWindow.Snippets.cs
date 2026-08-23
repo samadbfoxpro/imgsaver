@@ -17,7 +17,7 @@ namespace imgsaver
         {
             bool showMiniClipImageImportButtons = _currentSettings?.ShowMiniClipImageImportButtons == true;
             bool showQuickPasteButton = _currentSettings?.ShowQuickPasteButton == true;
-            bool enableAutoQuickPaste = _currentSettings?.EnableAutoQuickPaste == true;
+            bool enableAutoQuickPaste = (_currentSettings?.EnableAutoQuickPaste == true) && !_isAutoQuickPastePaused;
             bool showAutoPastePins = _currentSettings?.ShowAutoPastePins == true;
             int autoPastePinsOpacity = _currentSettings?.AutoPastePinsOpacity ?? 100;
             double targetInputPinX = _currentSettings?.TargetInputPinX ?? 100;
@@ -72,7 +72,7 @@ namespace imgsaver
             {
                 bool showMiniClip = _currentSettings?.ShowMiniClipImageImportButtons == true;
                 bool showQuickPaste = _currentSettings?.ShowQuickPasteButton == true;
-                bool enableAutoQuickPaste = _currentSettings?.EnableAutoQuickPaste == true;
+                bool enableAutoQuickPaste = (_currentSettings?.EnableAutoQuickPaste == true) && !_isAutoQuickPastePaused;
                 bool showAutoPastePins = _currentSettings?.ShowAutoPastePins == true;
                 int autoPastePinsOpacity = _currentSettings?.AutoPastePinsOpacity ?? 100;
                 double targetInputPinX = _currentSettings?.TargetInputPinX ?? 100;
@@ -127,7 +127,45 @@ namespace imgsaver
                         }
                     });
 
-                    // Diagnostic marker disabled
+                    // Power Saver: Cap ComfyUI / Canvas / WebGL rendering loop to 60 FPS
+                    try {
+                        if (!window.__imgsaverFpsLimiterActive) {
+                            window.__imgsaverFpsLimiterActive = true;
+                            const TARGET_FPS = 60;
+                            const MIN_FRAME_TIME = 1000 / TARGET_FPS;
+                            let lastFrameTime = 0;
+                            const originalRAF = window.requestAnimationFrame;
+                            window.requestAnimationFrame = function(callback) {
+                                return originalRAF(function(time) {
+                                    const elapsed = time - lastFrameTime;
+                                    if (elapsed < MIN_FRAME_TIME - 1.5) {
+                                        window.requestAnimationFrame(callback);
+                                    } else {
+                                        lastFrameTime = time;
+                                        callback(time);
+                                    }
+                                });
+                            };
+
+                            const applyLiteGraphFps = () => {
+                                try {
+                                    if (window.LGraphCanvas) window.LGraphCanvas.max_render_fps = TARGET_FPS;
+                                    if (window.app && window.app.canvas) window.app.canvas.max_render_fps = TARGET_FPS;
+                                    
+                                    // Lock the property if possible
+                                    if (window.LGraphCanvas && window.LGraphCanvas.prototype && !window.LGraphCanvas.prototype.__fpsLocked) {
+                                        window.LGraphCanvas.prototype.__fpsLocked = true;
+                                        Object.defineProperty(window.LGraphCanvas.prototype, 'max_render_fps', {
+                                            get: function() { return TARGET_FPS; },
+                                            set: function(val) { /* ignore */ }
+                                        });
+                                    }
+                                } catch(e) {}
+                            };
+                            applyLiteGraphFps();
+                            setInterval(applyLiteGraphFps, 2000);
+                        }
+                    } catch(e) {}
 
                     const imgsaverShowMiniClipImageImportButtons = __SHOW_MINI_CLIP_IMAGE_IMPORT_BUTTONS__;
                     window.imgsaver_insertSnippet = function(text, keyLength) {
@@ -1249,7 +1287,7 @@ window.addEventListener('focus', function() {
         /// </summary>
         public async Task ExecuteAutoQuickPasteAndActionAsync(string textToPaste)
         {
-            if (_currentSettings == null || !_currentSettings.EnableAutoQuickPaste) return;
+            if (_currentSettings == null || !_currentSettings.EnableAutoQuickPaste || _isAutoQuickPastePaused) return;
 
             try
             {

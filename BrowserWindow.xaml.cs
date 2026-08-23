@@ -19,7 +19,7 @@ using System.Windows.Threading;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
-using System.Windows.Media.Imaging;
+using System.Net.NetworkInformation;
 using WpfDragEventArgs = System.Windows.DragEventArgs;
 using WpfDragDropEffects = System.Windows.DragDropEffects;
 using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
@@ -57,6 +57,15 @@ namespace imgsaver
         private readonly InputRecorder _browserInputRecorder = new InputRecorder();
         private string _lastRequestUrl = "";
 
+        // Network Speed Monitor
+        private DispatcherTimer _netTimer = null!;
+        private long _lastBytesReceived = 0;
+        private long _lastBytesSent = 0;
+
+        // Auto Quick Paste Temporary Pause State
+        private bool _isAutoQuickPastePaused = false;
+        public bool IsAutoQuickPastePaused => _isAutoQuickPastePaused;
+
         // Environment for this profile window
         private CoreWebView2Environment? _environment;
         private readonly SemaphoreSlim _envLock = new SemaphoreSlim(1, 1);
@@ -84,6 +93,7 @@ namespace imgsaver
             InitializeComponent();
 
             InitializeStatusTimer();
+            StartNetMonitoring();
             RefreshSettings();
             SaveCurrentProxySettings(); // Initialize proxy tracking
             RefreshBookmarksUI();
@@ -116,6 +126,7 @@ namespace imgsaver
             };
             this.Closing += (s, e) =>
             {
+                _netTimer?.Stop();
                 if (PopInlineBaseCombiner != null) PopInlineBaseCombiner.IsOpen = false;
             };
             _browserInputRecorder.OnStopRequested += StopBrowserRecordingAndSave;
@@ -227,6 +238,60 @@ namespace imgsaver
             _statusFadeTimer.Tick += (s, e) => HideStatus();
         }
 
+        private void StartNetMonitoring()
+        {
+            _netTimer = new DispatcherTimer();
+            _netTimer.Interval = TimeSpan.FromSeconds(2);
+            _netTimer.Tick += NetTimer_Tick;
+            _netTimer.Start();
+        }
+
+        private string FormatSpeed(long bytes)
+        {
+            double kb = bytes / 1024.0;
+            if (kb < 1024) return $"{kb:F1} KB";
+            else return $"{(kb / 1024.0):F1} MB";
+        }
+
+        private void NetTimer_Tick(object? sender, EventArgs e)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    long currentReceived = 0;
+                    long currentSent = 0;
+                    var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+                    foreach (var ni in interfaces)
+                    {
+                        if (ni.OperationalStatus == OperationalStatus.Up &&
+                            (ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet || ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
+                        {
+                            var stats = ni.GetIPStatistics();
+                            currentReceived += stats.BytesReceived;
+                            currentSent += stats.BytesSent;
+                        }
+                    }
+
+                    if (_lastBytesReceived > 0)
+                    {
+                        long diffReceived = currentReceived - _lastBytesReceived;
+                        long diffSent = currentSent - _lastBytesSent;
+
+                        Dispatcher.InvokeAsync(() =>
+                        {
+                            if (TxtDownloadSpeed != null) TxtDownloadSpeed.Text = FormatSpeed(diffReceived);
+                            if (TxtUploadSpeed != null) TxtUploadSpeed.Text = FormatSpeed(diffSent);
+                        });
+                    }
+
+                    _lastBytesReceived = currentReceived;
+                    _lastBytesSent = currentSent;
+                }
+                catch { }
+            });
+        }
+
         private void RefreshSettings()
         {
             _currentSettings = BrowserSettings.Load(CurrentProfile);
@@ -253,7 +318,55 @@ namespace imgsaver
                 _statusFadeTimer?.Stop();
             }
 
+            UpdateAutoQuickPasteToggleUI();
+
             // Re-apply settings and reinject helper scripts to all active webviews
+            try
+            {
+                if (BrowserTabs != null)
+                {
+                    foreach (TabItem tab in BrowserTabs.Items)
+                    {
+                        if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null)
+                        {
+                            ApplyBrowserSettingsTo(state.PrimaryWebView);
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private void UpdateAutoQuickPasteToggleUI()
+        {
+            if (BtnToggleAutoQuickPaste == null) return;
+
+            bool isEnabledInSettings = _currentSettings?.EnableAutoQuickPaste == true;
+            BtnToggleAutoQuickPaste.Visibility = isEnabledInSettings ? Visibility.Visible : Visibility.Collapsed;
+
+            if (isEnabledInSettings)
+            {
+                if (_isAutoQuickPastePaused)
+                {
+                    if (IconAutoQuickPasteActive != null) IconAutoQuickPasteActive.Visibility = Visibility.Collapsed;
+                    if (IconAutoQuickPastePaused != null) IconAutoQuickPastePaused.Visibility = Visibility.Visible;
+                    BtnToggleAutoQuickPaste.ToolTip = "پیست و کلیک خودکار: موقتاً متوقف شد (برای ادامه کلیک کنید)";
+                }
+                else
+                {
+                    if (IconAutoQuickPasteActive != null) IconAutoQuickPasteActive.Visibility = Visibility.Visible;
+                    if (IconAutoQuickPastePaused != null) IconAutoQuickPastePaused.Visibility = Visibility.Collapsed;
+                    BtnToggleAutoQuickPaste.ToolTip = "پیست و کلیک خودکار: فعال (برای توقف موقت کلیک کنید)";
+                }
+            }
+        }
+
+        private void BtnToggleAutoQuickPaste_Click(object sender, RoutedEventArgs e)
+        {
+            _isAutoQuickPastePaused = !_isAutoQuickPastePaused;
+            UpdateAutoQuickPasteToggleUI();
+
+            // Re-apply settings to webviews so pins/scripts know whether to react
             try
             {
                 if (BrowserTabs != null)

@@ -303,7 +303,15 @@ namespace imgsaver
                             $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
                             $"--disk-cache-size={ChromiumDiskCacheBytes}",
                             "--aggressive-cache-discard=false",
-                            "--disable-features=BackForwardCacheMemoryControls"
+                            "--disable-features=BackForwardCacheMemoryControls",
+                            "--enable-features=IntensiveWakeUpThrottling,ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes,BatterySaverModeAvailable,HighEfficiencyModeAvailable,PageLifecycle,QuickIntensiveWakeUpThrottlingAfterLoading",
+                            "--enable-background-timer-throttling",
+                            "--enable-low-power-gpu",
+                            "--disable-gpu-vsync=false",
+                            "--limit-fps=60",
+                            "--max-wait-for-update-ms=16",
+                            "--renderer-process-limit=8",
+                            "--enable-smooth-scrolling"
                         };
 
                         // Always route through our local proxy bridge to support dynamic runtime configuration
@@ -320,6 +328,7 @@ namespace imgsaver
                 if (webView.CoreWebView2 == null) throw new Exception("CoreWebView2 initialization failed");
                 _coreWebViewTabMap[webView.CoreWebView2] = tabItem;
 
+                try { webView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low; } catch { }
                 webView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22);
                 try { webView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark; } catch { }
 
@@ -693,13 +702,35 @@ namespace imgsaver
 
             foreach (var s in _tabStates.Values)
             {
+                bool isThisTabSelected = (s.Tab == BrowserTabs.SelectedItem);
                 if (s.IsSplitView)
                 {
-                    bool isThisTabSelected = (s.Tab == BrowserTabs.SelectedItem);
                     bool shouldBeOpen = isThisTabSelected && this.IsActive && this.WindowState != WindowState.Minimized;
                     if (s.LeftHeaderPopup != null) s.LeftHeaderPopup.IsOpen = shouldBeOpen;
                     if (s.RightHeaderPopup != null) s.RightHeaderPopup.IsOpen = shouldBeOpen;
                 }
+
+                // Power optimization: Manage background vs active tab resources
+                try
+                {
+                    if (isThisTabSelected)
+                    {
+                        s.PrimaryWebView?.CoreWebView2?.Resume();
+                        if (s.SecondaryWebView != null) s.SecondaryWebView.CoreWebView2?.Resume();
+                    }
+                    else
+                    {
+                        if (s.PrimaryWebView?.CoreWebView2 != null)
+                        {
+                            s.PrimaryWebView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
+                        }
+                        if (s.SecondaryWebView?.CoreWebView2 != null)
+                        {
+                            s.SecondaryWebView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low;
+                        }
+                    }
+                }
+                catch { }
             }
         }
 
@@ -1021,6 +1052,14 @@ namespace imgsaver
                             $"--disk-cache-size={ChromiumDiskCacheBytes}",
                             "--aggressive-cache-discard=false",
                             "--disable-features=BackForwardCacheMemoryControls",
+                            "--enable-features=IntensiveWakeUpThrottling,ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes,BatterySaverModeAvailable,HighEfficiencyModeAvailable,PageLifecycle,QuickIntensiveWakeUpThrottlingAfterLoading",
+                            "--enable-background-timer-throttling",
+                            "--enable-low-power-gpu",
+                            "--disable-gpu-vsync=false",
+                            "--limit-fps=60",
+                            "--max-wait-for-update-ms=16",
+                            "--renderer-process-limit=8",
+                            "--enable-smooth-scrolling",
                             $"--proxy-server=\"http://127.0.0.1:{ProxyBridge.Port}\""
                         };
                         options.AdditionalBrowserArguments = string.Join(" ", browserArguments);
@@ -1035,6 +1074,7 @@ namespace imgsaver
                     if (secondaryWebView.CoreWebView2 != null)
                     {
                         _coreWebViewTabMap[secondaryWebView.CoreWebView2] = tabItem;
+                        try { secondaryWebView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low; } catch { }
                         secondaryWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22);
                         try { secondaryWebView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark; } catch { }
                         secondaryWebView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;

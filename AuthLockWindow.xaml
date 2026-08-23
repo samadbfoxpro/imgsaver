@@ -8,7 +8,7 @@
         ResizeMode="NoResize"
         WindowStyle="None"
         AllowsTransparency="True"
-        Topmost="True"
+        Topmost="False"
         Icon="{x:Null}">
 
     <Window.Resources>

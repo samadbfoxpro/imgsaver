@@ -800,11 +800,11 @@
                             
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <CheckBox x:Name="ChkAutoSaveDelay" Content="تأخیر در ذخیره خودکار:" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBox x:Name="TxtAutoSaveDelaySeconds" Text="10" Width="45" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141519" Foreground="White" BorderBrush="#2D3240"/>
+                                <TextBox x:Name="TxtAutoSaveDelaySeconds" Text="10" Width="55" Height="28" Padding="2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1"/>
                                 <TextBlock Text="ثانیه" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" Margin="6,0,16,0"/>
                                 
                                 <TextBlock Text="تعداد تصاویر قبل از ذخیره:" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="45" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141519" Foreground="White" BorderBrush="#2D3240"/>
+                                <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="55" Height="28" Padding="2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1"/>
                             </StackPanel>
 
                             <CheckBox x:Name="ChkAutoCaptureExtraTemplate" Content="دریافت و جایگزینی خودکار قالب [extra]" Foreground="#CBD5E1" FontSize="11.5" Margin="0,0,0,6"/>
@@ -815,7 +815,7 @@
                             
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <CheckBox x:Name="ChkUseTagReplacerForMiniClip" Content="استفاده از Tag Replacer با پیشوند:" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBox x:Name="TxtTagReplacerPrefix" Text="PH_" Width="60" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141519" Foreground="White" BorderBrush="#2D3240"/>
+                                <TextBox x:Name="TxtTagReplacerPrefix" Text="PH_" Width="75" Height="28" Padding="4,2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -831,9 +831,9 @@
                             <!-- Dimensions -->
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <TextBlock Text="حداقل عرض تصویر (px):" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBox x:Name="TxtMinImageWidth" Text="50" Width="55" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141519" Foreground="White" BorderBrush="#2D3240" Margin="0,0,16,0"/>
+                                <TextBox x:Name="TxtMinImageWidth" Text="50" Width="65" Height="28" Padding="2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1" Margin="0,0,16,0"/>
                                 <TextBlock Text="حداقل ارتفاع تصویر (px):" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBox x:Name="TxtMinImageHeight" Text="50" Width="55" Height="26" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141519" Foreground="White" BorderBrush="#2D3240"/>
+                                <TextBox x:Name="TxtMinImageHeight" Text="50" Width="65" Height="28" Padding="2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1"/>
                             </StackPanel>
 
                             <!-- Auto Import -->

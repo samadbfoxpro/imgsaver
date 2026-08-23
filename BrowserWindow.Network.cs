@@ -452,7 +452,7 @@ namespace imgsaver
                 if (!File.Exists(cachePath)) return;
 
                 var settings = _currentSettings ?? BrowserSettings.Load();
-                string? imageSignature = GetImageImportSignature(cachePath, settings.MinImageWidth, settings.MinImageHeight);
+                string? imageSignature = await Task.Run(() => GetImageImportSignature(cachePath, settings.MinImageWidth, settings.MinImageHeight));
                 if (string.IsNullOrEmpty(imageSignature)) return;
                 if (!force && _miniClipImportedImageSignatures.Contains(imageSignature)) return;
 
@@ -755,10 +755,18 @@ namespace imgsaver
 
         private void UpdateStatus(string url, string sizeInfo)
         {
-            Dispatcher.Invoke(() => {
+            if (Dispatcher.CheckAccess())
+            {
                 TxtStatusUrl.Text = $"{url} - {sizeInfo}";
                 UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem, TxtStatusUrl.Text);
-            });
+            }
+            else
+            {
+                Dispatcher.BeginInvoke(new Action(() => {
+                    TxtStatusUrl.Text = $"{url} - {sizeInfo}";
+                    UpdateTabStatusOverlay(BrowserTabs.SelectedItem as TabItem, TxtStatusUrl.Text);
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
         }
 
         private void HideStatus()
@@ -1005,40 +1013,48 @@ namespace imgsaver
             response = null!;
             servedBytes = 0;
 
-            var stream = File.OpenRead(cachePath);
-            long fileLength = stream.Length;
-            string mime = GetMimeType(ctx, lowerUri);
-            string range = GetRequestRange(request);
-
-            if (TryParseRange(range, fileLength, out long start, out long end))
+            try
             {
-                stream.Position = start;
-                servedBytes = end - start + 1;
-                var rangedStream = new LimitedReadStream(stream, servedBytes);
-                string headers =
+                var fileStream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.SequentialScan);
+                long fileLength = fileStream.Length;
+                string mime = GetMimeType(ctx, lowerUri);
+                string range = GetRequestRange(request);
+
+                if (TryParseRange(range, fileLength, out long start, out long end))
+                {
+                    fileStream.Position = start;
+                    servedBytes = end - start + 1;
+                    var rangedStream = new PacedCacheStream(fileStream, servedBytes);
+                    string headers =
+                        $"Content-Type: {mime}\n" +
+                        $"Content-Length: {servedBytes}\n" +
+                        $"Content-Range: bytes {start}-{end}/{fileLength}\n" +
+                        "Accept-Ranges: bytes\n" +
+                        "Cache-Control: public, max-age=31536000, immutable\n" +
+                        "Access-Control-Allow-Origin: *\n" +
+                        "Timing-Allow-Origin: *\n" +
+                        "X-ImgSaver-Cache: HIT";
+                    response = coreWebView2.Environment.CreateWebResourceResponse(rangedStream, 206, "Partial Content", headers);
+                    return true;
+                }
+
+                servedBytes = fileLength;
+                string fullHeaders =
                     $"Content-Type: {mime}\n" +
-                    $"Content-Length: {servedBytes}\n" +
-                    $"Content-Range: bytes {start}-{end}/{fileLength}\n" +
+                    $"Content-Length: {fileLength}\n" +
                     "Accept-Ranges: bytes\n" +
                     "Cache-Control: public, max-age=31536000, immutable\n" +
                     "Access-Control-Allow-Origin: *\n" +
                     "Timing-Allow-Origin: *\n" +
                     "X-ImgSaver-Cache: HIT";
-                response = coreWebView2.Environment.CreateWebResourceResponse(rangedStream, 206, "Partial Content", headers);
+                var pacedStream = new PacedCacheStream(fileStream, fileLength);
+                response = coreWebView2.Environment.CreateWebResourceResponse(pacedStream, 200, "OK", fullHeaders);
                 return true;
             }
-
-            servedBytes = fileLength;
-            string fullHeaders =
-                $"Content-Type: {mime}\n" +
-                $"Content-Length: {fileLength}\n" +
-                "Accept-Ranges: bytes\n" +
-                "Cache-Control: public, max-age=31536000, immutable\n" +
-                "Access-Control-Allow-Origin: *\n" +
-                "Timing-Allow-Origin: *\n" +
-                "X-ImgSaver-Cache: HIT";
-            response = coreWebView2.Environment.CreateWebResourceResponse(stream, 200, "OK", fullHeaders);
-            return true;
+            catch
+            {
+                return false;
+            }
         }
 
         private bool TryParseRange(string range, long fileLength, out long start, out long end)
@@ -1065,23 +1081,92 @@ namespace imgsaver
             return start >= 0 && start <= end;
         }
 
-        private sealed class LimitedReadStream : Stream
+        private static class DiskCacheRateLimiter
         {
-            private readonly Stream _inner;
-            private long _remaining;
+            private static readonly object _sync = new();
+            private static readonly System.Diagnostics.Stopwatch _sw = System.Diagnostics.Stopwatch.StartNew();
+            private static long _bytesInCurrentWindow = 0;
+            // Target global smooth disk read rate ~20 MB/s to prevent sudden disk queue spikes and UI freezing
+            private const long GlobalMaxBytesPerSecond = 20L * 1024L * 1024L;
 
-            public LimitedReadStream(Stream inner, long length)
+            public static void Throttle(int byteCount)
             {
-                _inner = inner;
-                _remaining = length;
+                if (byteCount <= 0) return;
+                lock (_sync)
+                {
+                    _bytesInCurrentWindow += byteCount;
+                    double elapsed = _sw.Elapsed.TotalSeconds;
+                    if (elapsed >= 0.5)
+                    {
+                        _bytesInCurrentWindow = byteCount;
+                        _sw.Restart();
+                        return;
+                    }
+
+                    double expected = (double)_bytesInCurrentWindow / GlobalMaxBytesPerSecond;
+                    if (expected > elapsed)
+                    {
+                        int delayMs = (int)((expected - elapsed) * 1000);
+                        if (delayMs > 0)
+                        {
+                            System.Threading.Thread.Sleep(Math.Min(delayMs, 15));
+                        }
+                    }
+                }
             }
 
-            public override bool CanRead => true;
+            public static async Task ThrottleAsync(int byteCount, System.Threading.CancellationToken ct = default)
+            {
+                if (byteCount <= 0) return;
+                int delayMs = 0;
+                lock (_sync)
+                {
+                    _bytesInCurrentWindow += byteCount;
+                    double elapsed = _sw.Elapsed.TotalSeconds;
+                    if (elapsed >= 0.5)
+                    {
+                        _bytesInCurrentWindow = byteCount;
+                        _sw.Restart();
+                        return;
+                    }
+
+                    double expected = (double)_bytesInCurrentWindow / GlobalMaxBytesPerSecond;
+                    if (expected > elapsed)
+                    {
+                        delayMs = Math.Min((int)((expected - elapsed) * 1000), 15);
+                    }
+                }
+
+                if (delayMs > 0)
+                {
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private sealed class PacedCacheStream : Stream
+        {
+            private readonly Stream _inner;
+            private readonly long _length;
+            private long _remaining;
+            private long _bytesReadTotal;
+            private readonly System.Diagnostics.Stopwatch _stopwatch;
+            private const int StreamMaxBytesPerSecond = 16 * 1024 * 1024; // ~16 MB/s per-stream rate
+
+            public PacedCacheStream(Stream inner, long length = -1)
+            {
+                _inner = inner;
+                _remaining = length >= 0 ? length : (inner.CanSeek ? inner.Length - inner.Position : long.MaxValue);
+                _length = length >= 0 ? length : (_inner.CanSeek ? _inner.Length : 0);
+                _stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            }
+
+            public override bool CanRead => _inner.CanRead;
             public override bool CanSeek => false;
             public override bool CanWrite => false;
-            public override long Length => throw new NotSupportedException();
+            public override long Length => _length > 0 ? _length : (_inner.CanSeek ? _inner.Length : 0);
             public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-            public override void Flush() { }
+            public override void Flush() => _inner.Flush();
             public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
             public override void SetLength(long value) => throw new NotSupportedException();
             public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
@@ -1089,14 +1174,73 @@ namespace imgsaver
             public override int Read(byte[] buffer, int offset, int count)
             {
                 if (_remaining <= 0) return 0;
-                int read = _inner.Read(buffer, offset, (int)Math.Min(count, _remaining));
-                _remaining -= read;
+                int toRead = (int)Math.Min(count, _remaining);
+                Pace(toRead);
+
+                int read = _inner.Read(buffer, offset, toRead);
+                if (read > 0)
+                {
+                    _remaining -= read;
+                    _bytesReadTotal += read;
+                    DiskCacheRateLimiter.Throttle(read);
+                }
                 return read;
+            }
+
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
+            {
+                if (_remaining <= 0) return 0;
+                int toRead = (int)Math.Min(count, _remaining);
+                await PaceAsync(toRead, cancellationToken).ConfigureAwait(false);
+
+                int read = await _inner.ReadAsync(buffer, offset, toRead, cancellationToken).ConfigureAwait(false);
+                if (read > 0)
+                {
+                    _remaining -= read;
+                    _bytesReadTotal += read;
+                    await DiskCacheRateLimiter.ThrottleAsync(read, cancellationToken).ConfigureAwait(false);
+                }
+                return read;
+            }
+
+            private void Pace(int byteCount)
+            {
+                double elapsedSeconds = _stopwatch.Elapsed.TotalSeconds;
+                if (elapsedSeconds <= 0.001) elapsedSeconds = 0.001;
+
+                double expectedSeconds = (double)(_bytesReadTotal + byteCount) / StreamMaxBytesPerSecond;
+                if (expectedSeconds > elapsedSeconds)
+                {
+                    int sleepMs = (int)((expectedSeconds - elapsedSeconds) * 1000);
+                    if (sleepMs > 0)
+                    {
+                        System.Threading.Thread.Sleep(Math.Min(sleepMs, 15));
+                    }
+                }
+            }
+
+            private async Task PaceAsync(int byteCount, System.Threading.CancellationToken cancellationToken)
+            {
+                double elapsedSeconds = _stopwatch.Elapsed.TotalSeconds;
+                if (elapsedSeconds <= 0.001) elapsedSeconds = 0.001;
+
+                double expectedSeconds = (double)(_bytesReadTotal + byteCount) / StreamMaxBytesPerSecond;
+                if (expectedSeconds > elapsedSeconds)
+                {
+                    int delayMs = (int)((expectedSeconds - elapsedSeconds) * 1000);
+                    if (delayMs > 0)
+                    {
+                        await Task.Delay(Math.Min(delayMs, 15), cancellationToken).ConfigureAwait(false);
+                    }
+                }
             }
 
             protected override void Dispose(bool disposing)
             {
-                if (disposing) _inner.Dispose();
+                if (disposing)
+                {
+                    _inner.Dispose();
+                }
                 base.Dispose(disposing);
             }
         }

@@ -42,9 +42,18 @@ namespace imgsaver
         private string _lastClipboardText = "";
         private string _lastSavedMainTitle = "";
         private bool _isSaving = false;
-        private int _nextMiniSlot = 1;
         private const string MiniExtraPlaceholderTag = "[extra]";
         private string _miniExtraTemplate = "";
+
+        private int _nextMiniSlot = 1;
+
+        // Floating Image Hover Preview Popup
+        private DispatcherTimer? _imageHoverTimer;
+        private Window? _hoverPreviewWindow;
+        private System.Windows.Controls.Image? _hoverPreviewImageControl;
+        private Border? _hoverPreviewBorder;
+        private int _hoveredImageIndex = -1;
+        private CapturedImageInfo? _hoveredImageInfo;
 
         // Auto-Save Settings
         private bool _autoSaveEnabled = false;
@@ -111,9 +120,27 @@ namespace imgsaver
         {
             if (d is MiniClipboardWindow window && (bool)e.NewValue == false)
             {
+                // When resuming from pause/stop, memorize whatever is currently on the clipboard
+                // so we don't immediately re-process old text or trigger Combiner on it.
+                // Wait for the user to copy a NEW item.
                 window._ignoreNextClipboardChange = false;
-                window._lastClipboardText = "";
-                window.OnClipboardChanged();
+                try
+                {
+                    if (window.SafeClipboardContainsText())
+                    {
+                        string current = window.SafeClipboardGetText();
+                        if (current.EndsWith("\u200B")) current = current.TrimEnd('\u200B');
+                        window._lastClipboardText = current;
+                    }
+                    else
+                    {
+                        window._lastClipboardText = "";
+                    }
+                }
+                catch
+                {
+                    window._lastClipboardText = "";
+                }
             }
         }
 
@@ -513,7 +540,13 @@ namespace imgsaver
             Loaded  += MiniClipboardWindow_Loaded;
             Closed  += MiniClipboardWindow_Closed;
             LocationChanged += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); RepositionBaseCombinerPanel(); };
-            SizeChanged     += (s, e) => { RepositionExtraPanel(); RepositionNegativePanel(); RepositionAutoSavePanel(); RepositionBaseCombinerPanel(); };
+            SizeChanged     += (s, e) => { 
+                UpdateImagePreviews();
+                RepositionExtraPanel(); 
+                RepositionNegativePanel(); 
+                RepositionAutoSavePanel(); 
+                RepositionBaseCombinerPanel(); 
+            };
 
             if (!string.IsNullOrEmpty(ExtraFloatBridge.LastConfirmedTitle))
             {
@@ -895,6 +928,8 @@ namespace imgsaver
         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
         {
             ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
+            _imageHoverTimer?.Stop();
+            _hoverPreviewWindow?.Close();
             _miniExtraPanel?.Close();
             _miniNegativePanel?.Close();
             _miniAutoSavePanel?.Close();
@@ -910,12 +945,51 @@ namespace imgsaver
             }
         }
 
+        private const int WM_NCHITTEST = 0x0084;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
+
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == WM_CLIPBOARDUPDATE)
             {
                 OnClipboardChanged();
                 handled = true;
+            }
+            else if (msg == WM_NCHITTEST)
+            {
+                // Native smooth hit-testing on all borders and corners
+                int resizeBorder = 8; // hit-test thickness in screen pixels
+                short x = (short)(lParam.ToInt32() & 0xFFFF);
+                short y = (short)((lParam.ToInt32() >> 16) & 0xFFFF);
+                var screenPoint = new System.Windows.Point(x, y);
+                var clientPoint = PointFromScreen(screenPoint);
+
+                double w = ActualWidth;
+                double h = ActualHeight;
+
+                if (clientPoint.X >= 0 && clientPoint.X <= w && clientPoint.Y >= 0 && clientPoint.Y <= h)
+                {
+                    bool left = clientPoint.X <= resizeBorder;
+                    bool right = clientPoint.X >= w - resizeBorder;
+                    bool top = clientPoint.Y <= resizeBorder;
+                    bool bottom = clientPoint.Y >= h - resizeBorder;
+
+                    if (bottom && right) { handled = true; return new IntPtr(HTBOTTOMRIGHT); }
+                    if (bottom && left) { handled = true; return new IntPtr(HTBOTTOMLEFT); }
+                    if (top && left) { handled = true; return new IntPtr(HTTOPLEFT); }
+                    if (top && right) { handled = true; return new IntPtr(HTTOPRIGHT); }
+                    if (left) { handled = true; return new IntPtr(HTLEFT); }
+                    if (right) { handled = true; return new IntPtr(HTRIGHT); }
+                    if (bottom) { handled = true; return new IntPtr(HTBOTTOM); }
+                    if (top) { handled = true; return new IntPtr(HTTOP); }
+                }
             }
             return IntPtr.Zero;
         }
@@ -1263,28 +1337,218 @@ namespace imgsaver
             }
         }
 
+        private double GetDynamicPreviewSize()
+        {
+            double w = !double.IsNaN(this.Width) && this.Width > 0 ? this.Width : this.ActualWidth;
+            if (w <= 0) w = 250;
+            // Base width is 250px -> 70px thumbnail.
+            // Scale dynamically up to 240px thumbnails for wide windows.
+            double size = 70.0 + (w - 250.0) * 0.35;
+            if (size < 60.0) size = 60.0;
+            if (size > 260.0) size = 260.0;
+            return size;
+        }
+
         private void UpdateImagePreviews()
         {
+            if (ImageGrid == null) return;
             ImageGrid.Children.Clear();
+            double previewSize = GetDynamicPreviewSize();
+
+            if (BorderImagePreview != null)
+            {
+                BorderImagePreview.Height = previewSize + 12;
+            }
+
             for (int i = 0; i < _capturedImages.Count; i++)
             {
                 var border = new Border
                 {
-                    Width = 70,
-                    Height = 70,
-                    CornerRadius = new CornerRadius(4),
-                    Margin = new Thickness(2),
+                    Width = previewSize,
+                    Height = previewSize,
+                    CornerRadius = new CornerRadius(6),
+                    Margin = new Thickness(3),
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Tag = i.ToString(),
-                    Background = System.Windows.Media.Brushes.Black,
-                    BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush"),
+                    Background = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#060914")),
+                    BorderBrush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1E293B")),
                     BorderThickness = new Thickness(1)
                 };
                 border.MouseLeftButtonDown += ImagePreview_MouseLeftButtonDown;
+                border.MouseEnter += ImagePreview_MouseEnter;
+                border.MouseLeave += ImagePreview_MouseLeave;
                 border.Child = new System.Windows.Controls.Image { Source = _capturedImages[i].Bitmap, Stretch = Stretch.Uniform };
                 ImageGrid.Children.Add(border);
             }
             TxtNoImage.Visibility = _capturedImages.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void ImagePreview_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is FrameworkElement el && int.TryParse(el.Tag?.ToString(), out int idx))
+            {
+                if (idx >= 0 && idx < _capturedImages.Count)
+                {
+                    _hoveredImageIndex = idx;
+                    _hoveredImageInfo = _capturedImages[idx];
+
+                    if (_imageHoverTimer == null)
+                    {
+                        _imageHoverTimer = new DispatcherTimer();
+                        _imageHoverTimer.Interval = TimeSpan.FromMilliseconds(500);
+                        _imageHoverTimer.Tick += ImageHoverTimer_Tick;
+                    }
+                    _imageHoverTimer.Stop();
+                    _imageHoverTimer.Start();
+                }
+            }
+        }
+
+        private void ImagePreview_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            _imageHoverTimer?.Stop();
+            _hoveredImageIndex = -1;
+            _hoveredImageInfo = null;
+            HideHoverPreviewSmooth();
+        }
+
+        private void ImageHoverTimer_Tick(object? sender, EventArgs e)
+        {
+            _imageHoverTimer?.Stop();
+            if (_hoveredImageInfo?.Bitmap != null)
+            {
+                ShowHoverPreviewSmooth(_hoveredImageInfo.Bitmap);
+            }
+        }
+
+        private void EnsureHoverPreviewWindow()
+        {
+            if (_hoverPreviewWindow != null) return;
+
+            _hoverPreviewImageControl = new System.Windows.Controls.Image
+            {
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
+            };
+            RenderOptions.SetBitmapScalingMode(_hoverPreviewImageControl, BitmapScalingMode.HighQuality);
+
+            _hoverPreviewBorder = new Border
+            {
+                Background = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#090D1A")),
+                BorderBrush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1E293B")),
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(6),
+                Child = _hoverPreviewImageControl,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    BlurRadius = 24,
+                    ShadowDepth = 6,
+                    Opacity = 0.75
+                }
+            };
+
+            _hoverPreviewWindow = new Window
+            {
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = System.Windows.Media.Brushes.Transparent,
+                Topmost = true,
+                ShowInTaskbar = false,
+                SizeToContent = SizeToContent.Manual,
+                Content = _hoverPreviewBorder,
+                Opacity = 0.0
+            };
+        }
+
+        private void ShowHoverPreviewSmooth(BitmapSource bitmap)
+        {
+            try
+            {
+                EnsureHoverPreviewWindow();
+                if (_hoverPreviewWindow == null || _hoverPreviewImageControl == null) return;
+
+                _hoverPreviewImageControl.Source = bitmap;
+
+                // Determine display size preserving aspect ratio (Max 480x480, Min 180x180)
+                double origW = bitmap.PixelWidth > 0 ? bitmap.PixelWidth : 400;
+                double origH = bitmap.PixelHeight > 0 ? bitmap.PixelHeight : 400;
+                double maxDim = 460.0;
+                double scale = Math.Min(maxDim / origW, maxDim / origH);
+                if (scale > 1.0) scale = 1.0; // Don't upscale tiny images excessively
+                
+                double targetW = Math.Max(180, origW * scale) + 16;
+                double targetH = Math.Max(180, origH * scale) + 16;
+
+                _hoverPreviewWindow.Width = targetW;
+                _hoverPreviewWindow.Height = targetH;
+
+                // Position floating directly on the right side of MiniClipboardWindow
+                double targetLeft = this.Left + this.ActualWidth + 8;
+                double targetTop = this.Top + 20;
+
+                // If right side goes off screen, position to the left
+                if (targetLeft + targetW > SystemParameters.WorkArea.Right)
+                {
+                    targetLeft = this.Left - targetW - 8;
+                }
+
+                // Adjust vertical position to stay within work area
+                if (targetTop + targetH > SystemParameters.WorkArea.Bottom)
+                {
+                    targetTop = SystemParameters.WorkArea.Bottom - targetH - 10;
+                }
+                if (targetTop < SystemParameters.WorkArea.Top)
+                {
+                    targetTop = SystemParameters.WorkArea.Top + 10;
+                }
+
+                _hoverPreviewWindow.Left = targetLeft;
+                _hoverPreviewWindow.Top = targetTop;
+
+                _hoverPreviewWindow.Show();
+
+                // Smooth fade-in animation
+                var fadeIn = new DoubleAnimation
+                {
+                    From = _hoverPreviewWindow.Opacity,
+                    To = 1.0,
+                    Duration = TimeSpan.FromMilliseconds(220),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+                _hoverPreviewWindow.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            }
+            catch { }
+        }
+
+        private void HideHoverPreviewSmooth()
+        {
+            if (_hoverPreviewWindow == null || !_hoverPreviewWindow.IsVisible) return;
+
+            try
+            {
+                var fadeOut = new DoubleAnimation
+                {
+                    From = _hoverPreviewWindow.Opacity,
+                    To = 0.0,
+                    Duration = TimeSpan.FromMilliseconds(180),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+                };
+                fadeOut.Completed += (s, e) =>
+                {
+                    if (_hoverPreviewWindow != null && _hoverPreviewWindow.Opacity <= 0.05)
+                    {
+                        _hoverPreviewWindow.Hide();
+                    }
+                };
+                _hoverPreviewWindow.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            }
+            catch
+            {
+                _hoverPreviewWindow.Hide();
+            }
         }
 
         private void UpdateTitleWatermarkHint()
@@ -1549,6 +1813,38 @@ namespace imgsaver
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.ClickCount == 1) DragMove(); }
+
+        private void ResizeGrip_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            double currentW = !double.IsNaN(this.Width) && this.Width > 0 ? this.Width : this.ActualWidth;
+            double newWidth = currentW + e.HorizontalChange;
+            if (newWidth >= this.MinWidth && (double.IsNaN(this.MaxWidth) || newWidth <= this.MaxWidth))
+            {
+                this.Width = newWidth;
+            }
+        }
+
+        private void ResizeGripRight_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            double currentW = !double.IsNaN(this.Width) && this.Width > 0 ? this.Width : this.ActualWidth;
+            double newWidth = currentW + e.HorizontalChange;
+            if (newWidth >= this.MinWidth && (double.IsNaN(this.MaxWidth) || newWidth <= this.MaxWidth))
+            {
+                this.Width = newWidth;
+            }
+        }
+
+        private void ResizeGripBottomLeft_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            double currentW = !double.IsNaN(this.Width) && this.Width > 0 ? this.Width : this.ActualWidth;
+            double newWidth = currentW - e.HorizontalChange;
+            if (newWidth >= this.MinWidth && (double.IsNaN(this.MaxWidth) || newWidth <= this.MaxWidth))
+            {
+                this.Left += e.HorizontalChange;
+                this.Width = newWidth;
+            }
+        }
+
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
         private void BtnLockNegative_Click(object sender, RoutedEventArgs e)
         {

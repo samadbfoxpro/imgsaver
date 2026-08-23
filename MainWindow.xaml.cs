@@ -934,20 +934,25 @@ namespace imgsaver
                     if (lines.Length > 2) ChkAutoImportEnabled.IsChecked = lines[2].Trim().ToLower() == "true";
                     if (lines.Length > 3) TxtAutoImportPath.Text = lines[3].Trim();
                     if (lines.Length > 4) ChkAutoSaveEnabled.IsChecked = lines[4].Trim().ToLower() == "true";
-                    if (lines.Length > 5) TxtAutoSaveCount.Text = lines[5].Trim();
+                    if (lines.Length > 5 && !string.IsNullOrWhiteSpace(lines[5])) TxtAutoSaveCount.Text = lines[5].Trim();
+                    else TxtAutoSaveCount.Text = "1";
+
                     ChkAutoCaptureExtraTemplate.IsChecked = lines.Length <= 6 || lines[6].Trim().ToLower() == "true";
                     ChkAutoCopyExtraTemplateOutput.IsChecked = lines.Length <= 7 || lines[7].Trim().ToLower() == "true";
                     ChkReplacePositivePromptOnClipboardText.IsChecked = lines.Length <= 8 || lines[8].Trim().ToLower() == "true";
                     ChkSpiSyncPreserveBasePrompt.IsChecked = lines.Length > 9 && lines[9].Trim().ToLower() == "true";
                     ChkUseTagReplacerForMiniClip.IsChecked = lines.Length > 10 && lines[10].Trim().ToLower() == "true";
-                    TxtTagReplacerPrefix.Text = lines.Length > 11 ? lines[11].Trim() : "PH_";
+                    TxtTagReplacerPrefix.Text = (lines.Length > 11 && !string.IsNullOrWhiteSpace(lines[11])) ? lines[11].Trim() : "PH_";
                     ChkAutoCopyTagReplacerOutput.IsChecked = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
                     ChkAutoSaveDelay.IsChecked = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
-                    TxtAutoSaveDelaySeconds.Text = lines.Length > 15 ? lines[15].Trim() : "10";
+                    TxtAutoSaveDelaySeconds.Text = (lines.Length > 15 && !string.IsNullOrWhiteSpace(lines[15])) ? lines[15].Trim() : "10";
                 }
                 else
                 {
                     TxtSettingsSavePath.Text = _savePath;
+                    TxtAutoSaveCount.Text = "1";
+                    TxtAutoSaveDelaySeconds.Text = "10";
+                    TxtTagReplacerPrefix.Text = "PH_";
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath("gallery_config.txt");
@@ -957,8 +962,8 @@ namespace imgsaver
                 }
 
                 var bSettings = BrowserSettings.Load();
-                TxtMinImageWidth.Text = bSettings.MinImageWidth.ToString();
-                TxtMinImageHeight.Text = bSettings.MinImageHeight.ToString();
+                TxtMinImageWidth.Text = (bSettings.MinImageWidth > 0 ? bSettings.MinImageWidth : 50).ToString();
+                TxtMinImageHeight.Text = (bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50).ToString();
             }
             catch { }
         }
