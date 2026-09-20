@@ -127,45 +127,22 @@ namespace imgsaver
                         }
                     });
 
-                    // Power Saver: Cap ComfyUI / Canvas / WebGL rendering loop to 60 FPS
+                    // 100% Page & Script Load Completion Monitor
                     try {
-                        if (!window.__imgsaverFpsLimiterActive) {
-                            window.__imgsaverFpsLimiterActive = true;
-                            const TARGET_FPS = 60;
-                            const MIN_FRAME_TIME = 1000 / TARGET_FPS;
-                            let lastFrameTime = 0;
-                            const originalRAF = window.requestAnimationFrame;
-                            window.requestAnimationFrame = function(callback) {
-                                return originalRAF(function(time) {
-                                    const elapsed = time - lastFrameTime;
-                                    if (elapsed < MIN_FRAME_TIME - 1.5) {
-                                        window.requestAnimationFrame(callback);
-                                    } else {
-                                        lastFrameTime = time;
-                                        callback(time);
-                                    }
-                                });
-                            };
-
-                            const applyLiteGraphFps = () => {
-                                try {
-                                    if (window.LGraphCanvas) window.LGraphCanvas.max_render_fps = TARGET_FPS;
-                                    if (window.app && window.app.canvas) window.app.canvas.max_render_fps = TARGET_FPS;
-                                    
-                                    // Lock the property if possible
-                                    if (window.LGraphCanvas && window.LGraphCanvas.prototype && !window.LGraphCanvas.prototype.__fpsLocked) {
-                                        window.LGraphCanvas.prototype.__fpsLocked = true;
-                                        Object.defineProperty(window.LGraphCanvas.prototype, 'max_render_fps', {
-                                            get: function() { return TARGET_FPS; },
-                                            set: function(val) { /* ignore */ }
-                                        });
-                                    }
-                                } catch(e) {}
-                            };
-                            applyLiteGraphFps();
-                            setInterval(applyLiteGraphFps, 2000);
+                        const notify100Percent = () => {
+                            if (document.readyState === 'complete') {
+                                if (window === window.top && window.chrome && window.chrome.webview) {
+                                    window.chrome.webview.postMessage({ type: 'pageFullyLoaded', url: window.location.href });
+                                }
+                            }
+                        };
+                        if (document.readyState === 'complete') {
+                            setTimeout(notify100Percent, 200);
+                        } else {
+                            window.addEventListener('load', () => setTimeout(notify100Percent, 200));
+                            document.addEventListener('readystatechange', notify100Percent);
                         }
-                    } catch(e) {}
+                    } catch (e) {}
 
                     const imgsaverShowMiniClipImageImportButtons = __SHOW_MINI_CLIP_IMAGE_IMPORT_BUTTONS__;
                     window.imgsaver_insertSnippet = function(text, keyLength) {
@@ -293,14 +270,24 @@ namespace imgsaver
                                     window.imgsaver_blockContextMenu = false;
                                 }, 600);
 
+                                // Ensure activeInput is immediately focused and selected in DOM as well
+                                try {
+                                    activeInput.focus({ preventScroll: true });
+                                    if (typeof activeInput.select === 'function') {
+                                        activeInput.select();
+                                    }
+                                } catch(focusErr) {}
+
                                 const r = getAbsoluteRect(activeInput);
+                                const clickX = r.x + r.w / 2;
+                                const clickY = r.y + r.h / 2;
                                 dbg('BR Paste pressed. Sending physical click at rect=' + JSON.stringify(r));
                                 if (window === window.top) {
                                     if (window.chrome && window.chrome.webview) {
                                         window.chrome.webview.postMessage({
                                             type: 'quick_paste_click',
-                                            x: r.x + r.w / 2,
-                                            y: r.y + r.h / 2
+                                            x: clickX,
+                                            y: clickY
                                         });
                                     }
                                 } else {
@@ -348,8 +335,11 @@ namespace imgsaver
                                 const top = rect.top + scrollTop - btnHeight - 12;
                                 const left = rect.left + scrollLeft + (rect.width - 120) / 2;
 
+                                const maxLeft = Math.max(8, (window.innerWidth || document.documentElement.clientWidth || 800) - 130);
+                                const clampedLeft = Math.max(8, Math.min(maxLeft, left));
+
                                 button.style.top = `${top >= 0 ? top : rect.bottom + scrollTop + 12}px`;
-                                button.style.left = `${left >= 0 ? left : 8}px`;
+                                button.style.left = `${clampedLeft}px`;
                             }
 
                             function hideButton() {
@@ -430,41 +420,64 @@ namespace imgsaver
                                 return;
                             }
 
-                            const targetOpacity = (__AUTO_PASTE_PINS_OPACITY__ / 100).toFixed(2);
+                            // Ensure pins are never completely invisible (minimum 0.25 opacity)
+                            const rawOpacity = (__AUTO_PASTE_PINS_OPACITY__ / 100);
+                            const targetOpacity = Math.max(0.25, Math.min(1.0, isNaN(rawOpacity) ? 1.0 : rawOpacity)).toFixed(2);
 
-                            function createPin(id, label, initialX, initialY, bgColor, tooltip, onSavePos) {
+                            const PIN_SIZE = 38;
+                            const PADDING = 10;
+
+                            function getSafeCoord(x, y, fallbackX, fallbackY) {
+                                const winW = window.innerWidth || document.documentElement.clientWidth || 800;
+                                const winH = window.innerHeight || document.documentElement.clientHeight || 600;
+                                const maxW = Math.max(PADDING, winW - PIN_SIZE - PADDING);
+                                const maxH = Math.max(PADDING, winH - PIN_SIZE - PADDING);
+                                let safeX = (typeof x === 'number' && !isNaN(x) && x >= 0) ? x : fallbackX;
+                                let safeY = (typeof y === 'number' && !isNaN(y) && y >= 0) ? y : fallbackY;
+                                safeX = Math.max(PADDING, Math.min(maxW, safeX));
+                                safeY = Math.max(PADDING, Math.min(maxH, safeY));
+                                return { x: safeX, y: safeY };
+                            }
+
+                            function createPin(id, label, initialX, initialY, fallbackX, fallbackY, bgColor, tooltip, onSavePos) {
+                                let safePos = getSafeCoord(initialX, initialY, fallbackX, fallbackY);
+
                                 let pin = document.getElementById(id);
                                 if (pin) {
-                                    pin.style.left = initialX + 'px';
-                                    pin.style.top = initialY + 'px';
-                                    pin.style.opacity = targetOpacity;
-                                    pin.style.display = 'flex';
+                                    pin.style.setProperty('left', safePos.x + 'px', 'important');
+                                    pin.style.setProperty('top', safePos.y + 'px', 'important');
+                                    pin.style.setProperty('opacity', targetOpacity, 'important');
+                                    pin.style.setProperty('display', 'flex', 'important');
+                                    if (!pin.isConnected || pin.parentElement !== (document.documentElement || document.body)) {
+                                        (document.documentElement || document.body).appendChild(pin);
+                                    }
                                     return pin;
                                 }
 
                                 pin = document.createElement('div');
                                 pin.id = id;
-                                pin.setAttribute('title', tooltip);
-                                pin.style.position = 'fixed';
-                                pin.style.left = initialX + 'px';
-                                pin.style.top = initialY + 'px';
-                                pin.style.width = '36px';
-                                pin.style.height = '36px';
-                                pin.style.borderRadius = '50%';
-                                pin.style.background = bgColor;
-                                pin.style.color = '#FFFFFF';
-                                pin.style.fontWeight = 'bold';
-                                pin.style.fontSize = '15px';
-                                pin.style.display = 'flex';
-                                pin.style.alignItems = 'center';
-                                pin.style.justifyContent = 'center';
-                                pin.style.boxShadow = '0 5px 16px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.85)';
-                                pin.style.cursor = 'grab';
-                                pin.style.zIndex = '2147483647';
-                                pin.style.userSelect = 'none';
-                                pin.style.touchAction = 'none';
-                                pin.style.opacity = targetOpacity;
-                                pin.style.transition = 'transform 0.1s, box-shadow 0.1s, opacity 0.2s';
+                                pin.setAttribute('title', tooltip + ' (دابل کلیک برای بازگشت به موقعیت پیش‌فرض)');
+                                pin.style.setProperty('position', 'fixed', 'important');
+                                pin.style.setProperty('left', safePos.x + 'px', 'important');
+                                pin.style.setProperty('top', safePos.y + 'px', 'important');
+                                pin.style.setProperty('width', PIN_SIZE + 'px', 'important');
+                                pin.style.setProperty('height', PIN_SIZE + 'px', 'important');
+                                pin.style.setProperty('border-radius', '50%', 'important');
+                                pin.style.setProperty('background', bgColor, 'important');
+                                pin.style.setProperty('color', '#FFFFFF', 'important');
+                                pin.style.setProperty('font-weight', 'bold', 'important');
+                                pin.style.setProperty('font-size', '16px', 'important');
+                                pin.style.setProperty('display', 'flex', 'important');
+                                pin.style.setProperty('align-items', 'center', 'important');
+                                pin.style.setProperty('justify-content', 'center', 'important');
+                                pin.style.setProperty('box-shadow', '0 6px 20px rgba(0,0,0,0.7), 0 0 0 2.5px rgba(255,255,255,0.9)', 'important');
+                                pin.style.setProperty('cursor', 'grab', 'important');
+                                pin.style.setProperty('z-index', '2147483647', 'important');
+                                pin.style.setProperty('user-select', 'none', 'important');
+                                pin.style.setProperty('touch-action', 'none', 'important');
+                                pin.style.setProperty('opacity', targetOpacity, 'important');
+                                pin.style.setProperty('transition', 'transform 0.1s, box-shadow 0.1s, opacity 0.2s', 'important');
+                                pin.style.setProperty('pointer-events', 'auto', 'important');
                                 pin.innerText = label;
 
                                 let isDragging = false;
@@ -473,13 +486,14 @@ namespace imgsaver
 
                                 pin.addEventListener('pointerdown', (e) => {
                                     isDragging = true;
-                                    pin.style.cursor = 'grabbing';
-                                    pin.style.transform = 'scale(1.22)';
-                                    pin.setPointerCapture(e.pointerId);
+                                    pin.style.setProperty('cursor', 'grabbing', 'important');
+                                    pin.style.setProperty('transform', 'scale(1.22)', 'important');
+                                    pin.style.setProperty('opacity', '1.0', 'important');
+                                    try { pin.setPointerCapture(e.pointerId); } catch(err){}
                                     startX = e.clientX;
                                     startY = e.clientY;
-                                    startLeft = parseFloat(pin.style.left) || initialX;
-                                    startTop = parseFloat(pin.style.top) || initialY;
+                                    startLeft = parseFloat(pin.style.left) || safePos.x;
+                                    startTop = parseFloat(pin.style.top) || safePos.y;
                                     e.preventDefault();
                                     e.stopPropagation();
                                 }, true);
@@ -488,10 +502,14 @@ namespace imgsaver
                                     if (!isDragging) return;
                                     const dx = e.clientX - startX;
                                     const dy = e.clientY - startY;
-                                    let newLeft = Math.max(0, Math.min(window.innerWidth - 38, startLeft + dx));
-                                    let newTop = Math.max(0, Math.min(window.innerHeight - 38, startTop + dy));
-                                    pin.style.left = newLeft + 'px';
-                                    pin.style.top = newTop + 'px';
+                                    const winW = window.innerWidth || document.documentElement.clientWidth || 800;
+                                    const winH = window.innerHeight || document.documentElement.clientHeight || 600;
+                                    const maxW = Math.max(PADDING, winW - PIN_SIZE - PADDING);
+                                    const maxH = Math.max(PADDING, winH - PIN_SIZE - PADDING);
+                                    let newLeft = Math.max(PADDING, Math.min(maxW, startLeft + dx));
+                                    let newTop = Math.max(PADDING, Math.min(maxH, startTop + dy));
+                                    pin.style.setProperty('left', newLeft + 'px', 'important');
+                                    pin.style.setProperty('top', newTop + 'px', 'important');
                                     e.preventDefault();
                                     e.stopPropagation();
                                 }, true);
@@ -499,11 +517,12 @@ namespace imgsaver
                                 const endDrag = (e) => {
                                     if (!isDragging) return;
                                     isDragging = false;
-                                    pin.style.cursor = 'grab';
-                                    pin.style.transform = 'scale(1)';
+                                    pin.style.setProperty('cursor', 'grab', 'important');
+                                    pin.style.setProperty('transform', 'scale(1)', 'important');
+                                    pin.style.setProperty('opacity', targetOpacity, 'important');
                                     try { pin.releasePointerCapture(e.pointerId); } catch(err){}
-                                    const curX = parseFloat(pin.style.left) || 0;
-                                    const curY = parseFloat(pin.style.top) || 0;
+                                    const curX = parseFloat(pin.style.left) || safePos.x;
+                                    const curY = parseFloat(pin.style.top) || safePos.y;
                                     onSavePos(curX, curY);
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -512,11 +531,21 @@ namespace imgsaver
                                 pin.addEventListener('pointerup', endDrag, true);
                                 pin.addEventListener('pointercancel', endDrag, true);
 
-                                (document.body || document.documentElement).appendChild(pin);
+                                // Double-click resets pin directly back to default safe coordinates
+                                pin.addEventListener('dblclick', (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const safe = getSafeCoord(fallbackX, fallbackY, fallbackX, fallbackY);
+                                    pin.style.setProperty('left', safe.x + 'px', 'important');
+                                    pin.style.setProperty('top', safe.y + 'px', 'important');
+                                    onSavePos(safe.x, safe.y);
+                                }, true);
+
+                                (document.documentElement || document.body).appendChild(pin);
                                 return pin;
                             }
 
-                            createPin('imgsaver_pin_input', '①', __TARGET_INPUT_PIN_X__, __TARGET_INPUT_PIN_Y__, 'linear-gradient(135deg, #3B82F6, #1D4ED8)', 'پین ۱: محل فیلد ورودی متن (Drag to move)', (x, y) => {
+                            const pin1 = createPin('imgsaver_pin_input', '①', __TARGET_INPUT_PIN_X__, __TARGET_INPUT_PIN_Y__, 80, 120, 'linear-gradient(135deg, #3B82F6, #1D4ED8)', 'پین ۱: محل فیلد ورودی متن', (x, y) => {
                                 if (window.chrome && window.chrome.webview) {
                                     window.chrome.webview.postMessage({
                                         type: 'update_target_pin',
@@ -527,7 +556,7 @@ namespace imgsaver
                                 }
                             });
 
-                            createPin('imgsaver_pin_action', '②', __TARGET_ACTION_PIN_X__, __TARGET_ACTION_PIN_Y__, 'linear-gradient(135deg, #10B981, #059669)', 'پین ۲: محل دکمه لمس/اقدام نهایی (Drag to move)', (x, y) => {
+                            const pin2 = createPin('imgsaver_pin_action', '②', __TARGET_ACTION_PIN_X__, __TARGET_ACTION_PIN_Y__, 80, 180, 'linear-gradient(135deg, #10B981, #059669)', 'پین ۲: محل دکمه اقدام نهایی', (x, y) => {
                                 if (window.chrome && window.chrome.webview) {
                                     window.chrome.webview.postMessage({
                                         type: 'update_target_pin',
@@ -537,6 +566,46 @@ namespace imgsaver
                                     });
                                 }
                             });
+
+                            // Enforces that pins NEVER leave the viewport on resize or resolution change
+                            function enforceViewportClamp() {
+                                [
+                                    { id: 'imgsaver_pin_input', fallbackX: 80, fallbackY: 120, name: 'input' },
+                                    { id: 'imgsaver_pin_action', fallbackX: 80, fallbackY: 180, name: 'action' }
+                                ].forEach(item => {
+                                    const p = document.getElementById(item.id);
+                                    if (!p) return;
+                                    if (!p.isConnected) {
+                                        (document.documentElement || document.body).appendChild(p);
+                                    }
+                                    const curX = parseFloat(p.style.left) || item.fallbackX;
+                                    const curY = parseFloat(p.style.top) || item.fallbackY;
+                                    const safe = getSafeCoord(curX, curY, item.fallbackX, item.fallbackY);
+                                    if (Math.abs(curX - safe.x) > 1 || Math.abs(curY - safe.y) > 1) {
+                                        p.style.setProperty('left', safe.x + 'px', 'important');
+                                        p.style.setProperty('top', safe.y + 'px', 'important');
+                                        if (window.chrome && window.chrome.webview) {
+                                            window.chrome.webview.postMessage({
+                                                type: 'update_target_pin',
+                                                pin: item.name,
+                                                x: safe.x,
+                                                y: safe.y
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+
+                            window.addEventListener('resize', enforceViewportClamp, { passive: true });
+
+                            // Periodically ensure pins remain attached and clamped even across SPA re-renders
+                            const pinWatcher = setInterval(() => {
+                                if (!showPins) {
+                                    clearInterval(pinWatcher);
+                                    return;
+                                }
+                                enforceViewportClamp();
+                            }, 1500);
                         })();
                     }
 
@@ -900,6 +969,9 @@ window.addEventListener('focus', function() {
                         if (sData["LoadMedia"] != null) _currentSettings.LoadMedia = sData["LoadMedia"]!.Value<bool>();
                         if (sData["EnableJavaScript"] != null) _currentSettings.EnableJavaScript = sData["EnableJavaScript"]!.Value<bool>();
                         if (sData["MuteAudio"] != null) _currentSettings.MuteAudio = sData["MuteAudio"]!.Value<bool>();
+                        if (sData["DisableBrowserCache"] != null) _currentSettings.DisableBrowserCache = sData["DisableBrowserCache"]!.Value<bool>();
+                        if (sData["CacheMediaOnly"] != null) _currentSettings.CacheMediaOnly = sData["CacheMediaOnly"]!.Value<bool>();
+                        if (sData["RestoreSessionOnStartup"] != null) _currentSettings.RestoreSessionOnStartup = sData["RestoreSessionOnStartup"]!.Value<bool>();
                         if (sData["EnableCombinerBar"] != null) _currentSettings.EnableCombinerBar = sData["EnableCombinerBar"]!.Value<bool>();
                         if (sData["AutoImportImagesToMiniClip"] != null) _currentSettings.AutoImportImagesToMiniClip = sData["AutoImportImagesToMiniClip"]!.Value<bool>();
                         if (sData["ShowMiniClipImageImportButtons"] != null) _currentSettings.ShowMiniClipImageImportButtons = sData["ShowMiniClipImageImportButtons"]!.Value<bool>();
@@ -923,11 +995,32 @@ window.addEventListener('focus', function() {
                 if (type == "clearBrowserData")
                 {
                     bool deleteLogin = data["deleteLogin"]?.Value<bool>() ?? false;
-                    if (deleteLogin && sender is CoreWebView2 coreWeb)
+                    CoreWebView2? coreWeb = (sender as CoreWebView2) ?? GetCurrentBrowser()?.CoreWebView2;
+                    if (coreWeb != null)
                     {
-                        await coreWeb.Profile.ClearBrowsingDataAsync();
+                        try
+                        {
+                            if (deleteLogin)
+                            {
+                                await coreWeb.Profile.ClearBrowsingDataAsync();
+                            }
+                            else
+                            {
+                                var dataKinds = CoreWebView2BrowsingDataKinds.DiskCache |
+                                                CoreWebView2BrowsingDataKinds.CacheStorage |
+                                                CoreWebView2BrowsingDataKinds.ServiceWorkers;
+                                await coreWeb.Profile.ClearBrowsingDataAsync(dataKinds);
+                            }
+                        }
+                        catch { }
                     }
                     DeleteDirectoryContents(_permanentCacheFolder);
+
+                    foreach (var tab in _tabNetworkStats.Keys.ToList())
+                    {
+                        ResetTabNetworkStats(tab);
+                    }
+                    UpdateStatus(deleteLogin ? "تمام داده‌های ورود و کش مرورگر پاکسازی شدند" : "حافظه کش و فایل‌های موقت با موفقیت پاکسازی شدند", "Cache");
                     return;
                 }
 
@@ -961,6 +1054,18 @@ window.addEventListener('focus', function() {
                     return;
                 }
 
+                if (type == "pageFullyLoaded")
+                {
+                    var tabItem = GetTabItemForCoreWebView2(sender as CoreWebView2) ?? (BrowserTabs.SelectedItem as TabItem);
+                    if (tabItem != null)
+                    {
+                        SetTabLoadingState(tabItem, false);
+                        UpdateTabStatusOverlay(tabItem, "۱۰۰٪ بارگیری کامل شد (تمام اسکریپت‌ها و داده‌ها آماده‌اند)");
+                        UpdateStatus(data["url"]?.ToString() ?? "", "۱۰۰٪ لود کامل (آماده)");
+                    }
+                    return;
+                }
+
                 if (type == "keyup")
                 {
                     HandleKeyUp(data["key"]?.ToString());
@@ -984,17 +1089,20 @@ window.addEventListener('focus', function() {
                     string? pin = data["pin"]?.ToString();
                     double x = data["x"]?.ToObject<double>() ?? 0;
                     double y = data["y"]?.ToObject<double>() ?? 0;
-                    if (pin == "input")
+                    if (x >= 0 && y >= 0)
                     {
-                        _currentSettings.TargetInputPinX = x;
-                        _currentSettings.TargetInputPinY = y;
+                        if (pin == "input")
+                        {
+                            _currentSettings.TargetInputPinX = x;
+                            _currentSettings.TargetInputPinY = y;
+                        }
+                        else if (pin == "action")
+                        {
+                            _currentSettings.TargetActionPinX = x;
+                            _currentSettings.TargetActionPinY = y;
+                        }
+                        _currentSettings.Save(CurrentProfile);
                     }
-                    else if (pin == "action")
-                    {
-                        _currentSettings.TargetActionPinX = x;
-                        _currentSettings.TargetActionPinY = y;
-                    }
-                    _currentSettings.Save(CurrentProfile);
                     return;
                 }
 
@@ -1036,14 +1144,18 @@ window.addEventListener('focus', function() {
                             bool fgOk = hwnd != IntPtr.Zero && SetForegroundWindow(hwnd);
                             this.Activate();
 
-                            // WebView2 CSS pixels map 1:1 to WPF device-independent units
-                            // as long as the page isn't manually zoomed (default ZoomFactor
-                            // is 1.0), so we can convert straight from the coordinate the
-                            // page reported into the control's local point, then let WPF's
-                            // PointToScreen do the DPI-aware conversion to real screen pixels.
-                            screenPoint = browser.PointToScreen(new System.Windows.Point(cssX, cssY));
+                            // WebView2 CSS pixels must be scaled by the current ZoomFactor
+                            // so that physical mouse coordinates land exactly on the element
+                            // even when the page is zoomed in or zoomed out (Ctrl + mouse wheel).
+                            double zoom = browser.ZoomFactor;
+                            if (zoom <= 0.01) zoom = 1.0;
+
+                            double localX = cssX * zoom;
+                            double localY = cssY * zoom;
+
+                            screenPoint = browser.PointToScreen(new System.Windows.Point(localX, localY));
                             gotPoint = true;
-                            DebugLog($"[C#] hwnd={hwnd} SetForegroundWindow ok={fgOk} screenPoint={screenPoint}");
+                            DebugLog($"[C#] hwnd={hwnd} SetForegroundWindow ok={fgOk} zoom={zoom} css=({cssX},{cssY}) local=({localX},{localY}) screenPoint={screenPoint}");
                         });
 
                         if (!gotPoint)

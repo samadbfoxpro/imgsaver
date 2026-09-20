@@ -103,10 +103,10 @@ namespace imgsaver
                 if (string.IsNullOrWhiteSpace(rawText)) return;
 
                 // Ignore if marked with zero-width space (already combined by any component)
-                if (rawText.EndsWith("\u200B")) return;
+                if (rawText.EndsWith("\u200B") || rawText.Contains("\u200B")) return;
 
-                // Ignore repeat processing
-                if (rawText == _lastCombinedText) return;
+                // Ignore Persian / Arabic text (it is meant as a title for MiniClipboard, NOT a prompt to combine!)
+                if (PromptCombinerEngine.IsPersianText(rawText)) return;
 
                 string text = rawText.Trim();
                 if (string.IsNullOrWhiteSpace(text)) return;
@@ -138,14 +138,14 @@ namespace imgsaver
                 }
 
                 // 2. Snippet Combining
-                var activeItems = combinerData.Items
+                var activeItems = (combinerData.Items ?? new List<PromptCombinerItem>())
                     .Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id))
                     .Select(i => i.Text)
                     .Where(t => !string.IsNullOrWhiteSpace(t))
                     .ToList();
 
-                var customTexts = combinerData.Folders
-                    .Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText))
+                var customTexts = (combinerData.Folders ?? new List<PromptCombinerFolder>())
+                    .Where(f => f.IsCustomInput && !string.IsNullOrWhiteSpace(f.CustomInputText))
                     .Select(f => f.CustomInputText.Trim())
                     .ToList();
 
@@ -166,10 +166,7 @@ namespace imgsaver
                 if (!string.IsNullOrWhiteSpace(combined) && combined != text)
                 {
                     _isProcessing = true;
-                    _lastCombinedText = combined;
-
                     SafeClipboardSetText(combined + "\u200B");
-
                     CursorBadgeNotification.ShowCombiner("⚡ Combined!");
 
                     try
@@ -179,6 +176,10 @@ namespace imgsaver
                             if (win is BrowserWindow bw)
                             {
                                 bw.FlashCombinerSuccess();
+                            }
+                            else if (win is MiniClipboardWindow mc)
+                            {
+                                mc.ApplyCombinerTitles(combinerData);
                             }
                         }
                     }
@@ -194,7 +195,7 @@ namespace imgsaver
 
         private static string SafeClipboardGetText()
         {
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 8; i++)
             {
                 try
                 {
@@ -206,7 +207,7 @@ namespace imgsaver
                 }
                 catch
                 {
-                    System.Threading.Thread.Sleep(25);
+                    System.Threading.Thread.Sleep(20);
                 }
             }
             return string.Empty;
@@ -214,16 +215,17 @@ namespace imgsaver
 
         private static void SafeClipboardSetText(string text)
         {
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 8; i++)
             {
                 try
                 {
                     System.Windows.Clipboard.SetText(text);
+                    _lastCombinedText = text;
                     return;
                 }
                 catch
                 {
-                    System.Threading.Thread.Sleep(25);
+                    System.Threading.Thread.Sleep(20);
                 }
             }
         }

@@ -84,6 +84,9 @@ namespace imgsaver
                 ChkLoadMedia.Content = "بارگیری ویدیو و صوت";
                 ChkEnableJS.Content = "فعال‌سازی جاوا اسکریپت";
                 ChkMuteAudio.Content = "بی‌صدا کردن صدای مرورگر";
+                ChkDisableCache.Content = "غیرفعال‌سازی کش مرورگر (بارگیری مجدد همه فایل‌ها)";
+                ChkCacheMediaOnly.Content = "کش فقط برای رسانه و فونت‌ها (لود اسکریپت‌ها از سرور)";
+                ChkRestoreSessionOnStartup.Content = "بازیابی تب‌ها و آخرین آدرس در شروع مرورگر";
                 ChkAutoImportImagesToMiniClip.Content = "ایمپورت خودکار تصاویر مرورگر به مینی کلیپ";
                 ChkShowMiniClipImageImportButtons.Content = "نمایش دکمه ایمپورت مینی کلیپ روی تصاویر بزرگ";
                 ChkReplaceMiniClipImageOnImport.Content = "جایگزینی تصویر فعلی مینی کلیپ هنگام ایمپورت از مرورگر";
@@ -119,6 +122,9 @@ namespace imgsaver
                 ChkLoadMedia.Content = "Load Video and Audio Media";
                 ChkEnableJS.Content = "Enable JavaScript";
                 ChkMuteAudio.Content = "Mute Browser Audio";
+                ChkDisableCache.Content = "Disable Browser Cache (Always load from network)";
+                ChkCacheMediaOnly.Content = "Cache Media & Fonts Only (Scripts/Buttons load from server)";
+                ChkRestoreSessionOnStartup.Content = "Restore previous tabs and URL on startup";
                 ChkAutoImportImagesToMiniClip.Content = "Automatically import browser images to Mini Clip";
                 ChkShowMiniClipImageImportButtons.Content = "Show Mini Clip import button on large images";
                 ChkReplaceMiniClipImageOnImport.Content = "Replace current Mini Clip image when importing from browser";
@@ -140,6 +146,9 @@ namespace imgsaver
             ChkLoadMedia.IsChecked = settings.LoadMedia;
             ChkEnableJS.IsChecked = settings.EnableJavaScript;
             ChkMuteAudio.IsChecked = settings.MuteAudio;
+            ChkDisableCache.IsChecked = settings.DisableBrowserCache;
+            ChkCacheMediaOnly.IsChecked = settings.CacheMediaOnly;
+            ChkRestoreSessionOnStartup.IsChecked = settings.RestoreSessionOnStartup;
             ChkAutoImportImagesToMiniClip.IsChecked = settings.AutoImportImagesToMiniClip;
             ChkShowMiniClipImageImportButtons.IsChecked = settings.ShowMiniClipImageImportButtons;
             ChkReplaceMiniClipImageOnImport.IsChecked = settings.ReplaceMiniClipImageOnImport;
@@ -314,7 +323,10 @@ namespace imgsaver
             try
             {
                 if (Directory.Exists(selected.Path))
-                    Directory.Delete(selected.Path, true);
+                {
+                    DeleteDirectoryContents(selected.Path);
+                    try { Directory.Delete(selected.Path, true); } catch { }
+                }
 
                 LoadCachedSites();
                 CustomMessageBox.Show($"Cache for {selected.Name} cleared.", "Success");
@@ -377,6 +389,9 @@ namespace imgsaver
                 settings.LoadMedia = ChkLoadMedia.IsChecked == true;
                 settings.EnableJavaScript = ChkEnableJS.IsChecked == true;
                 settings.MuteAudio = ChkMuteAudio.IsChecked == true;
+                settings.DisableBrowserCache = ChkDisableCache.IsChecked == true;
+                settings.CacheMediaOnly = ChkCacheMediaOnly.IsChecked == true;
+                settings.RestoreSessionOnStartup = ChkRestoreSessionOnStartup.IsChecked == true;
                 settings.AutoImportImagesToMiniClip = ChkAutoImportImagesToMiniClip.IsChecked == true;
                 settings.ShowMiniClipImageImportButtons = ChkShowMiniClipImageImportButtons.IsChecked == true;
                 settings.ReplaceMiniClipImageOnImport = ChkReplaceMiniClipImageOnImport.IsChecked == true;
@@ -464,16 +479,63 @@ namespace imgsaver
 
         private void DeleteDirectoryContents(string folder)
         {
-            if (!Directory.Exists(folder)) return;
+            if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
+            SafeDeleteDirectoryRecursive(folder);
+        }
 
-            foreach (string file in Directory.GetFiles(folder))
+        private void SafeDeleteDirectoryRecursive(string targetDir)
+        {
+            try
             {
-                try { File.Delete(file); } catch { }
+                string[] files;
+                try
+                {
+                    files = Directory.GetFiles(targetDir);
+                }
+                catch
+                {
+                    return;
+                }
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                string[] subDirs;
+                try
+                {
+                    subDirs = Directory.GetDirectories(targetDir);
+                }
+                catch
+                {
+                    return;
+                }
+
+                foreach (var subDir in subDirs)
+                {
+                    SafeDeleteDirectoryRecursive(subDir);
+                    try
+                    {
+                        if (Directory.Exists(subDir) && !Directory.EnumerateFileSystemEntries(subDir).Any())
+                        {
+                            Directory.Delete(subDir, false);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
             }
-
-            foreach (string dir in Directory.GetDirectories(folder))
+            catch
             {
-                try { Directory.Delete(dir, true); } catch { }
             }
         }
 

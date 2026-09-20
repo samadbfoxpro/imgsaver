@@ -69,6 +69,39 @@ namespace imgsaver
         private DispatcherTimer? _autoSaveCountdownTimer;
         private int _autoSaveRemainingSeconds = 0;
 
+        // Image Dimension Lock & Filter Settings
+        private int _dimensionWidth = 50;
+        private int _dimensionHeight = 50;
+        private bool _lockExactDimensions = false;
+
+        public bool IsImageDimensionAllowed(int width, int height)
+        {
+            try
+            {
+                if (_dimensionWidth <= 0 && _dimensionHeight <= 0)
+                    return true;
+
+                if (_lockExactDimensions)
+                {
+                    // Strict lock: ignore both larger and smaller dimensions
+                    if (_dimensionWidth > 0 && width != _dimensionWidth) return false;
+                    if (_dimensionHeight > 0 && height != _dimensionHeight) return false;
+                    return true;
+                }
+                else
+                {
+                    // Minimum dimension mode: ignore smaller
+                    if (_dimensionWidth > 0 && width < _dimensionWidth) return false;
+                    if (_dimensionHeight > 0 && height < _dimensionHeight) return false;
+                    return true;
+                }
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
         public bool IsAutoSaveEnabled
         {
             get => _autoSaveEnabled;
@@ -708,6 +741,16 @@ namespace imgsaver
                 }
 
                 string configPath = DataPathManager.GetSettingsFilePath("config.txt");
+
+                try
+                {
+                    var bSettings = BrowserSettings.Load();
+                    _dimensionWidth = bSettings.MinImageWidth > 0 ? bSettings.MinImageWidth : 50;
+                    _dimensionHeight = bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50;
+                    _lockExactDimensions = bSettings.LockExactDimensions;
+                }
+                catch { }
+
                 if (!File.Exists(configPath)) return;
 
                 string[] lines = File.ReadAllLines(configPath);
@@ -766,6 +809,9 @@ namespace imgsaver
                         bitmap.EndInit();
                         bitmap.Freeze();
 
+                        if (!IsImageDimensionAllowed(bitmap.PixelWidth, bitmap.PixelHeight))
+                            return;
+
                         await Dispatcher.InvokeAsync(() => {
                             _capturedImages.Add(new CapturedImageInfo { Bitmap = bitmap, OriginalPath = filePath });
                             _hasImage = true;
@@ -801,6 +847,7 @@ namespace imgsaver
                 bitmap.EndInit();
                 bitmap.Freeze();
 
+                if (!IsImageDimensionAllowed(bitmap.PixelWidth, bitmap.PixelHeight)) return;
                 if (bitmap.PixelWidth < minWidth || bitmap.PixelHeight < minHeight) return;
 
                 if (replaceExisting)
@@ -1058,18 +1105,21 @@ namespace imgsaver
                     var image = SafeClipboardGetImage();
                     if (image != null)
                     {
-                        var convertedBitmap = new FormatConvertedBitmap();
-                        convertedBitmap.BeginInit();
-                        convertedBitmap.Source = image;
-                        convertedBitmap.DestinationFormat = PixelFormats.Bgra32;
-                        convertedBitmap.EndInit();
-                        var finalPreview = new WriteableBitmap(convertedBitmap);
-                        finalPreview.Freeze();
-                        _capturedImages.Add(new CapturedImageInfo { Bitmap = finalPreview, OriginalPath = null });
-                        _hasImage = true;
-                        UpdateImagePreviews();
-                        UpdateState();
-                        CheckAutoSaveTrigger();
+                        if (IsImageDimensionAllowed((int)image.PixelWidth, (int)image.PixelHeight))
+                        {
+                            var convertedBitmap = new FormatConvertedBitmap();
+                            convertedBitmap.BeginInit();
+                            convertedBitmap.Source = image;
+                            convertedBitmap.DestinationFormat = PixelFormats.Bgra32;
+                            convertedBitmap.EndInit();
+                            var finalPreview = new WriteableBitmap(convertedBitmap);
+                            finalPreview.Freeze();
+                            _capturedImages.Add(new CapturedImageInfo { Bitmap = finalPreview, OriginalPath = null });
+                            _hasImage = true;
+                            UpdateImagePreviews();
+                            UpdateState();
+                            CheckAutoSaveTrigger();
+                        }
                     }
                 }
                 else if (hasText)
@@ -1119,8 +1169,7 @@ namespace imgsaver
                         return;
                     }
 
-                    int englishLetterCountTemp = Regex.Matches(rawText, "[A-Za-z]").Count;
-                    if (Regex.IsMatch(rawText, @"[\u0600-\u06FF]") && englishLetterCountTemp < 5)
+                    if (PromptCombinerEngine.IsPersianText(rawText))
                     {
                         if (!IsTitleLocked)
                         {
@@ -1130,19 +1179,18 @@ namespace imgsaver
                             TxtTitle.Focus();
                             UpdateState();
                             CheckAutoSaveTrigger();
-                            return;
                         }
+                        return;
                     }
 
                     string text = FilterEnglishOnly(rawText);
                     if (!string.IsNullOrWhiteSpace(text))
                     {
-                        int englishLetterCount = Regex.Matches(rawText, "[A-Za-z]").Count;
-                        if (englishLetterCount > 0 && englishLetterCount < 5) return;
                         if (Regex.IsMatch(text.Trim(), @"^\d{4,}")) return;
 
                         bool wasCombined = false;
                         bool isCombinerEnabled = false;
+                        bool isAlreadyCombined = rawText.EndsWith("\u200B") || rawText.Contains("\u200B");
 
                         // Apply Smart Prompt Combiner if enabled
                         try
@@ -1151,83 +1199,71 @@ namespace imgsaver
                             if (combinerData != null && combinerData.IsEnabled)
                             {
                                 isCombinerEnabled = true;
-                                var activeItems = combinerData.Items
+                                var activeItems = (combinerData.Items ?? new List<PromptCombinerItem>())
                                     .Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id))
                                     .Select(i => i.Text)
                                     .Where(t => !string.IsNullOrWhiteSpace(t))
                                     .ToList();
 
-                                var customTexts = combinerData.Folders
-                                    .Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText))
+                                var customTexts = (combinerData.Folders ?? new List<PromptCombinerFolder>())
+                                    .Where(f => f.IsCustomInput && !string.IsNullOrWhiteSpace(f.CustomInputText))
                                     .Select(f => f.CustomInputText.Trim())
                                     .ToList();
 
                                 if (activeItems.Count > 0 || customTexts.Count > 0)
                                 {
-                                    string combined;
-                                    if (combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
+                                    if (!isAlreadyCombined)
                                     {
-                                        combined = PromptCombinerEngine.CombinePerFolder(text, combinerData);
-                                    }
-                                    else
-                                    {
-                                        var allSnippetTexts = new List<string>(activeItems);
-                                        allSnippetTexts.AddRange(customTexts);
-                                        combined = PromptCombinerEngine.Combine(text, allSnippetTexts, combinerData.PlacementMode, combinerData.CommaIndex, combinerData.Separator);
-                                    }
-
-                                    if (combined != text)
-                                    {
-                                        wasCombined = true;
-                                        if (combinerData.AutoCaptureBasePrompt)
+                                        string combined;
+                                        if (combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
                                         {
+                                            combined = PromptCombinerEngine.CombinePerFolder(text, combinerData);
+                                        }
+                                        else
+                                        {
+                                            var allSnippetTexts = new List<string>(activeItems);
+                                            allSnippetTexts.AddRange(customTexts);
+                                            combined = PromptCombinerEngine.Combine(text, allSnippetTexts, combinerData.PlacementMode, combinerData.CommaIndex, combinerData.Separator);
+                                        }
+
+                                        if (combined != text)
+                                        {
+                                            wasCombined = true;
+                                            if (combinerData.AutoCaptureBasePrompt)
+                                            {
+                                                try
+                                                {
+                                                    string configPath = DataPathManager.GetSettingsFilePath("base_combiner_config.json");
+                                                    string dir = System.IO.Path.GetDirectoryName(configPath);
+                                                    if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
+                                                        System.IO.Directory.CreateDirectory(dir);
+                                                    System.IO.File.WriteAllText(configPath, text);
+                                                    _miniBaseCombinerPanel?.UpdateBasePromptText(text);
+                                                }
+                                                catch { }
+                                            }
+
+                                            text = combined;
+                                            SetClipboardTextIgnoringNextChange(combined + "\u200B");
                                             try
                                             {
-                                                string configPath = DataPathManager.GetSettingsFilePath("base_combiner_config.json");
-                                                string dir = System.IO.Path.GetDirectoryName(configPath);
-                                                if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
-                                                    System.IO.Directory.CreateDirectory(dir);
-                                                System.IO.File.WriteAllText(configPath, text);
-                                                _miniBaseCombinerPanel?.UpdateBasePromptText(text);
+                                                foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                                                {
+                                                    if (win is BrowserWindow bw)
+                                                    {
+                                                        bw.FlashCombinerSuccess();
+                                                    }
+                                                }
                                             }
                                             catch { }
                                         }
-
-                                        text = combined;
-                                        SetClipboardTextIgnoringNextChange(combined + "\u200B");
-                                        try
-                                        {
-                                            foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
-                                            {
-                                                if (win is BrowserWindow bw)
-                                                {
-                                                    bw.FlashCombinerSuccess();
-                                                }
-                                            }
-                                        }
-                                        catch { }
                                     }
-
-                                    if (!IsAdditionalTitleLocked)
+                                    else
                                     {
-                                        var activeTitles = new List<string>();
-                                        foreach (var item in combinerData.Items.Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id)))
-                                        {
-                                            string title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title.Trim() : item.Text?.Trim();
-                                            if (!string.IsNullOrWhiteSpace(title) && !activeTitles.Contains(title)) activeTitles.Add(title);
-                                        }
-                                        foreach (var folder in combinerData.Folders.Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText)))
-                                        {
-                                            string title = !string.IsNullOrWhiteSpace(folder.CustomTitle) ? folder.CustomTitle.Trim() : "متن سفارشی";
-                                            if (!activeTitles.Contains(title)) activeTitles.Add(title);
-                                        }
-                                        if (activeTitles.Count > 0)
-                                        {
-                                            IsAdditionalTitleVisible = true;
-                                            IsAdditionalTitleEnabled = true;
-                                            AdditionalTitle = string.Join(" - ", activeTitles);
-                                        }
+                                        wasCombined = true;
                                     }
+
+                                    ApplyCombinerTitles(combinerData);
                                 }
                             }
                         }
@@ -1235,7 +1271,7 @@ namespace imgsaver
 
                         bool isReplacing = _hasPositivePrompt;
 
-                        if (wasCombined || isCombinerEnabled)
+                        if (wasCombined)
                         {
                             CursorBadgeNotification.ShowCombiner("⚡ Combined!");
                         }
@@ -1289,6 +1325,38 @@ namespace imgsaver
                         }
                         catch { }
                     }
+                }
+            }
+            catch { }
+        }
+
+        public void ApplyCombinerTitles(PromptCombinerData? combinerData = null)
+        {
+            try
+            {
+                if (IsAdditionalTitleLocked) return;
+                combinerData ??= PromptCombinerStore.Load();
+                if (combinerData == null || !combinerData.IsEnabled) return;
+
+                var activeTitles = new List<string>();
+                foreach (var item in (combinerData.Items ?? new List<PromptCombinerItem>()).Where(i => combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id)))
+                {
+                    string title = !string.IsNullOrWhiteSpace(item.Title) ? item.Title.Trim() : item.Text?.Trim();
+                    if (!string.IsNullOrWhiteSpace(title) && !activeTitles.Contains(title)) activeTitles.Add(title);
+                }
+                foreach (var folder in (combinerData.Folders ?? new List<PromptCombinerFolder>()).Where(f => f.IsCustomInput && !string.IsNullOrWhiteSpace(f.CustomInputText)))
+                {
+                    string title = !string.IsNullOrWhiteSpace(folder.CustomTitle) ? folder.CustomTitle.Trim() : folder.Name?.Trim();
+                    if (!string.IsNullOrWhiteSpace(title) && !activeTitles.Contains(title)) activeTitles.Add(title);
+                }
+                if (activeTitles.Count > 0)
+                {
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        IsAdditionalTitleVisible = true;
+                        IsAdditionalTitleEnabled = true;
+                        AdditionalTitle = string.Join(" - ", activeTitles);
+                    });
                 }
             }
             catch { }

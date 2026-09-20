@@ -7,6 +7,12 @@ namespace imgsaver
 {
     public static class PromptCombinerEngine
     {
+        public static bool IsPersianText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            return Regex.IsMatch(text, @"[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]");
+        }
+
         public static string Combine(string originalPrompt, List<string> snippetTexts, CombinerPlacementMode mode, int commaIndex = 1, string separator = ", ")
         {
             if (snippetTexts == null || snippetTexts.Count == 0) return originalPrompt ?? "";
@@ -14,12 +20,18 @@ namespace imgsaver
             
             if (string.IsNullOrWhiteSpace(separator)) separator = ", ";
 
-            // Filter out empty snippets and snippets that already exist in basePrompt
-            var validSnippets = snippetTexts
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s.Trim())
-                .Where(s => !PromptContainsSnippet(basePrompt, s))
-                .ToList();
+            var seenSnippetTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var validSnippets = new List<string>();
+            foreach (var snippet in snippetTexts)
+            {
+                if (string.IsNullOrWhiteSpace(snippet)) continue;
+                var newTags = ExtractUniqueTags(snippet, seenSnippetTags, separator);
+                if (newTags.Count > 0)
+                {
+                    validSnippets.Add(string.Join(separator, newTags));
+                }
+            }
 
             if (validSnippets.Count == 0) return basePrompt;
 
@@ -27,7 +39,7 @@ namespace imgsaver
 
             if (string.IsNullOrWhiteSpace(basePrompt))
             {
-                return combinedSnippets;
+                return CleanUpCommas(combinedSnippets);
             }
 
             switch (mode)
@@ -51,168 +63,183 @@ namespace imgsaver
             string basePrompt = (originalPrompt ?? "").Trim();
             string separator = string.IsNullOrWhiteSpace(combinerData.Separator) ? ", " : combinerData.Separator;
 
-            // Collect active snippets per folder in folder order
-            var folderGroups = new List<(PromptCombinerFolder Folder, List<string> Items)>();
+            // Structured item holder for deterministic mapping
+            var atBeginningItems = new List<string>();
+            var afterCommaMap = new SortedDictionary<int, List<string>>();
+            var atEndItems = new List<string>();
 
-            foreach (var folder in combinerData.Folders.OrderBy(f => f.Order))
+            // Intra-snippet tag deduplicator
+            var seenSnippetTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Collect active items in stable folder order
+            var sortedFolders = combinerData.Folders != null 
+                ? combinerData.Folders.OrderBy(f => f.Order).ToList() 
+                : new List<PromptCombinerFolder>();
+
+            foreach (var folder in sortedFolders)
             {
-                var folderTexts = new List<string>();
+                var folderSnippetList = new List<string>();
+
                 if (folder.IsCustomInput)
                 {
-                    if (folder.IsCustomInputActive && !string.IsNullOrWhiteSpace(folder.CustomInputText))
+                    if (!string.IsNullOrWhiteSpace(folder.CustomInputText))
                     {
-                        string customText = folder.CustomInputText.Trim();
-                        if (!PromptContainsSnippet(basePrompt, customText))
+                        var newTags = ExtractUniqueTags(folder.CustomInputText, seenSnippetTags, separator);
+                        if (newTags.Count > 0)
                         {
-                            folderTexts.Add(customText);
+                            folderSnippetList.Add(string.Join(separator, newTags));
                         }
                     }
                 }
                 else
                 {
-                    var items = combinerData.Items
-                        .Where(i => i.FolderId == folder.Id && combinerData.ActiveItemIds.Contains(i.Id))
+                    var items = (combinerData.Items ?? new List<PromptCombinerItem>())
+                        .Where(i => i.FolderId == folder.Id && combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id))
                         .OrderBy(i => i.Order)
                         .Select(i => i.Text)
                         .Where(t => !string.IsNullOrWhiteSpace(t))
-                        .Select(t => t.Trim())
-                        .Where(t => !PromptContainsSnippet(basePrompt, t))
                         .ToList();
-                    folderTexts.AddRange(items);
+
+                    foreach (var itemText in items)
+                    {
+                        var newTags = ExtractUniqueTags(itemText, seenSnippetTags, separator);
+                        if (newTags.Count > 0)
+                        {
+                            folderSnippetList.Add(string.Join(separator, newTags));
+                        }
+                    }
                 }
 
-                if (folderTexts.Count > 0)
-                {
-                    folderGroups.Add((folder, folderTexts));
-                }
-            }
+                if (folderSnippetList.Count == 0) continue;
 
-            if (folderGroups.Count == 0) return basePrompt;
+                // Determine folder placement rule
+                var mode = (combinerData.PlacementMode == CombinerPlacementMode.PerFolder) 
+                    ? folder.PlacementMode 
+                    : combinerData.PlacementMode;
 
-            if (string.IsNullOrWhiteSpace(basePrompt))
-            {
-                var allActiveTexts = folderGroups.SelectMany(g => g.Items).ToList();
-                return string.Join(separator, allActiveTexts);
-            }
-
-            // Categorize items by PlacementMode
-            var atBeginningTexts = new List<string>();
-            var afterCommaMap = new Dictionary<int, List<string>>();
-            var atEndTexts = new List<string>();
-
-            foreach (var group in folderGroups)
-            {
-                var mode = group.Folder?.PlacementMode ?? CombinerPlacementMode.AfterComma;
-                int cIdx = group.Folder?.CommaIndex ?? 1;
-                if (cIdx <= 0) cIdx = 1;
+                int cIdx = (combinerData.PlacementMode == CombinerPlacementMode.PerFolder) 
+                    ? (folder.CommaIndex > 0 ? folder.CommaIndex : 1) 
+                    : (combinerData.CommaIndex > 0 ? combinerData.CommaIndex : 1);
 
                 if (mode == CombinerPlacementMode.AtBeginning)
                 {
-                    atBeginningTexts.AddRange(group.Items);
+                    atBeginningItems.AddRange(folderSnippetList);
                 }
                 else if (mode == CombinerPlacementMode.AtEnd)
                 {
-                    atEndTexts.AddRange(group.Items);
+                    atEndItems.AddRange(folderSnippetList);
                 }
-                else // AfterComma
+                else // AfterComma (Default)
                 {
                     if (!afterCommaMap.ContainsKey(cIdx))
                     {
                         afterCommaMap[cIdx] = new List<string>();
                     }
-                    afterCommaMap[cIdx].AddRange(group.Items);
+                    afterCommaMap[cIdx].AddRange(folderSnippetList);
                 }
             }
 
-            // Find all comma positions in basePrompt
-            var commaPositions = new List<int>();
-            for (int i = 0; i < basePrompt.Length; i++)
+            // Collect any active items whose FolderId is missing or not matching any folder
+            var folderIdSet = new HashSet<string>(sortedFolders.Select(f => f.Id));
+            var remainingItems = (combinerData.Items ?? new List<PromptCombinerItem>())
+                .Where(i => (string.IsNullOrEmpty(i.FolderId) || !folderIdSet.Contains(i.FolderId)) 
+                         && combinerData.ActiveItemIds != null && combinerData.ActiveItemIds.Contains(i.Id))
+                .OrderBy(i => i.Order)
+                .Select(i => i.Text)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
+
+            if (remainingItems.Count > 0)
             {
-                if (basePrompt[i] == ',')
+                var remainingSnippetList = new List<string>();
+                foreach (var itemText in remainingItems)
                 {
-                    commaPositions.Add(i);
-                }
-            }
-
-            // Map each target comma index (1-indexed) to its list of snippet strings.
-            // If target comma index > available commas in basePrompt, map to the last available comma (commaPositions.Count)
-            var insertionMap = new Dictionary<int, List<string>>();
-
-            foreach (var kvp in afterCommaMap)
-            {
-                int targetIdx = kvp.Key;
-                int effectiveIdx = targetIdx;
-
-                if (commaPositions.Count > 0)
-                {
-                    if (effectiveIdx > commaPositions.Count)
+                    var newTags = ExtractUniqueTags(itemText, seenSnippetTags, separator);
+                    if (newTags.Count > 0)
                     {
-                        effectiveIdx = commaPositions.Count; // Place after the last available comma
+                        remainingSnippetList.Add(string.Join(separator, newTags));
                     }
                 }
 
-                if (!insertionMap.ContainsKey(effectiveIdx))
+                if (remainingSnippetList.Count > 0)
                 {
-                    insertionMap[effectiveIdx] = new List<string>();
-                }
-                insertionMap[effectiveIdx].AddRange(kvp.Value);
-            }
-
-            // Reconstruct prompt cleanly
-            string result = "";
-
-            // Step 1: Prepend AtBeginning items
-            if (atBeginningTexts.Count > 0)
-            {
-                result = string.Join(separator, atBeginningTexts) + separator;
-            }
-
-            // Step 2: Base prompt with AfterComma insertions
-            if (commaPositions.Count == 0)
-            {
-                // No commas in basePrompt at all
-                result += basePrompt;
-
-                // Any AfterComma items attach right after basePrompt
-                var allAfterCommaItems = insertionMap.Values.SelectMany(x => x).ToList();
-                if (allAfterCommaItems.Count > 0)
-                {
-                    result += separator + string.Join(separator, allAfterCommaItems);
-                }
-            }
-            else
-            {
-                // Insert after commas based on commaPositions
-                int lastPos = 0;
-                for (int c = 0; c < commaPositions.Count; c++)
-                {
-                    int commaPos = commaPositions[c];
-                    int commaNumber = c + 1;
-
-                    // Append basePrompt segment up to and including comma
-                    result += basePrompt.Substring(lastPos, commaPos - lastPos + 1);
-                    lastPos = commaPos + 1;
-
-                    // Check if there are snippets to insert after this comma
-                    if (insertionMap.TryGetValue(commaNumber, out var snippetsToInsert) && snippetsToInsert.Count > 0)
+                    int cIdx = combinerData.CommaIndex > 0 ? combinerData.CommaIndex : 1;
+                    if (combinerData.PlacementMode == CombinerPlacementMode.AtBeginning)
                     {
-                        result += " " + string.Join(separator, snippetsToInsert) + separator;
+                        atBeginningItems.AddRange(remainingSnippetList);
+                    }
+                    else if (combinerData.PlacementMode == CombinerPlacementMode.AtEnd)
+                    {
+                        atEndItems.AddRange(remainingSnippetList);
+                    }
+                    else
+                    {
+                        if (!afterCommaMap.ContainsKey(cIdx))
+                        {
+                            afterCommaMap[cIdx] = new List<string>();
+                        }
+                        afterCommaMap[cIdx].AddRange(remainingSnippetList);
                     }
                 }
+            }
 
-                // Append remaining basePrompt after last comma
-                if (lastPos < basePrompt.Length)
+            // Check if there is anything to inject
+            bool hasAnyItems = atBeginningItems.Count > 0 || afterCommaMap.Count > 0 || atEndItems.Count > 0;
+            if (!hasAnyItems) return basePrompt;
+
+            // If base prompt is empty, join all items in logical order
+            if (string.IsNullOrWhiteSpace(basePrompt))
+            {
+                var allOrdered = new List<string>();
+                allOrdered.AddRange(atBeginningItems);
+                foreach (var kvp in afterCommaMap)
                 {
-                    result += basePrompt.Substring(lastPos);
+                    allOrdered.AddRange(kvp.Value);
+                }
+                allOrdered.AddRange(atEndItems);
+                return CleanUpCommas(string.Join(separator, allOrdered));
+            }
+
+            // Split base prompt into clean comma segments (1-indexed slots)
+            var baseSegments = basePrompt.Split(',')
+                                         .Select(s => s.Trim())
+                                         .Where(s => !string.IsNullOrEmpty(s))
+                                         .ToList();
+
+            var finalSegments = new List<string>();
+
+            // Phase 1: Prepend AtBeginning items
+            if (atBeginningItems.Count > 0)
+            {
+                finalSegments.Add(string.Join(separator, atBeginningItems));
+            }
+
+            // Phase 2: Interleave base segments with comma slots in exact ascending order
+            int maxTargetComma = afterCommaMap.Count > 0 ? afterCommaMap.Keys.Max() : 0;
+            int totalSlots = Math.Max(baseSegments.Count, maxTargetComma);
+
+            for (int slot = 1; slot <= totalSlots; slot++)
+            {
+                // Add the base prompt segment at this position if it exists
+                if (slot <= baseSegments.Count)
+                {
+                    finalSegments.Add(baseSegments[slot - 1]);
+                }
+
+                // Inject snippets assigned specifically to Comma #slot
+                if (afterCommaMap.TryGetValue(slot, out var commaSnippets) && commaSnippets.Count > 0)
+                {
+                    finalSegments.Add(string.Join(separator, commaSnippets));
                 }
             }
 
-            // Step 3: Append AtEnd items
-            if (atEndTexts.Count > 0)
+            // Phase 3: Append AtEnd items
+            if (atEndItems.Count > 0)
             {
-                result += separator + string.Join(separator, atEndTexts);
+                finalSegments.Add(string.Join(separator, atEndItems));
             }
 
+            string result = string.Join(separator, finalSegments);
             return CleanUpCommas(result);
         }
 
@@ -223,38 +250,28 @@ namespace imgsaver
             if (commaIndex <= 0) commaIndex = 1;
             if (string.IsNullOrWhiteSpace(separator)) separator = ", ";
 
-            var commaPositions = new List<int>();
-            for (int i = 0; i < basePrompt.Length; i++)
+            var baseSegments = basePrompt.Split(',')
+                                         .Select(s => s.Trim())
+                                         .Where(s => !string.IsNullOrEmpty(s))
+                                         .ToList();
+
+            var finalSegments = new List<string>();
+            int totalSlots = Math.Max(baseSegments.Count, commaIndex);
+
+            for (int slot = 1; slot <= totalSlots; slot++)
             {
-                if (basePrompt[i] == ',')
+                if (slot <= baseSegments.Count)
                 {
-                    commaPositions.Add(i);
+                    finalSegments.Add(baseSegments[slot - 1]);
+                }
+
+                if (slot == commaIndex)
+                {
+                    finalSegments.Add(snippetsText);
                 }
             }
 
-            if (commaPositions.Count == 0)
-            {
-                return CleanUpCommas($"{basePrompt}{separator}{snippetsText}");
-            }
-
-            int targetIdx = commaIndex - 1; // 0-based index
-            if (targetIdx >= commaPositions.Count)
-            {
-                targetIdx = commaPositions.Count - 1; // Fallback to last existing comma
-            }
-
-            int insertPos = commaPositions[targetIdx];
-            string part1 = basePrompt.Substring(0, insertPos + 1).TrimEnd();
-            string part2 = basePrompt.Substring(insertPos + 1).TrimStart();
-
-            if (!string.IsNullOrWhiteSpace(part2))
-            {
-                return CleanUpCommas($"{part1} {snippetsText}{separator}{part2}");
-            }
-            else
-            {
-                return CleanUpCommas($"{part1} {snippetsText}");
-            }
+            return CleanUpCommas(string.Join(separator, finalSegments));
         }
 
         public static string CleanUpCommas(string input)
@@ -268,7 +285,29 @@ namespace imgsaver
             cleaned = Regex.Replace(cleaned, @"(?m)^[ \t]*,[ \t]*", "");
             // Fix trailing commas at end of lines
             cleaned = Regex.Replace(cleaned, @"(?m)[ \t]*,[ \t]*$", "");
+            // Fix multiple spaces
+            cleaned = Regex.Replace(cleaned, @"[ \t]{2,}", " ");
             return cleaned.Trim();
+        }
+
+        private static List<string> ExtractUniqueTags(string text, HashSet<string> seenTags, string separator = ", ")
+        {
+            if (string.IsNullOrWhiteSpace(text)) return new List<string>();
+
+            var tags = text.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                           .Select(t => t.Trim())
+                           .Where(t => !string.IsNullOrWhiteSpace(t))
+                           .ToList();
+
+            var result = new List<string>();
+            foreach (var tag in tags)
+            {
+                if (seenTags.Add(tag))
+                {
+                    result.Add(tag);
+                }
+            }
+            return result;
         }
 
         private static bool PromptContainsSnippet(string prompt, string snippet)
@@ -282,11 +321,11 @@ namespace imgsaver
             if (p.Equals(s, StringComparison.OrdinalIgnoreCase)) return true;
 
             // 2. Tag-level match
-            var pTags = p.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            var pTags = p.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                          .Select(t => t.Trim())
                          .ToList();
 
-            var sTags = s.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            var sTags = s.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
                          .Select(t => t.Trim())
                          .Where(t => !string.IsNullOrEmpty(t))
                          .ToList();

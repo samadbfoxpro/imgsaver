@@ -825,16 +825,18 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                 <Path Data="{StaticResource IconDownload}" Fill="#38BDF8" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="فیلتر ابعاد و ورود خودکار (Filters &amp; Auto Import)" FontSize="12.5" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                                <TextBlock Text="قفل و فیلتر ابعاد تصویر (عرض و ارتفاع)" FontSize="12.5" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <!-- Dimensions -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <TextBlock Text="حداقل عرض تصویر (px):" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="عرض تصویر (px):" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                 <TextBox x:Name="TxtMinImageWidth" Text="50" Width="65" Height="28" Padding="2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1" Margin="0,0,16,0"/>
-                                <TextBlock Text="حداقل ارتفاع تصویر (px):" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="ارتفاع تصویر (px):" Foreground="#CBD5E1" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                 <TextBox x:Name="TxtMinImageHeight" Text="50" Width="65" Height="28" Padding="2" FlowDirection="LeftToRight" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Background="#141824" Foreground="#F8FAFC" BorderBrush="#3B4863" BorderThickness="1"/>
                             </StackPanel>
+
+                            <CheckBox x:Name="ChkLockExactDimensions" Content="قفل دقیق ابعاد (نادیده گرفتن تصاویر بزرگتر و کوچکتر؛ فقط ورود ابعاد انتخابی)" Foreground="#CBD5E1" FontSize="11.5" Margin="0,0,0,10" VerticalContentAlignment="Center" ToolTip="هنگام فعال بودن، فقط تصاویری که دقیقاً دارای همین عرض و ارتفاع باشند وارد مینی‌کلیپ می‌شوند و تصاویر با ابعاد بزرگ‌تر یا کوچک‌تر نادیده گرفته می‌شوند."/>
 
                             <!-- Auto Import -->
                             <CheckBox x:Name="ChkAutoImportEnabled" Content="مانیتورینگ پوشه دانلود و ورود خودکار تصاویر" Foreground="#CBD5E1" FontSize="11.5" Margin="0,0,0,6"/>

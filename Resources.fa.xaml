@@ -36,8 +36,12 @@
     <sys:String x:Key="Chk_Replace_Pos">جایگزینی پرامپت مثبت با کپی شدن متن جدید در کلیپ‌بورد</sys:String>
     <sys:String x:Key="Chk_Preserve_Base">عدم استفاده از لیست پایه ذخیره شده در هنگام اجرای SPI Sync</sys:String>
     <sys:String x:Key="Lbl_Collect_Before_Save">تعداد تصاویری که باید قبل از ذخیره جمع‌آوری شوند:</sys:String>
-    <sys:String x:Key="Lbl_Min_Dimensions">حداقل ابعاد تصویر</sys:String>
-    <sys:String x:Key="Lbl_Min_Dimensions_Desc">رد تصاویر کوچک‌تر از این ابعاد هنگام وارد کردن به مینی‌کلیپ‌بورد</sys:String>
+    <sys:String x:Key="Lbl_Min_Dimensions">قفل و فیلتر ابعاد عکس (عرض و ارتفاع)</sys:String>
+    <sys:String x:Key="Lbl_Min_Dimensions_Desc">تعیین ابعاد دقیق یا حداقل ابعاد مجاز برای وارد شدن تصاویر به مینی‌کلیپ‌بورد</sys:String>
+    <sys:String x:Key="Lbl_Width_Px">عرض (px):</sys:String>
+    <sys:String x:Key="Lbl_Height_Px">ارتفاع (px):</sys:String>
+    <sys:String x:Key="Chk_Lock_Exact_Dimensions">قفل دقیق ابعاد (رد تصاویر بزرگ‌تر یا کوچک‌تر و پذیرش فقط ابعاد انتخابی)</sys:String>
+    <sys:String x:Key="Chk_Lock_Exact_Dimensions_Tip">وقتی فعال باشد، تصاویری که عرض یا ارتفاع بزرگ‌تر یا کوچک‌تر دارند نادیده گرفته می‌شوند و فقط ابعاد انتخابی به مینی‌کلیپ ایمپورت می‌گردند.</sys:String>
     <sys:String x:Key="Chk_AutoImport">فعال‌سازی وارد کردن خودکار از پوشه</sys:String>
     <sys:String x:Key="Lbl_Recorder_Settings">تنظیمات ضبط‌کننده</sys:String>
     <sys:String x:Key="Chk_Sequential">پخش متوالی (اسلات ۱ و ۲)</sys:String>

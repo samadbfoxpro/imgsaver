@@ -964,6 +964,7 @@ namespace imgsaver
                 var bSettings = BrowserSettings.Load();
                 TxtMinImageWidth.Text = (bSettings.MinImageWidth > 0 ? bSettings.MinImageWidth : 50).ToString();
                 TxtMinImageHeight.Text = (bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50).ToString();
+                ChkLockExactDimensions.IsChecked = bSettings.LockExactDimensions;
             }
             catch { }
         }
@@ -1038,6 +1039,7 @@ namespace imgsaver
                     bSettings.MinImageWidth = minWidth;
                 if (int.TryParse(TxtMinImageHeight.Text, out int minHeight) && minHeight > 0)
                     bSettings.MinImageHeight = minHeight;
+                bSettings.LockExactDimensions = ChkLockExactDimensions.IsChecked == true;
                 bSettings.Save();
 
                 if (Directory.Exists(path)) _savePath = path;

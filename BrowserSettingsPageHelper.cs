@@ -417,11 +417,41 @@ namespace imgsaver
             </div>
             <div class=""row"">
                 <div class=""row-info"">
+                    <h3>بازیابی آخرین تب‌ها و آدرس در شروع (Restore Session on Startup)</h3>
+                    <p>باز شدن مجدد آخرین آدرس و تب‌های باز شده در شروع مرورگر (در صورت خاموش بودن، صفحه نیو تب آفلاین پیش‌فرض باز می‌شود)</p>
+                </div>
+                <label class=""switch"">
+                    <input type=""checkbox"" id=""chkRestoreSession"" onchange=""saveAllSettings()"">
+                    <span class=""slider""></span>
+                </label>
+            </div>
+            <div class=""row"">
+                <div class=""row-info"">
                     <h3>بی‌صدا کردن صدای مرورگر (Mute Audio)</h3>
                     <p>قطع کردن تمام صداهای پخش‌شده در تب‌های مرورگر</p>
                 </div>
                 <label class=""switch"">
                     <input type=""checkbox"" id=""chkMuteAudio"" onchange=""saveAllSettings()"">
+                    <span class=""slider""></span>
+                </label>
+            </div>
+            <div class=""row"">
+                <div class=""row-info"">
+                    <h3>غیرفعال‌سازی کش مرورگر (Disable Browser Cache)</h3>
+                    <p>بارگیری مجدد همه فایل‌ها از شبکه بدون استفاده از کش (لود همیشه از اینترنت)</p>
+                </div>
+                <label class=""switch"">
+                    <input type=""checkbox"" id=""chkDisableCache"" onchange=""saveAllSettings()"">
+                    <span class=""slider""></span>
+                </label>
+            </div>
+            <div class=""row"">
+                <div class=""row-info"">
+                    <h3>کش فقط برای رسانه و فونت‌ها (Media &amp; Fonts Only)</h3>
+                    <p>فقط عکس‌ها، ویدیوها، صوت‌ها و فونت‌ها از کش خوانده شوند؛ اسکریپت‌ها، دکمه‌ها و کدهای سایت همیشه از سرور دریافت شوند</p>
+                </div>
+                <label class=""switch"">
+                    <input type=""checkbox"" id=""chkCacheMediaOnly"" onchange=""saveAllSettings()"">
                     <span class=""slider""></span>
                 </label>
             </div>
@@ -618,6 +648,9 @@ namespace imgsaver
                 LoadMedia: document.getElementById('chkLoadMedia').checked,
                 EnableJavaScript: document.getElementById('chkEnableJS').checked,
                 MuteAudio: document.getElementById('chkMuteAudio').checked,
+                DisableBrowserCache: document.getElementById('chkDisableCache').checked,
+                CacheMediaOnly: document.getElementById('chkCacheMediaOnly').checked,
+                RestoreSessionOnStartup: document.getElementById('chkRestoreSession').checked,
                 EnableCombinerBar: document.getElementById('chkEnableCombinerBar').checked,
                 AutoImportImagesToMiniClip: document.getElementById('chkAutoImportImages').checked,
                 ShowMiniClipImageImportButtons: document.getElementById('chkShowImportButtons').checked,
@@ -661,6 +694,9 @@ namespace imgsaver
             if (s.LoadMedia !== undefined) document.getElementById('chkLoadMedia').checked = s.LoadMedia;
             if (s.EnableJavaScript !== undefined) document.getElementById('chkEnableJS').checked = s.EnableJavaScript;
             if (s.MuteAudio !== undefined) document.getElementById('chkMuteAudio').checked = s.MuteAudio;
+            if (s.DisableBrowserCache !== undefined) document.getElementById('chkDisableCache').checked = s.DisableBrowserCache;
+            if (s.CacheMediaOnly !== undefined) document.getElementById('chkCacheMediaOnly').checked = s.CacheMediaOnly;
+            if (s.RestoreSessionOnStartup !== undefined) document.getElementById('chkRestoreSession').checked = s.RestoreSessionOnStartup;
             if (s.EnableCombinerBar !== undefined) document.getElementById('chkEnableCombinerBar').checked = s.EnableCombinerBar;
             if (s.AutoImportImagesToMiniClip !== undefined) document.getElementById('chkAutoImportImages').checked = s.AutoImportImagesToMiniClip;
             if (s.ShowMiniClipImageImportButtons !== undefined) document.getElementById('chkShowImportButtons').checked = s.ShowMiniClipImageImportButtons;

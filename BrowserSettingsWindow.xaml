@@ -187,6 +187,9 @@
                                         <CheckBox x:Name="ChkLoadMedia" Content="Load Video and Audio Media" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkEnableJS" Content="Enable JavaScript" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkMuteAudio" Content="Mute Browser Audio" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkDisableCache" Content="Disable Browser Cache (Always load from network)" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkCacheMediaOnly" Content="Cache Media &amp; Fonts Only (Scripts/Buttons load from server)" Margin="0,0,0,14"/>
+                                        <CheckBox x:Name="ChkRestoreSessionOnStartup" Content="Restore previous tabs and URL on startup" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkAutoImportImagesToMiniClip" Content="Automatically import browser images to Mini Clip" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkShowMiniClipImageImportButtons" Content="Show Mini Clip import button on large images" Margin="0,0,0,14"/>
                                         <CheckBox x:Name="ChkReplaceMiniClipImageOnImport" Content="Replace current Mini Clip image when importing from browser" Margin="0,0,0,14"/>

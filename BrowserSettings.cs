@@ -12,10 +12,13 @@ namespace imgsaver
         public bool LoadMedia { get; set; } = true;
         public bool EnableJavaScript { get; set; } = true;
         public bool MuteAudio { get; set; } = false;
+        public bool DisableBrowserCache { get; set; } = false;
+        public bool CacheMediaOnly { get; set; } = false;
         public bool EnableEmbeddedMiniClip { get; set; } = false;
         public bool EnableCombinerBar { get; set; } = false;
         public bool AutoFocusMiniClip { get; set; } = true;
         public bool AutoHideStatus { get; set; } = true;
+        public bool RestoreSessionOnStartup { get; set; } = true;
         public string LastUrl { get; set; } = "";
         public List<string> OpenTabs { get; set; } = new List<string>();
         public List<BrowserTabSession> TabSessions { get; set; } = new List<BrowserTabSession>();
@@ -43,6 +46,7 @@ namespace imgsaver
         public int AutoActionDelayMs { get; set; } = 300;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
+        public bool LockExactDimensions { get; set; } = false;
 
         // List of hosts that should not use page cache (only cookies/login cache)
         public List<string> NoCacheHosts { get; set; } = new List<string>();

@@ -69,6 +69,7 @@ namespace imgsaver
                 var settings = BrowserSettings.Load();
                 TxtMinImageWidth.Text = settings.MinImageWidth.ToString();
                 TxtMinImageHeight.Text = settings.MinImageHeight.ToString();
+                ChkLockExactDimensions.IsChecked = settings.LockExactDimensions;
 
                 RecordingManager.LoadState();
                 ChkSequentialMode.IsChecked = RecordingManager.SequentialMode;
@@ -155,6 +156,7 @@ namespace imgsaver
                     settings.MinImageWidth = minWidth;
                 if (int.TryParse(TxtMinImageHeight.Text, out int minHeight) && minHeight > 0)
                     settings.MinImageHeight = minHeight;
+                settings.LockExactDimensions = ChkLockExactDimensions.IsChecked == true;
                 settings.Save();
 
                 RecordingManager.SequentialMode = ChkSequentialMode.IsChecked == true;

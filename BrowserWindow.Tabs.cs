@@ -19,24 +19,32 @@ namespace imgsaver
     {
         private async void InitializeTabs()
         {
-            if (_currentSettings.TabSessions != null && _currentSettings.TabSessions.Count > 0)
+            if (_currentSettings.RestoreSessionOnStartup)
             {
-                foreach (var tabSession in _currentSettings.TabSessions)
+                if (_currentSettings.TabSessions != null && _currentSettings.TabSessions.Count > 0)
                 {
-                    await AddNewTab(IsLegacyNewTabUrl(tabSession.Url) ? null : tabSession.Url, selectTab: false);
+                    foreach (var tabSession in _currentSettings.TabSessions)
+                    {
+                        await AddNewTab(IsLegacyNewTabUrl(tabSession.Url) ? null : tabSession.Url, selectTab: false);
+                    }
+                    BrowserTabs.SelectedIndex = Math.Clamp(_currentSettings.SelectedTabIndex, 0, Math.Max(0, BrowserTabs.Items.Count - 1));
                 }
-                BrowserTabs.SelectedIndex = Math.Clamp(_currentSettings.SelectedTabIndex, 0, Math.Max(0, BrowserTabs.Items.Count - 1));
-            }
-            else if (_currentSettings.OpenTabs != null && _currentSettings.OpenTabs.Count > 0)
-            {
-                foreach (var url in _currentSettings.OpenTabs)
+                else if (_currentSettings.OpenTabs != null && _currentSettings.OpenTabs.Count > 0)
                 {
-                    await AddNewTab(IsLegacyNewTabUrl(url) ? null : url);
+                    foreach (var url in _currentSettings.OpenTabs)
+                    {
+                        await AddNewTab(IsLegacyNewTabUrl(url) ? null : url);
+                    }
+                }
+                else
+                {
+                    await AddNewTab(string.IsNullOrEmpty(_currentSettings.LastUrl) || IsLegacyNewTabUrl(_currentSettings.LastUrl) ? null : _currentSettings.LastUrl);
                 }
             }
             else
             {
-                await AddNewTab(string.IsNullOrEmpty(_currentSettings.LastUrl) || IsLegacyNewTabUrl(_currentSettings.LastUrl) ? null : _currentSettings.LastUrl);
+                // Open default offline new tab page
+                await AddNewTab(null);
             }
         }
 
@@ -302,15 +310,9 @@ namespace imgsaver
                         {
                             $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
                             $"--disk-cache-size={ChromiumDiskCacheBytes}",
-                            "--aggressive-cache-discard=false",
-                            "--disable-features=BackForwardCacheMemoryControls",
-                            "--enable-features=IntensiveWakeUpThrottling,ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes,BatterySaverModeAvailable,HighEfficiencyModeAvailable,PageLifecycle,QuickIntensiveWakeUpThrottlingAfterLoading",
-                            "--enable-background-timer-throttling",
-                            "--enable-low-power-gpu",
-                            "--disable-gpu-vsync=false",
-                            "--limit-fps=60",
-                            "--max-wait-for-update-ms=16",
-                            "--renderer-process-limit=8",
+                            "--disable-background-timer-throttling",
+                            "--disable-renderer-backgrounding",
+                            "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading",
                             "--enable-smooth-scrolling"
                         };
 
@@ -328,7 +330,7 @@ namespace imgsaver
                 if (webView.CoreWebView2 == null) throw new Exception("CoreWebView2 initialization failed");
                 _coreWebViewTabMap[webView.CoreWebView2] = tabItem;
 
-                try { webView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low; } catch { }
+                try { webView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal; } catch { }
                 webView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22);
                 try { webView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark; } catch { }
 
@@ -649,6 +651,14 @@ namespace imgsaver
             var settings = _currentSettings ?? BrowserSettings.Load();
             webView.CoreWebView2.Settings.IsScriptEnabled = settings.EnableJavaScript;
             try { webView.CoreWebView2.IsMuted = settings.MuteAudio; } catch { }
+            try
+            {
+                _ = webView.CoreWebView2.CallDevToolsProtocolMethodAsync(
+                    "Network.setCacheDisabled",
+                    settings.DisableBrowserCache ? "{\"cacheDisabled\":true}" : "{\"cacheDisabled\":false}"
+                );
+            }
+            catch { }
             if (settings.EnableJavaScript)
                 InjectSnippetHelperScript(webView);
         }
@@ -859,6 +869,11 @@ namespace imgsaver
 
             try
             {
+                if (browser.Source != null && !string.IsNullOrEmpty(browser.Source.Host))
+                {
+                    try { DeleteDiskCacheForHost(browser.Source.Host); } catch { }
+                }
+
                 // 1) Clear local storage, session storage, service workers & cache storage via script
                 string script = @"
                     (function() {
@@ -1050,15 +1065,9 @@ namespace imgsaver
                         {
                             $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
                             $"--disk-cache-size={ChromiumDiskCacheBytes}",
-                            "--aggressive-cache-discard=false",
-                            "--disable-features=BackForwardCacheMemoryControls",
-                            "--enable-features=IntensiveWakeUpThrottling,ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes,BatterySaverModeAvailable,HighEfficiencyModeAvailable,PageLifecycle,QuickIntensiveWakeUpThrottlingAfterLoading",
-                            "--enable-background-timer-throttling",
-                            "--enable-low-power-gpu",
-                            "--disable-gpu-vsync=false",
-                            "--limit-fps=60",
-                            "--max-wait-for-update-ms=16",
-                            "--renderer-process-limit=8",
+                            "--disable-background-timer-throttling",
+                            "--disable-renderer-backgrounding",
+                            "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading",
                             "--enable-smooth-scrolling",
                             $"--proxy-server=\"http://127.0.0.1:{ProxyBridge.Port}\""
                         };
@@ -1074,7 +1083,7 @@ namespace imgsaver
                     if (secondaryWebView.CoreWebView2 != null)
                     {
                         _coreWebViewTabMap[secondaryWebView.CoreWebView2] = tabItem;
-                        try { secondaryWebView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low; } catch { }
+                        try { secondaryWebView.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal; } catch { }
                         secondaryWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 18, 19, 22);
                         try { secondaryWebView.CoreWebView2.Profile.PreferredColorScheme = CoreWebView2PreferredColorScheme.Dark; } catch { }
                         secondaryWebView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;

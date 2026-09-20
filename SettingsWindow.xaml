@@ -117,14 +117,17 @@
 
                     <TextBlock Text="{DynamicResource Lbl_Min_Dimensions}" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>
                     <TextBlock Text="{DynamicResource Lbl_Min_Dimensions_Desc}" FontSize="11" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,0,10"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <TextBlock Text="Min Width (px):" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="{DynamicResource Lbl_Width_Px}" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
                         <TextBox x:Name="TxtMinImageWidth" Text="50" Width="60" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
                                  Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
-                        <TextBlock Text="Min Height (px):" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="20,0,10,0"/>
+                        <TextBlock Text="{DynamicResource Lbl_Height_Px}" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="20,0,10,0"/>
                         <TextBox x:Name="TxtMinImageHeight" Text="50" Width="60" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
                                  Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
                     </StackPanel>
+                    <CheckBox x:Name="ChkLockExactDimensions" Content="{DynamicResource Chk_Lock_Exact_Dimensions}" 
+                              Foreground="{StaticResource ForegroundBrush}" Margin="0,0,0,15" VerticalContentAlignment="Center"
+                              ToolTip="{DynamicResource Chk_Lock_Exact_Dimensions_Tip}"/>
 
                     <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
                     <CheckBox x:Name="ChkAutoImportEnabled" Content="{DynamicResource Chk_AutoImport}" 

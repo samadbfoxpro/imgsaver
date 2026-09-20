@@ -92,12 +92,18 @@ namespace imgsaver
                 if (_combinerData == null || !_combinerData.IsEnabled) return;
 
                 string rawText = SafeBrowserClipboardGetText();
-                if (string.IsNullOrWhiteSpace(rawText) || rawText == _lastCombinerClipboardText) return;
+                if (string.IsNullOrWhiteSpace(rawText)) return;
+
+                // Skip if already combined (contains zero-width space marker)
+                if (rawText.Contains("\u200B")) return;
+
+                // Skip if Persian / Arabic text (it's a title for MiniClipboard, not a prompt!)
+                if (PromptCombinerEngine.IsPersianText(rawText)) return;
 
                 if (TryProcessCombinerText(rawText, out string combinedResult))
                 {
                     _ignoreNextCombinerClipboardChange = true;
-                    _lastCombinerClipboardText = combinedResult;
+                    _lastCombinerClipboardText = rawText;
                     SafeBrowserClipboardSetText(combinedResult + "\u200B");
                 }
             }
@@ -609,24 +615,32 @@ namespace imgsaver
         public bool TryProcessCombinerText(string rawText, out string combinedResult)
         {
             combinedResult = rawText;
-            if (rawText.EndsWith("\u200B"))
+
+            if (string.IsNullOrWhiteSpace(rawText) || PromptCombinerEngine.IsPersianText(rawText))
             {
-                combinedResult = rawText.TrimEnd('\u200B');
                 return false;
             }
+
+            // Already combined — strip marker and skip
+            if (rawText.Contains("\u200B"))
+            {
+                combinedResult = rawText.Replace("\u200B", "");
+                return false;
+            }
+
             if (_isProcessingCombinerClipboard) return false;
 
             _combinerData = PromptCombinerStore.Load();
             if (_combinerData == null || !_combinerData.IsEnabled) return false;
 
-            var activeItems = _combinerData.Items
-                .Where(i => _combinerData.ActiveItemIds.Contains(i.Id))
+            var activeItems = (_combinerData.Items ?? new List<PromptCombinerItem>())
+                .Where(i => _combinerData.ActiveItemIds != null && _combinerData.ActiveItemIds.Contains(i.Id))
                 .Select(i => i.Text)
                 .Where(t => !string.IsNullOrWhiteSpace(t))
                 .ToList();
 
-            var customTexts = _combinerData.Folders
-                .Where(f => f.IsCustomInput && f.IsCustomInputActive && !string.IsNullOrWhiteSpace(f.CustomInputText))
+            var customTexts = (_combinerData.Folders ?? new List<PromptCombinerFolder>())
+                .Where(f => f.IsCustomInput && !string.IsNullOrWhiteSpace(f.CustomInputText))
                 .Select(f => f.CustomInputText.Trim())
                 .ToList();
 
@@ -635,23 +649,37 @@ namespace imgsaver
             try
             {
                 _isProcessingCombinerClipboard = true;
+                string cleanText = rawText.Trim();
                 if (_combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
                 {
-                    combinedResult = PromptCombinerEngine.CombinePerFolder(rawText, _combinerData);
+                    combinedResult = PromptCombinerEngine.CombinePerFolder(cleanText, _combinerData);
                 }
                 else
                 {
                     var allSnippetTexts = new List<string>(activeItems);
                     allSnippetTexts.AddRange(customTexts);
-                    combinedResult = PromptCombinerEngine.Combine(rawText, allSnippetTexts, _combinerData.PlacementMode, _combinerData.CommaIndex, _combinerData.Separator);
+                    combinedResult = PromptCombinerEngine.Combine(cleanText, allSnippetTexts, _combinerData.PlacementMode, _combinerData.CommaIndex, _combinerData.Separator);
                 }
                 _isProcessingCombinerClipboard = false;
 
-                if (combinedResult != rawText)
+                if (combinedResult != cleanText)
                 {
                     int total = activeItems.Count + customTexts.Count;
-                    UpdateStatus($"⚡ Smart Combiner: Added {total} snippet(s)/text!", "Combiner");
+                    Dispatcher.InvokeAsync(() => UpdateStatus($"⚡ Smart Combiner: Added {total} snippet(s)/text!", "Combiner"));
                     FlashCombinerSuccess();
+
+                    try
+                    {
+                        foreach (Window win in Application.Current.Windows)
+                        {
+                            if (win is MiniClipboardWindow mc)
+                            {
+                                mc.ApplyCombinerTitles(_combinerData);
+                            }
+                        }
+                    }
+                    catch { }
+
                     return true;
                 }
             }
@@ -665,13 +693,15 @@ namespace imgsaver
 
         public void FlashCombinerSuccess()
         {
+            // Show cursor badge immediately (thread-safe)
+            CursorBadgeNotification.ShowCombiner("⚡ Combined!");
+
             Dispatcher.InvokeAsync(() =>
             {
-                CursorCombinerBadge.Show("⚡ Combined!");
                 if (ChkCombinerEnable == null) return;
                 try
                 {
-                    var vividOrange = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF6A00"); // Bold, bright orange
+                    var vividOrange = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF6A00");
                     var normalGreen = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2ECC71");
 
                     var borderBrush = new System.Windows.Media.SolidColorBrush(normalGreen);

@@ -154,9 +154,37 @@ namespace imgsaver
 
             if (_currentSettings == null) return;
             var ctx = e.ResourceContext;
-            if (IsTrackerOrAd(lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
             if (!_currentSettings.LoadImages && IsImageContext(ctx, lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
             if (!_currentSettings.LoadMedia && IsMediaContext(ctx, lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
+            
+            if (_currentSettings.DisableBrowserCache)
+            {
+                try
+                {
+                    e.Request.Headers.SetHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+                    e.Request.Headers.SetHeader("Pragma", "no-cache");
+                    if (e.Request.Headers.Contains("If-Modified-Since")) e.Request.Headers.RemoveHeader("If-Modified-Since");
+                    if (e.Request.Headers.Contains("If-None-Match")) e.Request.Headers.RemoveHeader("If-None-Match");
+                }
+                catch { }
+                UpdateStatus(uri, "Direct Network (Cache Disabled)");
+                return;
+            }
+
+            if (_currentSettings.CacheMediaOnly && !IsMediaOrFontResource(ctx, lowerUri))
+            {
+                try
+                {
+                    e.Request.Headers.SetHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+                    e.Request.Headers.SetHeader("Pragma", "no-cache");
+                    if (e.Request.Headers.Contains("If-Modified-Since")) e.Request.Headers.RemoveHeader("If-Modified-Since");
+                    if (e.Request.Headers.Contains("If-None-Match")) e.Request.Headers.RemoveHeader("If-None-Match");
+                }
+                catch { }
+                UpdateStatus(uri, "Direct Server (Scripts/Code Live)");
+                return;
+            }
+
             if (IsHostNoCached(uri) || e.Request.Method != "GET") return;
             if (IsCacheableRequest(ctx, lowerUri))
             {
@@ -214,8 +242,11 @@ namespace imgsaver
                 return; // Don't cache downloads
             }
 
-            // Skip caching if host is in no-cache list
-            if (IsHostNoCached(uri)) return;
+            // Skip caching if disabled or host is in no-cache list
+            if (_currentSettings?.DisableBrowserCache == true || IsHostNoCached(uri)) return;
+
+            // If CacheMediaOnly is active, only cache media and font responses (skip scripts, html, APIs)
+            if (_currentSettings?.CacheMediaOnly == true && !IsMediaOrFontResponse(lowerUri, e.Response)) return;
 
             if (IsCacheableResponse(lowerUri, e.Response))
                 await SaveCacheResponseAsync(sender as CoreWebView2, tabItem, uri, e.Response, size);
@@ -452,7 +483,7 @@ namespace imgsaver
                 if (!File.Exists(cachePath)) return;
 
                 var settings = _currentSettings ?? BrowserSettings.Load();
-                string? imageSignature = await Task.Run(() => GetImageImportSignature(cachePath, settings.MinImageWidth, settings.MinImageHeight));
+                string? imageSignature = await Task.Run(() => GetImageImportSignature(cachePath, settings.MinImageWidth, settings.MinImageHeight, settings.LockExactDimensions));
                 if (string.IsNullOrEmpty(imageSignature)) return;
                 if (!force && _miniClipImportedImageSignatures.Contains(imageSignature)) return;
 
@@ -567,14 +598,25 @@ namespace imgsaver
             return ".img";
         }
 
-        private string? GetImageImportSignature(string path, int minWidth, int minHeight)
+        private string? GetImageImportSignature(string path, int targetWidth, int targetHeight, bool lockExact = false)
         {
             try
             {
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
                 var frame = decoder.Frames.FirstOrDefault();
-                if (frame == null || frame.PixelWidth < minWidth || frame.PixelHeight < minHeight) return null;
+                if (frame == null) return null;
+
+                if (lockExact)
+                {
+                    if (targetWidth > 0 && frame.PixelWidth != targetWidth) return null;
+                    if (targetHeight > 0 && frame.PixelHeight != targetHeight) return null;
+                }
+                else
+                {
+                    if (targetWidth > 0 && frame.PixelWidth < targetWidth) return null;
+                    if (targetHeight > 0 && frame.PixelHeight < targetHeight) return null;
+                }
 
                 BitmapSource source = frame;
                 if (source.Format != PixelFormats.Bgra32)
@@ -885,6 +927,29 @@ namespace imgsaver
         private bool IsImageContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Image || uri.EndsWith(".jpg") || uri.EndsWith(".png") || uri.EndsWith(".webp") || uri.EndsWith(".gif");
         private bool IsMediaContext(CoreWebView2WebResourceContext ctx, string uri) => ctx == CoreWebView2WebResourceContext.Media || uri.EndsWith(".mp4") || uri.EndsWith(".webm") || uri.EndsWith(".mp3");
 
+        private bool IsMediaOrFontResource(CoreWebView2WebResourceContext ctx, string uri)
+        {
+            if (ctx == CoreWebView2WebResourceContext.Image ||
+                ctx == CoreWebView2WebResourceContext.Media ||
+                ctx == CoreWebView2WebResourceContext.Font)
+                return true;
+
+            string lower = uri.ToLowerInvariant();
+            return lower.Contains(".woff2") || lower.Contains(".woff") || lower.Contains(".ttf") || lower.Contains(".otf") || lower.Contains(".eot") ||
+                   lower.Contains(".png") || lower.Contains(".jpg") || lower.Contains(".jpeg") || lower.Contains(".webp") || lower.Contains(".gif") ||
+                   lower.Contains(".svg") || lower.Contains(".ico") || lower.Contains(".avif") ||
+                   lower.Contains(".mp4") || lower.Contains(".webm") || lower.Contains(".mp3") || lower.Contains(".m4a");
+        }
+
+        private bool IsMediaOrFontResponse(string uri, CoreWebView2WebResourceResponseView response)
+        {
+            if (IsImageResponse(response)) return true;
+            string contentType = GetContentType(response).ToLowerInvariant();
+            if (contentType.StartsWith("image/") || contentType.StartsWith("font/") || contentType.StartsWith("video/") || contentType.StartsWith("audio/"))
+                return true;
+            return IsMediaOrFontResource(CoreWebView2WebResourceContext.Other, uri);
+        }
+
         private string? GetCacheFilePath(string uri, CoreWebView2WebResourceResponseView? response = null)
         {
             try
@@ -1024,7 +1089,6 @@ namespace imgsaver
                 {
                     fileStream.Position = start;
                     servedBytes = end - start + 1;
-                    var rangedStream = new PacedCacheStream(fileStream, servedBytes);
                     string headers =
                         $"Content-Type: {mime}\n" +
                         $"Content-Length: {servedBytes}\n" +
@@ -1034,7 +1098,7 @@ namespace imgsaver
                         "Access-Control-Allow-Origin: *\n" +
                         "Timing-Allow-Origin: *\n" +
                         "X-ImgSaver-Cache: HIT";
-                    response = coreWebView2.Environment.CreateWebResourceResponse(rangedStream, 206, "Partial Content", headers);
+                    response = coreWebView2.Environment.CreateWebResourceResponse(fileStream, 206, "Partial Content", headers);
                     return true;
                 }
 
@@ -1047,8 +1111,7 @@ namespace imgsaver
                     "Access-Control-Allow-Origin: *\n" +
                     "Timing-Allow-Origin: *\n" +
                     "X-ImgSaver-Cache: HIT";
-                var pacedStream = new PacedCacheStream(fileStream, fileLength);
-                response = coreWebView2.Environment.CreateWebResourceResponse(pacedStream, 200, "OK", fullHeaders);
+                response = coreWebView2.Environment.CreateWebResourceResponse(fileStream, 200, "OK", fullHeaders);
                 return true;
             }
             catch
@@ -1286,7 +1349,15 @@ namespace imgsaver
             string sanitizedHost = SanitizeHostForCache(host);
             string targetDir = Path.Combine(_permanentCacheFolder, sanitizedHost);
             if (Directory.Exists(targetDir))
-                Directory.Delete(targetDir, true);
+            {
+                SafeDeleteDirectoryRecursive(targetDir);
+                try
+                {
+                    if (Directory.Exists(targetDir) && !Directory.EnumerateFileSystemEntries(targetDir).Any())
+                        Directory.Delete(targetDir, false);
+                }
+                catch { }
+            }
         }
 
         private string SanitizeHostForCache(string host)
@@ -1298,15 +1369,65 @@ namespace imgsaver
 
         private void DeleteDirectoryContents(string folder)
         {
+            if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
+            SafeDeleteDirectoryRecursive(folder);
+        }
+
+        private void SafeDeleteDirectoryRecursive(string targetDir)
+        {
             try
             {
-                if (!Directory.Exists(folder)) return;
-                foreach (var file in Directory.GetFiles(folder))
-                    File.Delete(file);
-                foreach (var dir in Directory.GetDirectories(folder))
-                    Directory.Delete(dir, true);
+                string[] files;
+                try
+                {
+                    files = Directory.GetFiles(targetDir);
+                }
+                catch
+                {
+                    return;
+                }
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                    }
+                    catch
+                    {
+                        // File locked by Chromium or another process (e.g. data_0); continue deleting others
+                    }
+                }
+
+                string[] subDirs;
+                try
+                {
+                    subDirs = Directory.GetDirectories(targetDir);
+                }
+                catch
+                {
+                    return;
+                }
+
+                foreach (var subDir in subDirs)
+                {
+                    SafeDeleteDirectoryRecursive(subDir);
+                    try
+                    {
+                        if (Directory.Exists(subDir) && !Directory.EnumerateFileSystemEntries(subDir).Any())
+                        {
+                            Directory.Delete(subDir, false);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         private async Task ClearCurrentSiteClientStorageAsync(WebView2 browser)

@@ -36,8 +36,12 @@
     <sys:String x:Key="Chk_Replace_Pos">Replace POS when new clipboard text arrives</sys:String>
     <sys:String x:Key="Chk_Preserve_Base">Do not use saved base list when running SPI Sync</sys:String>
     <sys:String x:Key="Lbl_Collect_Before_Save">Images to collect before saving:</sys:String>
-    <sys:String x:Key="Lbl_Min_Dimensions">Minimum Image Dimensions</sys:String>
-    <sys:String x:Key="Lbl_Min_Dimensions_Desc">Reject images smaller than these dimensions when importing to Mini-Clipboard</sys:String>
+    <sys:String x:Key="Lbl_Min_Dimensions">Image Dimension Lock &amp; Filter (Width &amp; Height)</sys:String>
+    <sys:String x:Key="Lbl_Min_Dimensions_Desc">Set exact dimensions or minimum dimensions for importing images to Mini-Clipboard</sys:String>
+    <sys:String x:Key="Lbl_Width_Px">Width (px):</sys:String>
+    <sys:String x:Key="Lbl_Height_Px">Height (px):</sys:String>
+    <sys:String x:Key="Chk_Lock_Exact_Dimensions">Lock exact dimensions (ignore larger or smaller; import exact size only)</sys:String>
+    <sys:String x:Key="Chk_Lock_Exact_Dimensions_Tip">When enabled, images that are larger or smaller than the chosen width/height are ignored, and only exact matching dimensions are imported to Mini-Clip.</sys:String>
     <sys:String x:Key="Chk_AutoImport">Enable Auto-Import from Folder</sys:String>
     <sys:String x:Key="Lbl_Recorder_Settings">Recorder Settings</sys:String>
     <sys:String x:Key="Chk_Sequential">Sequential Playback (Slot 1 &amp; 2)</sys:String>
