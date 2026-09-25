@@ -11,5 +11,6 @@ namespace imgsaver
         public DateTime LastUsed { get; set; } = DateTime.Now;
         public bool IsDefault { get; set; } = false;
         public string Description { get; set; } = "";
+        public string? CustomImagePath { get; set; } = null;
     }
 }

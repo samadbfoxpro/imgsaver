@@ -56,7 +56,12 @@ namespace imgsaver
                     TxtTagReplacerPrefix.Text = lines.Length > 11 ? lines[11].Trim() : "PH_";
                     ChkAutoCopyTagReplacerOutput.IsChecked = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
                     ChkAutoSaveDelay.IsChecked = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
-                    TxtAutoSaveDelaySeconds.Text = lines.Length > 15 ? lines[15].Trim() : "10";
+                    if (lines.Length > 16 && int.TryParse(lines[16].Trim(), out int minW) && minW > 0)
+                        TxtMinImageWidth.Text = minW.ToString();
+                    if (lines.Length > 17 && int.TryParse(lines[17].Trim(), out int minH) && minH > 0)
+                        TxtMinImageHeight.Text = minH.ToString();
+                    if (lines.Length > 18)
+                        ChkLockExactDimensions.IsChecked = lines[18].Trim().ToLower() == "true";
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
@@ -67,9 +72,12 @@ namespace imgsaver
 
                 // Load minimum image dimensions from BrowserSettings
                 var settings = BrowserSettings.Load();
-                TxtMinImageWidth.Text = settings.MinImageWidth.ToString();
-                TxtMinImageHeight.Text = settings.MinImageHeight.ToString();
-                ChkLockExactDimensions.IsChecked = settings.LockExactDimensions;
+                if (string.IsNullOrWhiteSpace(TxtMinImageWidth.Text) || TxtMinImageWidth.Text == "50")
+                    TxtMinImageWidth.Text = settings.MinImageWidth.ToString();
+                if (string.IsNullOrWhiteSpace(TxtMinImageHeight.Text) || TxtMinImageHeight.Text == "50")
+                    TxtMinImageHeight.Text = settings.MinImageHeight.ToString();
+                if (ChkLockExactDimensions.IsChecked != true)
+                    ChkLockExactDimensions.IsChecked = settings.LockExactDimensions;
 
                 RecordingManager.LoadState();
                 ChkSequentialMode.IsChecked = RecordingManager.SequentialMode;
@@ -129,6 +137,12 @@ namespace imgsaver
                 // Apply language immediately
                 LanguageManager.ApplyLanguage(selectedLang);
 
+                int minWidth = 50;
+                if (int.TryParse(TxtMinImageWidth.Text, out int parsedW) && parsedW > 0) minWidth = parsedW;
+                int minHeight = 50;
+                if (int.TryParse(TxtMinImageHeight.Text, out int parsedH) && parsedH > 0) minHeight = parsedH;
+                string lockExact = (ChkLockExactDimensions.IsChecked == true).ToString().ToLower();
+
                 File.WriteAllLines(configPath, new string[] {
                     path,
                     onlyFavs,
@@ -145,29 +159,34 @@ namespace imgsaver
                     selectedLang,
                     autoCopyTagReplacerOutput,
                     autoSaveDelayEnabled,
-                    autoSaveDelaySeconds
+                    autoSaveDelaySeconds,
+                    minWidth.ToString(),
+                    minHeight.ToString(),
+                    lockExact
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);
 
                 // Save minimum image dimensions to BrowserSettings
                 var settings = BrowserSettings.Load();
-                if (int.TryParse(TxtMinImageWidth.Text, out int minWidth) && minWidth > 0)
-                    settings.MinImageWidth = minWidth;
-                if (int.TryParse(TxtMinImageHeight.Text, out int minHeight) && minHeight > 0)
-                    settings.MinImageHeight = minHeight;
+                settings.MinImageWidth = minWidth;
+                settings.MinImageHeight = minHeight;
                 settings.LockExactDimensions = ChkLockExactDimensions.IsChecked == true;
                 settings.Save();
 
                 RecordingManager.SequentialMode = ChkSequentialMode.IsChecked == true;
                 RecordingManager.SelectedSlot = CmbDefaultSlot.SelectedIndex + 1;
                 RecordingManager.SaveState();
-                // Notify MiniClipboard if open
+                // Notify MiniClipboard and Browser if open
                 foreach (Window w in System.Windows.Application.Current.Windows)
                 {
                     if (w is MiniClipboardWindow mini)
                     {
                         mini.RefreshAutoImport();
+                    }
+                    if (w is BrowserWindow browser)
+                    {
+                        browser.Dispatcher.Invoke(() => browser.RefreshSettings());
                     }
                 }
             }

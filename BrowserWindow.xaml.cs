@@ -151,10 +151,41 @@ namespace imgsaver
             {
                 if (CurrentProfile != null && BtnAccountProfile != null)
                 {
-                    if (UserProfileAvatarPath != null)
+                    bool hasCustomImg = !string.IsNullOrWhiteSpace(CurrentProfile.CustomImagePath) && System.IO.File.Exists(CurrentProfile.CustomImagePath);
+                    if (hasCustomImg && UserProfileAvatarImage != null)
                     {
-                        UserProfileAvatarPath.Data = ProfileVectorHelper.GetGeometry(CurrentProfile.Icon);
+                        try
+                        {
+                            var bi = new System.Windows.Media.Imaging.BitmapImage();
+                            bi.BeginInit();
+                            bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                            bi.UriSource = new Uri(CurrentProfile.CustomImagePath!);
+                            bi.EndInit();
+                            bi.Freeze();
+                            UserProfileAvatarImage.Source = bi;
+                            UserProfileAvatarImage.Visibility = Visibility.Visible;
+                            if (UserProfileAvatarPath != null) UserProfileAvatarPath.Visibility = Visibility.Collapsed;
+                        }
+                        catch
+                        {
+                            hasCustomImg = false;
+                        }
                     }
+
+                    if (!hasCustomImg)
+                    {
+                        if (UserProfileAvatarImage != null)
+                        {
+                            UserProfileAvatarImage.Source = null;
+                            UserProfileAvatarImage.Visibility = Visibility.Collapsed;
+                        }
+                        if (UserProfileAvatarPath != null)
+                        {
+                            UserProfileAvatarPath.Visibility = Visibility.Visible;
+                            UserProfileAvatarPath.Data = ProfileVectorHelper.GetGeometry(CurrentProfile.Icon);
+                        }
+                    }
+
                     if (TxtProfileName != null)
                     {
                         TxtProfileName.Text = string.IsNullOrWhiteSpace(CurrentProfile.Name) ? "Account" : CurrentProfile.Name;
@@ -292,7 +323,7 @@ namespace imgsaver
             });
         }
 
-        private void RefreshSettings()
+        public void RefreshSettings()
         {
             _currentSettings = BrowserSettings.Load(CurrentProfile);
             SyncDownloadProxySettings();

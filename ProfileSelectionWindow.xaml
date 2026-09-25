@@ -58,6 +58,31 @@
             </Setter>
         </Style>
 
+        <!-- Card Edit Button Style -->
+        <Style x:Key="CardEditBtnStyle" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#949BA4"/>
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="12">
+                            <TextBlock Text="✏️" FontSize="10" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3B82F6"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Primary Action Button Style -->
         <Style x:Key="PrimaryBtnStyle" TargetType="{x:Type Button}">
             <Setter Property="Background" Value="#3B82F6"/>
@@ -116,55 +141,148 @@
             <RowDefinition Height="Auto"/> <!-- Footer -->
         </Grid.RowDefinitions>
 
-        <!-- Top Header -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,32,0,20">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
-                <Border Width="34" Height="34" CornerRadius="8" Background="#3B82F6" Margin="0,0,10,0">
-                    <TextBlock Text="🌐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
-                <TextBlock Text="Dataset Browser" FontWeight="Bold" FontSize="22" Foreground="#F2F3F5" VerticalAlignment="Center"/>
+        <!-- Top Header & View Mode Switcher -->
+        <Grid Grid.Row="0" Margin="24,24,24,16">
+            <StackPanel HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
+                    <Border Width="34" Height="34" CornerRadius="8" Background="#3B82F6" Margin="0,0,10,0">
+                        <TextBlock Text="🌐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Dataset Browser" FontWeight="Bold" FontSize="22" Foreground="#F2F3F5" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="چه کسی از مرورگر استفاده می‌کند؟" FontWeight="Bold" FontSize="18" Foreground="#F2F3F5" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                <TextBlock Text="یک اکانت را برای ورود انتخاب کنید یا پروفایل جدیدی بسازید (امکان جابجایی کارت‌ها با Drag &amp; Drop)" FontSize="12" Foreground="#949BA4" HorizontalAlignment="Center"/>
             </StackPanel>
-            <TextBlock Text="چه کسی از مرورگر استفاده می‌کند؟" FontWeight="Bold" FontSize="19" Foreground="#F2F3F5" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-            <TextBlock Text="یک اکانت را برای ورود انتخاب کنید یا پروفایل جدیدی بسازید" FontSize="13" Foreground="#949BA4" HorizontalAlignment="Center"/>
-        </StackPanel>
+
+            <!-- View Switcher (Top Right) -->
+            <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Background="#1E1F22" BorderBrush="#36393E" BorderThickness="1"
+                    CornerRadius="8" Padding="3">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnViewGrid"
+                            Click="BtnViewGrid_Click"
+                            Width="32" Height="30"
+                            ToolTip="نمایش شبکه‌ای (کارت)"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#3B82F6"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <TextBlock Text="⊞" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button x:Name="BtnViewList"
+                            Click="BtnViewList_Click"
+                            Width="32" Height="30"
+                            Margin="3,0,0,0"
+                            ToolTip="نمایش لیستی دو ستونه"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <TextBlock Text="☰" FontSize="15" Foreground="#949BA4" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#2B2D30"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- Profiles Container -->
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <WrapPanel x:Name="ProfilesWrapPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24,0">
-                
-                <!-- Dynamic Profile Cards are injected here in code-behind -->
-                
-                <!-- Add New Profile Card -->
-                <Border x:Name="BtnAddProfileCard"
-                        Width="160" Height="190"
-                        Margin="12"
-                        Background="#2B2D30"
-                        BorderBrush="#36393E"
-                        BorderThickness="1.5"
-                        CornerRadius="14"
-                        Cursor="Hand"
-                        MouseLeftButtonDown="BtnAddProfileCard_Click">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Setter Property="Opacity" Value="0.85"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Opacity" Value="1.0"/>
-                                    <Setter Property="Background" Value="#35373C"/>
-                                    <Setter Property="BorderBrush" Value="#3B82F6"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border Width="68" Height="68" CornerRadius="34" Background="#1E1F22" BorderBrush="#36393E" BorderThickness="1.5" Margin="0,0,0,14">
-                            <TextBlock Text="+" FontSize="28" FontWeight="Light" Foreground="#949BA4" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
-                        </Border>
-                        <TextBlock Text="افزودن اکانت جدید" FontWeight="SemiBold" FontSize="14" Foreground="#F2F3F5" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
+            <Grid Margin="24,0">
+                <!-- Dynamic Profile Cards are injected here in code-behind (Grid Mode) -->
+                <WrapPanel x:Name="ProfilesWrapPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- Add New Profile Card -->
+                    <Border x:Name="BtnAddProfileCard"
+                            Width="160" Height="190"
+                            Margin="12"
+                            Background="#2B2D30"
+                            BorderBrush="#36393E"
+                            BorderThickness="1.5"
+                            CornerRadius="14"
+                            Cursor="Hand"
+                            MouseLeftButtonDown="BtnAddProfileCard_Click">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Opacity" Value="0.85"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                        <Setter Property="Background" Value="#35373C"/>
+                                        <Setter Property="BorderBrush" Value="#3B82F6"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border Width="68" Height="68" CornerRadius="34" Background="#1E1F22" BorderBrush="#36393E" BorderThickness="1.5" Margin="0,0,0,14">
+                                <TextBlock Text="+" FontSize="28" FontWeight="Light" Foreground="#949BA4" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                            </Border>
+                            <TextBlock Text="افزودن اکانت جدید" FontWeight="SemiBold" FontSize="14" Foreground="#F2F3F5" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
 
-            </WrapPanel>
+                <!-- 2-Column List View Mode -->
+                <WrapPanel x:Name="ProfilesListWrapPanel" Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+                    <!-- Add New Profile List Card -->
+                    <Border x:Name="BtnAddProfileListItem"
+                            Width="320" Height="62"
+                            Margin="8"
+                            Background="#2B2D30"
+                            BorderBrush="#36393E"
+                            BorderThickness="1.5"
+                            CornerRadius="12"
+                            Cursor="Hand"
+                            MouseLeftButtonDown="BtnAddProfileCard_Click">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Opacity" Value="0.85"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                        <Setter Property="Background" Value="#35373C"/>
+                                        <Setter Property="BorderBrush" Value="#3B82F6"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid Margin="14,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Width="38" Height="38" CornerRadius="19" Background="#1E1F22" BorderBrush="#36393E" BorderThickness="1" Margin="0,0,12,0">
+                                    <TextBlock Text="+" FontSize="20" FontWeight="Light" Foreground="#949BA4" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                </Border>
+                                <TextBlock Text="افزودن اکانت جدید" FontWeight="SemiBold" FontSize="13" Foreground="#F2F3F5" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </WrapPanel>
+            </Grid>
         </ScrollViewer>
 
         <!-- Bottom Bar -->
@@ -225,8 +343,12 @@
                             CornerRadius="37"
                             Background="#3B82F6"
                             HorizontalAlignment="Center"
-                            Margin="0,0,0,16">
-                        <Path x:Name="AvatarPreviewPath" Fill="White" Width="36" Height="36" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            Margin="0,0,0,16"
+                            ClipToBounds="True">
+                        <Grid>
+                            <Path x:Name="AvatarPreviewPath" Fill="White" Width="36" Height="36" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Image x:Name="AvatarPreviewImage" Width="74" Height="74" Stretch="UniformToFill" Visibility="Collapsed"/>
+                        </Grid>
                     </Border>
 
                     <!-- Name Input -->
@@ -275,10 +397,35 @@
                     </WrapPanel>
 
                     <!-- Icon / Vector Picker -->
-                    <TextBlock Text="انتخاب نماد آواتار" FontWeight="SemiBold" FontSize="13" Foreground="#F2F3F5" Margin="0,0,0,8"/>
-                    <WrapPanel x:Name="IconPickerPanel" Margin="0,0,0,20" HorizontalAlignment="Center">
+                    <TextBlock Text="انتخاب نماد آواتار یا تصویر اختصاصی" FontWeight="SemiBold" FontSize="13" Foreground="#F2F3F5" Margin="0,0,0,8"/>
+                    <WrapPanel x:Name="IconPickerPanel" Margin="0,0,0,12" HorizontalAlignment="Center">
                         <!-- Vector buttons populated dynamically -->
                     </WrapPanel>
+
+                    <!-- Custom Image Picker Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
+                        <Button x:Name="BtnBrowseCustomImage"
+                                Style="{StaticResource SecondaryBtnStyle}"
+                                Click="BtnBrowseCustomImage_Click"
+                                Height="30"
+                                Padding="12,0"
+                                Margin="0,0,8,0"
+                                ToolTip="انتخاب فایل عکس از کامپیوتر (PNG, JPG, ICO, WEBP)">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📁" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="انتخاب تصویر از سیستم..." FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="BtnClearCustomImage"
+                                Style="{StaticResource SecondaryBtnStyle}"
+                                Click="BtnClearCustomImage_Click"
+                                Height="30"
+                                Padding="10,0"
+                                Visibility="Collapsed"
+                                ToolTip="حذف تصویر و استفاده از نماد پیش‌فرض">
+                            <TextBlock Text="حذف تصویر" FontSize="11" Foreground="#EF4444" VerticalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
 
                     <!-- Action Buttons -->
                     <Grid>

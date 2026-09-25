@@ -275,6 +275,11 @@ namespace imgsaver
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
+            if (SettingsView != null && SettingsView.Visibility == Visibility.Visible)
+            {
+                SaveSettingsFromView();
+            }
+
             if (!_isShuttingDown)
             {
                 e.Cancel = true;
@@ -325,7 +330,14 @@ namespace imgsaver
             }
         }
 
-        private void BtnClose_Click(object sender, RoutedEventArgs e) => this.Close();
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+            if (SettingsView != null && SettingsView.Visibility == Visibility.Visible)
+            {
+                SaveSettingsFromView();
+            }
+            this.Close();
+        }
         private void BtnMinimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void BtnMaximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
@@ -862,6 +874,10 @@ namespace imgsaver
 
         private void BtnExit_Click(object sender, RoutedEventArgs e)
         {
+            if (SettingsView != null && SettingsView.Visibility == Visibility.Visible)
+            {
+                SaveSettingsFromView();
+            }
             PerformFullApplicationShutdown();
         }
 
@@ -884,11 +900,16 @@ namespace imgsaver
 
         private void BtnHome_Click(object sender, RoutedEventArgs e)
         {
+            if (SettingsView != null && SettingsView.Visibility == Visibility.Visible)
+            {
+                SaveSettingsFromView();
+            }
             ShowDashboardView();
         }
 
         private void BtnBackFromSettings_Click(object sender, RoutedEventArgs e)
         {
+            SaveSettingsFromView();
             ShowDashboardView();
         }
 
@@ -946,6 +967,13 @@ namespace imgsaver
                     ChkAutoCopyTagReplacerOutput.IsChecked = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
                     ChkAutoSaveDelay.IsChecked = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
                     TxtAutoSaveDelaySeconds.Text = (lines.Length > 15 && !string.IsNullOrWhiteSpace(lines[15])) ? lines[15].Trim() : "10";
+
+                    if (lines.Length > 16 && int.TryParse(lines[16].Trim(), out int minW) && minW > 0)
+                        TxtMinImageWidth.Text = minW.ToString();
+                    if (lines.Length > 17 && int.TryParse(lines[17].Trim(), out int minH) && minH > 0)
+                        TxtMinImageHeight.Text = minH.ToString();
+                    if (lines.Length > 18)
+                        ChkLockExactDimensions.IsChecked = lines[18].Trim().ToLower() == "true";
                 }
                 else
                 {
@@ -962,9 +990,12 @@ namespace imgsaver
                 }
 
                 var bSettings = BrowserSettings.Load();
-                TxtMinImageWidth.Text = (bSettings.MinImageWidth > 0 ? bSettings.MinImageWidth : 50).ToString();
-                TxtMinImageHeight.Text = (bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50).ToString();
-                ChkLockExactDimensions.IsChecked = bSettings.LockExactDimensions;
+                if (string.IsNullOrWhiteSpace(TxtMinImageWidth.Text) || TxtMinImageWidth.Text == "50")
+                    TxtMinImageWidth.Text = (bSettings.MinImageWidth > 0 ? bSettings.MinImageWidth : 50).ToString();
+                if (string.IsNullOrWhiteSpace(TxtMinImageHeight.Text) || TxtMinImageHeight.Text == "50")
+                    TxtMinImageHeight.Text = (bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50).ToString();
+                if (ChkLockExactDimensions.IsChecked != true)
+                    ChkLockExactDimensions.IsChecked = bSettings.LockExactDimensions;
             }
             catch { }
         }
@@ -1013,6 +1044,16 @@ namespace imgsaver
                     : LockAuthType.Pattern;
                 SecurityManager.SetPreferredAuthType(selectedAuthType);
 
+                int minWidth = 50;
+                if (int.TryParse(TxtMinImageWidth.Text, out int parsedW) && parsedW > 0)
+                    minWidth = parsedW;
+
+                int minHeight = 50;
+                if (int.TryParse(TxtMinImageHeight.Text, out int parsedH) && parsedH > 0)
+                    minHeight = parsedH;
+
+                string lockExact = (ChkLockExactDimensions.IsChecked == true).ToString().ToLower();
+
                 File.WriteAllLines(configPath, new string[] {
                     path,
                     "false",
@@ -1029,16 +1070,17 @@ namespace imgsaver
                     selectedLang,
                     autoCopyTag,
                     autoSaveDelay,
-                    autoSaveDelaySec
+                    autoSaveDelaySec,
+                    minWidth.ToString(),
+                    minHeight.ToString(),
+                    lockExact
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);
 
                 var bSettings = BrowserSettings.Load();
-                if (int.TryParse(TxtMinImageWidth.Text, out int minWidth) && minWidth > 0)
-                    bSettings.MinImageWidth = minWidth;
-                if (int.TryParse(TxtMinImageHeight.Text, out int minHeight) && minHeight > 0)
-                    bSettings.MinImageHeight = minHeight;
+                bSettings.MinImageWidth = minWidth;
+                bSettings.MinImageHeight = minHeight;
                 bSettings.LockExactDimensions = ChkLockExactDimensions.IsChecked == true;
                 bSettings.Save();
 
@@ -1048,6 +1090,7 @@ namespace imgsaver
                 foreach (Window w in System.Windows.Application.Current.Windows)
                 {
                     if (w is MiniClipboardWindow mini) mini.RefreshAutoImport();
+                    if (w is BrowserWindow browser) browser.Dispatcher.Invoke(() => browser.RefreshSettings());
                 }
             }
             catch (Exception ex)

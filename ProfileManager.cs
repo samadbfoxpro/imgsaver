@@ -116,6 +116,8 @@ namespace imgsaver
                     existing.Name = profile.Name;
                     existing.ColorHex = profile.ColorHex;
                     existing.Icon = profile.Icon;
+                    existing.CustomImagePath = profile.CustomImagePath;
+                    existing.Description = profile.Description;
                     SaveProfiles(list);
                 }
             }
@@ -163,6 +165,33 @@ namespace imgsaver
                     if (!Directory.Exists(ProfilesDirectory)) Directory.CreateDirectory(ProfilesDirectory);
                     string path = Path.Combine(ProfilesDirectory, "always_ask.txt");
                     File.WriteAllText(path, value.ToString());
+                }
+                catch { }
+            }
+        }
+        public static string ProfileViewMode
+        {
+            get
+            {
+                try
+                {
+                    string path = Path.Combine(ProfilesDirectory, "view_mode.txt");
+                    if (File.Exists(path))
+                    {
+                        string mode = File.ReadAllText(path).Trim();
+                        if (mode == "List" || mode == "Grid") return mode;
+                    }
+                }
+                catch { }
+                return "Grid"; // Default is Grid
+            }
+            set
+            {
+                try
+                {
+                    if (!Directory.Exists(ProfilesDirectory)) Directory.CreateDirectory(ProfilesDirectory);
+                    string path = Path.Combine(ProfilesDirectory, "view_mode.txt");
+                    File.WriteAllText(path, value);
                 }
                 catch { }
             }

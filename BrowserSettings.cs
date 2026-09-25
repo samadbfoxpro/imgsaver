@@ -43,7 +43,7 @@ namespace imgsaver
         public double TargetInputPinY { get; set; } = 150;
         public double TargetActionPinX { get; set; } = 100;
         public double TargetActionPinY { get; set; } = 220;
-        public int AutoActionDelayMs { get; set; } = 300;
+        public int AutoActionDelayMs { get; set; } = 450;
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
         public bool LockExactDimensions { get; set; } = false;
@@ -55,21 +55,38 @@ namespace imgsaver
 
         public static BrowserSettings Load(BrowserProfile? profile = null)
         {
+            BrowserSettings settings = new BrowserSettings();
             try
             {
                 if (File.Exists(FilePath))
                 {
                     string json = File.ReadAllText(FilePath);
-                    var settings = System.Text.Json.JsonSerializer.Deserialize<BrowserSettings>(json) ?? new BrowserSettings();
+                    settings = System.Text.Json.JsonSerializer.Deserialize<BrowserSettings>(json) ?? new BrowserSettings();
                     if (string.IsNullOrEmpty(settings.ProxyMode))
                     {
                         settings.ProxyMode = settings.ProxyEnabled ? "custom" : "system";
                     }
-                    return settings;
                 }
             }
             catch { }
-            return new BrowserSettings();
+
+            try
+            {
+                string configPath = DataPathManager.GetSettingsFilePath("config.txt");
+                if (File.Exists(configPath))
+                {
+                    string[] lines = File.ReadAllLines(configPath);
+                    if (lines.Length > 16 && int.TryParse(lines[16].Trim(), out int w) && w > 0)
+                        settings.MinImageWidth = w;
+                    if (lines.Length > 17 && int.TryParse(lines[17].Trim(), out int h) && h > 0)
+                        settings.MinImageHeight = h;
+                    if (lines.Length > 18)
+                        settings.LockExactDimensions = lines[18].Trim().ToLower() == "true";
+                }
+            }
+            catch { }
+
+            return settings;
         }
 
         public void Save(BrowserProfile? profile = null)

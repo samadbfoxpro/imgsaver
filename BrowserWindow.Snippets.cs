@@ -203,21 +203,30 @@ namespace imgsaver
                                 button.innerText = '📋 BR Paste';
                                 button.style.position = 'absolute';
                                 button.style.zIndex = '999999999';
-                                button.style.background = 'linear-gradient(135deg, #FF9800, #F57C00)';
-                                button.style.color = 'white';
+                                button.style.background = '#222226';
+                                button.style.border = '1px solid #FF9800';
+                                button.style.color = '#F5F5F5';
                                 button.style.fontWeight = 'bold';
                                 button.style.fontSize = '14px';
-                                button.style.padding = '10px 18px';
+                                button.style.padding = '9px 18px';
                                 button.style.borderRadius = '24px';
-                                button.style.boxShadow = '0 5px 15px rgba(0,0,0,0.4)';
+                                button.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5)';
                                 button.style.cursor = 'pointer';
-                                button.style.opacity = '0.85';
-                                button.style.transition = 'opacity 0.2s, transform 0.1s';
+                                button.style.opacity = '0.9';
+                                button.style.transition = 'opacity 0.2s, background-color 0.2s, border-color 0.2s';
                                 button.style.userSelect = 'none';
                                 button.style.pointerEvents = 'auto';
 
-                                button.addEventListener('mouseenter', () => button.style.opacity = '1.0');
-                                button.addEventListener('mouseleave', () => button.style.opacity = '0.85');
+                                button.addEventListener('mouseenter', () => {
+                                    button.style.opacity = '1.0';
+                                    button.style.backgroundColor = '#2c2c32';
+                                    button.style.borderColor = '#FFA726';
+                                });
+                                button.addEventListener('mouseleave', () => {
+                                    button.style.opacity = '0.9';
+                                    button.style.backgroundColor = '#222226';
+                                    button.style.borderColor = '#FF9800';
+                                });
 
                                 document.body.appendChild(button);
                             }
@@ -1416,27 +1425,48 @@ window.addEventListener('focus', function() {
                 string pasteScript = $@"
                 (function() {{
                     try {{
-                        const x = {pin1X.ToString(System.Globalization.CultureInfo.InvariantCulture)};
-                        const y = {pin1Y.ToString(System.Globalization.CultureInfo.InvariantCulture)};
+                        const PIN_RADIUS = 19;
+                        const x = {pin1X.ToString(System.Globalization.CultureInfo.InvariantCulture)} + PIN_RADIUS;
+                        const y = {pin1Y.ToString(System.Globalization.CultureInfo.InvariantCulture)} + PIN_RADIUS;
                         
                         function findDeepInput(rootX, rootY) {{
-                            let el = document.elementFromPoint(rootX, rootY);
-                            if (!el) return null;
-                            if (el.tagName === 'IFRAME') {{
-                                try {{
-                                    const rect = el.getBoundingClientRect();
-                                    const innerDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
-                                    if (innerDoc && innerDoc.elementFromPoint) {{
-                                        const innerTarget = innerDoc.elementFromPoint(rootX - rect.left, rootY - rect.top);
-                                        if (innerTarget) return innerTarget;
+                            const pin1 = document.getElementById('imgsaver_pin_input');
+                            const pin2 = document.getElementById('imgsaver_pin_action');
+                            if (pin1) pin1.style.setProperty('pointer-events', 'none', 'important');
+                            if (pin2) pin2.style.setProperty('pointer-events', 'none', 'important');
+                            try {{
+                                let el = null;
+                                if (document.elementsFromPoint) {{
+                                    const list = document.elementsFromPoint(rootX, rootY);
+                                    for (let c of list) {{
+                                        if (c && c.id !== 'imgsaver_pin_input' && c.id !== 'imgsaver_pin_action') {{
+                                            el = c;
+                                            break;
+                                        }}
                                     }}
-                                }} catch (err) {{}}
+                                }}
+                                if (!el) el = document.elementFromPoint(rootX, rootY);
+                                if (!el) return null;
+
+                                if (el.tagName === 'IFRAME') {{
+                                    try {{
+                                        const rect = el.getBoundingClientRect();
+                                        const innerDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
+                                        if (innerDoc && innerDoc.elementFromPoint) {{
+                                            const innerTarget = innerDoc.elementFromPoint(rootX - rect.left, rootY - rect.top);
+                                            if (innerTarget) return innerTarget;
+                                        }}
+                                    }} catch (err) {{}}
+                                }}
+                                if (el.shadowRoot && el.shadowRoot.elementFromPoint) {{
+                                    const inner = el.shadowRoot.elementFromPoint(rootX, rootY);
+                                    if (inner) return inner;
+                                }}
+                                return el;
+                            }} finally {{
+                                if (pin1) pin1.style.setProperty('pointer-events', 'auto', 'important');
+                                if (pin2) pin2.style.setProperty('pointer-events', 'auto', 'important');
                             }}
-                            if (el.shadowRoot && el.shadowRoot.elementFromPoint) {{
-                                const inner = el.shadowRoot.elementFromPoint(rootX, rootY);
-                                if (inner) return inner;
-                            }}
-                            return el;
                         }}
 
                         let target = findDeepInput(x, y);
@@ -1479,7 +1509,8 @@ window.addEventListener('focus', function() {
                 await browser.CoreWebView2.ExecuteScriptAsync(pasteScript);
 
                 // Step 2: Touch/Click target action button (Pin 2) inside browser without taking over OS mouse/window
-                int delay = Math.Max(100, _currentSettings.AutoActionDelayMs);
+                // Comfortable delay so the user can see text pasted, and reactive frameworks (React/Vue) have time to enable the button
+                int delay = Math.Max(450, _currentSettings.AutoActionDelayMs);
                 await Task.Delay(delay);
 
                 await ExecuteAutoPinActionAsync();
@@ -1504,61 +1535,103 @@ window.addEventListener('focus', function() {
                 double pin2Y = _currentSettings.TargetActionPinY;
 
                 string clickScript = $@"
-                (function() {{
+                (async function() {{
                     try {{
-                        const x = {pin2X.ToString(System.Globalization.CultureInfo.InvariantCulture)};
-                        const y = {pin2Y.ToString(System.Globalization.CultureInfo.InvariantCulture)};
+                        const PIN_RADIUS = 19;
+                        const x = {pin2X.ToString(System.Globalization.CultureInfo.InvariantCulture)} + PIN_RADIUS;
+                        const y = {pin2Y.ToString(System.Globalization.CultureInfo.InvariantCulture)} + PIN_RADIUS;
                         
                         function findDeepTarget(rootX, rootY) {{
-                            let el = document.elementFromPoint(rootX, rootY);
-                            if (!el) return null;
-                            if (el.tagName === 'IFRAME') {{
-                                try {{
-                                    const rect = el.getBoundingClientRect();
-                                    const innerDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
-                                    if (innerDoc && innerDoc.elementFromPoint) {{
-                                        const innerTarget = innerDoc.elementFromPoint(rootX - rect.left, rootY - rect.top);
-                                        if (innerTarget) return innerTarget;
+                            const pin1 = document.getElementById('imgsaver_pin_input');
+                            const pin2 = document.getElementById('imgsaver_pin_action');
+                            if (pin1) pin1.style.setProperty('pointer-events', 'none', 'important');
+                            if (pin2) pin2.style.setProperty('pointer-events', 'none', 'important');
+                            try {{
+                                let el = null;
+                                if (document.elementsFromPoint) {{
+                                    const list = document.elementsFromPoint(rootX, rootY);
+                                    for (let c of list) {{
+                                        if (c && c.id !== 'imgsaver_pin_input' && c.id !== 'imgsaver_pin_action') {{
+                                            el = c;
+                                            break;
+                                        }}
                                     }}
-                                }} catch (err) {{}}
+                                }}
+                                if (!el) el = document.elementFromPoint(rootX, rootY);
+                                if (!el) return null;
+
+                                if (el.tagName === 'IFRAME') {{
+                                    try {{
+                                        const rect = el.getBoundingClientRect();
+                                        const innerDoc = el.contentDocument || (el.contentWindow && el.contentWindow.document);
+                                        if (innerDoc && innerDoc.elementFromPoint) {{
+                                            const innerTarget = innerDoc.elementFromPoint(rootX - rect.left, rootY - rect.top);
+                                            if (innerTarget) return innerTarget;
+                                        }}
+                                    }} catch (err) {{}}
+                                }}
+                                if (el.shadowRoot && el.shadowRoot.elementFromPoint) {{
+                                    const inner = el.shadowRoot.elementFromPoint(rootX, rootY);
+                                    if (inner) return inner;
+                                }}
+                                return el;
+                            }} finally {{
+                                if (pin1) pin1.style.setProperty('pointer-events', 'auto', 'important');
+                                if (pin2) pin2.style.setProperty('pointer-events', 'auto', 'important');
                             }}
-                            if (el.shadowRoot && el.shadowRoot.elementFromPoint) {{
-                                const inner = el.shadowRoot.elementFromPoint(rootX, rootY);
-                                if (inner) return inner;
-                            }}
-                            return el;
                         }}
 
                         let target = findDeepTarget(x, y);
-                        if (target) {{
-                            const btnLike = target.closest('button, [role=""button""], a, input[type=""submit""], input[type=""button""], div[tabindex]');
-                            if (btnLike) target = btnLike;
+                        if (!target) return;
 
-                            const opts = {{
-                                bubbles: true,
-                                cancelable: true,
-                                composed: true,
-                                view: window,
-                                clientX: x,
-                                clientY: y,
-                                pointerId: 1,
-                                width: 1,
-                                height: 1,
-                                pressure: 0.5,
-                                isPrimary: true,
-                                button: 0,
-                                buttons: 1
-                            }};
+                        const btnLike = target.closest('button, [role=""button""], a, input[type=""submit""], input[type=""button""], [tabindex], [onclick], [class*=""btn""], [class*=""button""]');
+                        const clickTarget = btnLike || target;
 
-                            try {{ target.dispatchEvent(new PointerEvent('pointerdown', opts)); }} catch (e) {{}}
-                            try {{ target.dispatchEvent(new MouseEvent('mousedown', opts)); }} catch (e) {{}}
-                            opts.buttons = 0;
-                            try {{ target.dispatchEvent(new PointerEvent('pointerup', opts)); }} catch (e) {{}}
-                            try {{ target.dispatchEvent(new MouseEvent('mouseup', opts)); }} catch (e) {{}}
-                            try {{ target.dispatchEvent(new MouseEvent('click', opts)); }} catch (e) {{}}
-                            if (typeof target.click === 'function') {{
-                                target.click();
+                        // If the button is temporarily disabled after input update, wait a brief moment for it to enable
+                        if (clickTarget.disabled || clickTarget.getAttribute('aria-disabled') === 'true') {{
+                            for (let i = 0; i < 6; i++) {{
+                                await new Promise(r => setTimeout(r, 50));
+                                if (!clickTarget.disabled && clickTarget.getAttribute('aria-disabled') !== 'true') break;
                             }}
+                        }}
+
+                        if (typeof clickTarget.focus === 'function') {{
+                            try {{ clickTarget.focus(); }} catch(e){{}}
+                        }}
+
+                        const rect = clickTarget.getBoundingClientRect ? clickTarget.getBoundingClientRect() : {{ left: x, top: y, width: 0, height: 0 }};
+                        const clickX = (rect.width > 0 && rect.height > 0) ? (rect.left + rect.width / 2) : x;
+                        const clickY = (rect.height > 0 && rect.height > 0) ? (rect.top + rect.height / 2) : y;
+
+                        const opts = {{
+                            bubbles: true,
+                            cancelable: true,
+                            composed: true,
+                            view: window,
+                            clientX: clickX,
+                            clientY: clickY,
+                            screenX: clickX,
+                            screenY: clickY,
+                            pointerId: 1,
+                            pointerType: 'mouse',
+                            width: 1,
+                            height: 1,
+                            pressure: 0.5,
+                            isPrimary: true,
+                            button: 0,
+                            buttons: 1
+                        }};
+
+                        try {{ clickTarget.dispatchEvent(new PointerEvent('pointerdown', opts)); }} catch (e) {{}}
+                        try {{ clickTarget.dispatchEvent(new MouseEvent('mousedown', opts)); }} catch (e) {{}}
+                        opts.buttons = 0;
+                        try {{ clickTarget.dispatchEvent(new PointerEvent('pointerup', opts)); }} catch (e) {{}}
+                        try {{ clickTarget.dispatchEvent(new MouseEvent('mouseup', opts)); }} catch (e) {{}}
+                        try {{ clickTarget.dispatchEvent(new MouseEvent('click', opts)); }} catch (e) {{}}
+                        if (typeof clickTarget.click === 'function') {{
+                            clickTarget.click();
+                        }} else if (typeof target.click === 'function') {{
+                            target.click();
                         }}
                     }} catch (e) {{}}
                 }})();";
