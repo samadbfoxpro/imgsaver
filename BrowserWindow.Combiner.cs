@@ -668,6 +668,10 @@ namespace imgsaver
                     Dispatcher.InvokeAsync(() => UpdateStatus($"⚡ Smart Combiner: Added {total} snippet(s)/text!", "Combiner"));
                     FlashCombinerSuccess();
 
+                    AppLogManager.Log("Combiner", "ترکیب پرامپت در پنجره مرورگر", 
+                        $"تعداد {total} مورد ({activeItems.Count} اسنیپت و {customTexts.Count} متن سفارشی) اعمال شد.", "SUCCESS", 
+                        $"ورودی اصلی:\n{cleanText}\n\nنتیجه ترکیب:\n{combinedResult}");
+
                     try
                     {
                         foreach (Window win in Application.Current.Windows)
@@ -675,10 +679,14 @@ namespace imgsaver
                             if (win is MiniClipboardWindow mc)
                             {
                                 mc.ApplyCombinerTitles(_combinerData);
+                                AppLogManager.Log("Bridge", "بروزرسانی عناوین MiniClip از مرورگر", "متد mc.ApplyCombinerTitles فراخوانی شد.");
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        AppLogManager.Log("Bridge", "خطا در بروزرسانی عناوین پنجره‌ها", ex.Message, "ERROR");
+                    }
 
                     return true;
                 }

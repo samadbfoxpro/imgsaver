@@ -82,6 +82,26 @@
 
                     <!-- Control Buttons -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,4,0">
+                        <Button x:Name="BtnLogViewer" Click="BtnLogViewer_Click"
+                                Width="26" Height="24" FontSize="9"
+                                Background="Transparent" Foreground="#8A9BB2"
+                                BorderThickness="0" Cursor="Hand"
+                                ToolTip="ضبط و مشاهده لاگ‌ها (Logs)"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                                        <TextBlock x:Name="txt" Text="📋" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#121A30"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
                         <Button x:Name="BtnCompact" Click="BtnCompact_Click"
                                 Width="26" Height="24" FontSize="9"
                                 Background="Transparent" Foreground="#8A9BB2"
@@ -946,6 +966,21 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="bd" Property="Background" Value="#1E293B"/>
                                                 <Setter TargetName="bd" Property="BorderBrush" Value="#059669"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button x:Name="BtnToggleAutoQuickPaste" Click="BtnToggleAutoQuickPaste_Click" Height="28" Margin="2" Cursor="Hand" ToolTip="پیست و کلیک خودکار: فعال/متوقف (Auto Quick Paste &amp; Action)">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bd" Background="#0C1428" CornerRadius="6" BorderBrush="#1E293B" BorderThickness="1">
+                                             <TextBlock x:Name="txt" Text="{DynamicResource Lbl_Auto_Pst}" FontSize="9" FontWeight="Bold" Foreground="#38BDF8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background" Value="#1E293B"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>

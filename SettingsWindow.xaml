@@ -113,6 +113,16 @@
                         <TextBox x:Name="TxtAutoSaveCount" Text="1" Width="50" Height="28" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" 
                                  Padding="2,0" Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource ForegroundBrush}" BorderBrush="{StaticResource BorderBrush}"/>
                     </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="{DynamicResource Lbl_Hover_Preview_Scale}" VerticalAlignment="Center" Foreground="{StaticResource ForegroundMutedBrush}" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="CmbHoverPreviewScale" Width="140" Height="28" VerticalContentAlignment="Center">
+                            <ComboBoxItem Content="{DynamicResource Lbl_Preview_Scale_25}" Tag="25"/>
+                            <ComboBoxItem Content="{DynamicResource Lbl_Preview_Scale_50}" Tag="50"/>
+                            <ComboBoxItem Content="{DynamicResource Lbl_Preview_Scale_75}" Tag="75"/>
+                            <ComboBoxItem Content="{DynamicResource Lbl_Preview_Scale_100}" Tag="100"/>
+                        </ComboBox>
+                    </StackPanel>
                     <Border Height="1" Background="{StaticResource BorderBrush}" Opacity="0.3" Margin="0,0,0,15"/>
 
                     <TextBlock Text="{DynamicResource Lbl_Min_Dimensions}" FontSize="14" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource ForegroundBrush}"/>

@@ -314,9 +314,6 @@
                         <Button x:Name="BtnBrowserSettings" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnBrowserSettings_Click" ToolTip="تنظیمات">
                             <Path Data="{StaticResource IconSettings}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
-                        <Button x:Name="BtnBrowserLock" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnAppLock_Click" ToolTip="قفل سریع برنامه (Ctrl+L)">
-                            <Path Data="{StaticResource IconLock}" Fill="#F87171" Width="14" Height="14" Stretch="Uniform"/>
-                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>

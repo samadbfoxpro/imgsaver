@@ -47,6 +47,7 @@ namespace imgsaver
         public int MinImageWidth { get; set; } = 50;
         public int MinImageHeight { get; set; } = 50;
         public bool LockExactDimensions { get; set; } = false;
+        public int HoverPreviewScale { get; set; } = 100;
 
         // List of hosts that should not use page cache (only cookies/login cache)
         public List<string> NoCacheHosts { get; set; } = new List<string>();
@@ -82,6 +83,8 @@ namespace imgsaver
                         settings.MinImageHeight = h;
                     if (lines.Length > 18)
                         settings.LockExactDimensions = lines[18].Trim().ToLower() == "true";
+                    if (lines.Length > 19 && int.TryParse(lines[19].Trim(), out int scale) && (scale == 25 || scale == 50 || scale == 75 || scale == 100))
+                        settings.HoverPreviewScale = scale;
                 }
             }
             catch { }

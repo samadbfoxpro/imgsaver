@@ -52,6 +52,11 @@
     <sys:String x:Key="Chk_Use_Tag_Replacer">Use Tag Replacer for Mini-Clip combination</sys:String>
     <sys:String x:Key="Lbl_Tag_Prefix">Tag Prefix (default: PH_):</sys:String>
     <sys:String x:Key="Lbl_Language">App Language:</sys:String>
+    <sys:String x:Key="Lbl_Hover_Preview_Scale">Hover Preview Size:</sys:String>
+    <sys:String x:Key="Lbl_Preview_Scale_25">25% (Small)</sys:String>
+    <sys:String x:Key="Lbl_Preview_Scale_50">50% (Medium)</sys:String>
+    <sys:String x:Key="Lbl_Preview_Scale_75">75% (Large)</sys:String>
+    <sys:String x:Key="Lbl_Preview_Scale_100">100% (Original Size)</sys:String>
 
     <!-- MiniClipboardWindow -->
     <sys:String x:Key="Lbl_MiniClip_Title">Mini Clip</sys:String>
@@ -68,6 +73,7 @@
     <sys:String x:Key="Lbl_Copy_Ex">COPY EX</sys:String>
     <sys:String x:Key="Lbl_Br_Paste">BR PASTE</sys:String>
     <sys:String x:Key="Lbl_Auto_Act">AUTO ACT</sys:String>
+    <sys:String x:Key="Lbl_Auto_Pst">AUTO PST</sys:String>
     <sys:String x:Key="Lbl_Man_Ex">MAN EX</sys:String>
     <sys:String x:Key="Lbl_Base_Pr">BASE PR</sys:String>
     <sys:String x:Key="Lbl_Ext_Fl">EXT FL</sys:String>

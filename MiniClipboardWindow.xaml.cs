@@ -123,6 +123,20 @@ namespace imgsaver
             set { _autoSaveDelaySeconds = value; SaveConfigSettings(); }
         }
 
+        private int _hoverPreviewScale = 100;
+        public int HoverPreviewScale
+        {
+            get => _hoverPreviewScale;
+            set
+            {
+                if (value == 25 || value == 50 || value == 75 || value == 100)
+                {
+                    _hoverPreviewScale = value;
+                    SaveConfigSettings();
+                }
+            }
+        }
+
         public void SaveConfigSettings()
         {
             try
@@ -134,6 +148,7 @@ namespace imgsaver
                 if (lines.Length > 5) lines[5] = _autoSaveThreshold.ToString();
                 if (lines.Length > 14) lines[14] = _autoSaveDelayEnabled.ToString().ToLower();
                 if (lines.Length > 15) lines[15] = _autoSaveDelaySeconds.ToString();
+                if (lines.Length > 19) lines[19] = _hoverPreviewScale.ToString();
                 File.WriteAllLines(configPath, lines);
             }
             catch { }
@@ -619,6 +634,8 @@ namespace imgsaver
             RefreshAutoImport();
             LoadNegativePromptState();
             UpdateCombinerToggleVisual();
+            BrowserWindow.AutoQuickPastePausedChanged += OnAutoQuickPastePausedChanged;
+            UpdateAutoQuickPasteToggleVisual();
         }
 
         private void UpdateCombinerToggleVisual()
@@ -748,6 +765,8 @@ namespace imgsaver
                     _dimensionWidth = bSettings.MinImageWidth > 0 ? bSettings.MinImageWidth : 50;
                     _dimensionHeight = bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50;
                     _lockExactDimensions = bSettings.LockExactDimensions;
+                    if (bSettings.HoverPreviewScale == 25 || bSettings.HoverPreviewScale == 50 || bSettings.HoverPreviewScale == 75 || bSettings.HoverPreviewScale == 100)
+                        _hoverPreviewScale = bSettings.HoverPreviewScale;
                 }
                 catch { }
 
@@ -766,6 +785,8 @@ namespace imgsaver
                 _autoCopyTagReplacerOutput = lines.Length <= 13 || lines[13].Trim().ToLower() == "true";
                 _autoSaveDelayEnabled = lines.Length > 14 && lines[14].Trim().ToLower() == "true";
                 if (lines.Length > 15 && int.TryParse(lines[15].Trim(), out int delaySec)) _autoSaveDelaySeconds = delaySec;
+                if (lines.Length > 19 && int.TryParse(lines[19].Trim(), out int hScale) && (hScale == 25 || hScale == 50 || hScale == 75 || hScale == 100))
+                    _hoverPreviewScale = hScale;
 
                 if (lines.Length < 4) return;
 
@@ -969,11 +990,35 @@ namespace imgsaver
             catch { }
         }
 
+        private void BtnLogViewer_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                foreach (Window w in System.Windows.Application.Current.Windows)
+                {
+                    if (w is LogViewerWindow lv && lv.IsLoaded)
+                    {
+                        if (lv.WindowState == WindowState.Minimized) lv.WindowState = WindowState.Normal;
+                        lv.Show();
+                        lv.Activate();
+                        return;
+                    }
+                }
+                var logWin = new LogViewerWindow();
+                logWin.Show();
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show("Error opening Log Viewer: " + ex.Message, "Error");
+            }
+        }
+
         private void BtnDisable_Click(object sender, RoutedEventArgs e) => IsDisabled = !IsDisabled;
         private void BtnCompact_Click(object sender, RoutedEventArgs e) => IsCompactMode = !IsCompactMode;
 
         private void MiniClipboardWindow_Closed(object sender, EventArgs e)
         {
+            BrowserWindow.AutoQuickPastePausedChanged -= OnAutoQuickPastePausedChanged;
             ExtraFloatBridge.ExtraTitleConfirmed -= OnExtraTitleConfirmed;
             _imageHoverTimer?.Stop();
             _hoverPreviewWindow?.Close();
@@ -1171,6 +1216,7 @@ namespace imgsaver
 
                     if (PromptCombinerEngine.IsPersianText(rawText))
                     {
+                        AppLogManager.Log("MiniClip", "دریافت متن فارسی در کلیپ‌بورد", $"متن فارسی به عنوان عنوان ذخیره می‌شود.", "INFO", rawText);
                         if (!IsTitleLocked)
                         {
                             TxtTitle.Text = rawText.Trim();
@@ -1179,6 +1225,11 @@ namespace imgsaver
                             TxtTitle.Focus();
                             UpdateState();
                             CheckAutoSaveTrigger();
+                            AppLogManager.Log("MiniClip", "تنظیم فیلد عنوان مینی‌کلیپ‌برد", $"عنوان به '{TxtTitle.Text}' تغییر یافت.", "SUCCESS");
+                        }
+                        else
+                        {
+                            AppLogManager.Log("MiniClip", "عنوان قفل است", "فیلد عنوان قفل بوده و تغییر نکرد.", "WARN");
                         }
                         return;
                     }
@@ -1186,7 +1237,13 @@ namespace imgsaver
                     string text = FilterEnglishOnly(rawText);
                     if (!string.IsNullOrWhiteSpace(text))
                     {
-                        if (Regex.IsMatch(text.Trim(), @"^\d{4,}")) return;
+                        AppLogManager.Log("MiniClip", "دریافت پرامپت انگلیسی در کلیپ‌بورد", $"طول متن: {text.Length} کاراکتر", "INFO", text);
+
+                        if (Regex.IsMatch(text.Trim(), @"^\d{4,}"))
+                        {
+                            AppLogManager.Log("MiniClip", "متن عددی نادیده گرفته شد", text.Trim(), "WARN");
+                            return;
+                        }
 
                         bool wasCombined = false;
                         bool isCombinerEnabled = false;
@@ -1229,6 +1286,10 @@ namespace imgsaver
                                         if (combined != text)
                                         {
                                             wasCombined = true;
+                                            AppLogManager.Log("Combiner", "ترکیب پرامپت در MiniClip", 
+                                                $"پرامپت با {activeItems.Count} اسنیپت فعال و {customTexts.Count} متن سفارشی ترکیب شد.", "SUCCESS",
+                                                $"ورودی:\n{text}\n\nترکیب شده:\n{combined}");
+
                                             if (combinerData.AutoCaptureBasePrompt)
                                             {
                                                 try
@@ -1246,12 +1307,13 @@ namespace imgsaver
                                             text = combined;
                                             SetClipboardTextIgnoringNextChange(combined + "\u200B");
                                             try
-                                            {
+                                             {
                                                 foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
                                                 {
                                                     if (win is BrowserWindow bw)
                                                     {
                                                         bw.FlashCombinerSuccess();
+                                                        AppLogManager.Log("Bridge", "فلش پنجره مرورگر", "اطلاع موفقیت کمباینر به BrowserWindow ارسال شد.");
                                                     }
                                                 }
                                             }
@@ -1261,13 +1323,17 @@ namespace imgsaver
                                     else
                                     {
                                         wasCombined = true;
+                                        AppLogManager.Log("Combiner", "متن دارای علامت ZWSP", "متن قبلاً ترکیب شده است. از ترکیب مجدد خودداری شد.");
                                     }
 
                                     ApplyCombinerTitles(combinerData);
                                 }
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            AppLogManager.Log("Combiner", "خطا در ترکیب پرامپت در MiniClip", ex.Message, "ERROR");
+                        }
 
                         bool isReplacing = _hasPositivePrompt;
 
@@ -1284,30 +1350,42 @@ namespace imgsaver
                             CursorBadgeNotification.ShowCopied("📋 Copied!");
                         }
 
-                        if (text == _positivePrompt || text == _negativePrompt) return;
-                        if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt) return;
+                        if (text == _positivePrompt || text == _negativePrompt)
+                        {
+                            AppLogManager.Log("MiniClip", "متن تکراری نادیده گرفته شد", "متن با پرامپت مثبت یا منفی فعلی یکسان است.", "WARN");
+                            return;
+                        }
+                        if (!_replacePositivePromptOnClipboardText && _hasPositivePrompt)
+                        {
+                            AppLogManager.Log("MiniClip", "عدم جایگزینی پرامپت مثبت", "تنظیم جایگزینی پرامپت مثبت غیرفعال است.", "WARN");
+                            return;
+                        }
 
                         if (!_hasPositivePrompt)
                         {
                             _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓"; TxtPositiveCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
+                            AppLogManager.Log("MiniClip", "تخصیص پرامپت مثبت (Positive)", "پرامپت مثبت دریافت و تنظیم شد.", "SUCCESS", text);
                         }
                         else if (!_hasNegativePrompt && !IsNegativeLocked)
                         {
                             NegativePrompt = text; _hasNegativePrompt = true;
                             TxtNegativeCheck.Text = "✓"; TxtNegativeCheck.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#89D185"));
                             IsNegativeLocked = true; // Auto-lock after receiving
+                            AppLogManager.Log("MiniClip", "تخصیص پرامپت منفی (Negative)", "پرامپت منفی تنظیم و قفل خودکار شد.", "SUCCESS", text);
                         }
                         else if (!IsNegativeLocked)
                         {
                             _basePositivePrompt = _negativePrompt; _positivePrompt = _negativePrompt; NegativePrompt = text; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓"; TxtNegativeCheck.Text = "✓";
                             IsNegativeLocked = true; // Auto-lock after receiving
+                            AppLogManager.Log("MiniClip", "جابجایی و تخصیص پرامپت منفی", "پرامپت منفی قبلی به مثبت منتقل شد و پرامپت منفی جدید ثبت گردید.", "SUCCESS", text);
                         }
                         else if (IsNegativeLocked)
                         {
                             _basePositivePrompt = text; _positivePrompt = text; _hasPositivePrompt = true; UpdatePositivePromptToolTip();
                             TxtPositiveCheck.Text = "✓";
+                            AppLogManager.Log("MiniClip", "جایگزینی پرامپت مثبت (منفی قفل است)", "پرامپت مثبت با متن جدید به‌روزرسانی شد.", "SUCCESS", text);
                         }
                         UpdateState();
                         CheckAutoSaveTrigger();
@@ -1315,15 +1393,25 @@ namespace imgsaver
                         // If browser auto quick paste & action is enabled, forward prompt to active browser window
                         try
                         {
+                            int activeBrowserCount = 0;
                             foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
                             {
                                 if (win is BrowserWindow bw && bw.IsLoaded)
                                 {
+                                    activeBrowserCount++;
+                                    AppLogManager.Log("Bridge", "ارسال پرامپت به پنجره مرورگر", $"ارسال پرامپت به مرورگر جهت QuickPaste (مرورگر #{activeBrowserCount})", "INFO");
                                     _ = bw.ExecuteAutoQuickPasteAndActionAsync(text);
                                 }
                             }
+                            if (activeBrowserCount == 0 && AppLogManager.IsRecording)
+                            {
+                                AppLogManager.Log("Bridge", "هیچ مرورگر فعالی یافت نشد", "هیچ پنجره BrowserWindow بازی برای دریافت پرامپت وجود ندارد.", "WARN");
+                            }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            AppLogManager.Log("Bridge", "خطا در ارسال پرامپت به مرورگر", ex.Message, "ERROR");
+                        }
                     }
                 }
             }
@@ -1351,11 +1439,13 @@ namespace imgsaver
                 }
                 if (activeTitles.Count > 0)
                 {
+                    string joinedTitles = string.Join(" - ", activeTitles);
+                    AppLogManager.Log("MiniClip", "اعمال عناوین کمباینر در عنوان فرعی", $"عناوین فعال: {joinedTitles}", "INFO");
                     Dispatcher.InvokeAsync(() =>
                     {
                         IsAdditionalTitleVisible = true;
                         IsAdditionalTitleEnabled = true;
-                        AdditionalTitle = string.Join(" - ", activeTitles);
+                        AdditionalTitle = joinedTitles;
                     });
                 }
             }
@@ -1540,15 +1630,35 @@ namespace imgsaver
 
                 _hoverPreviewImageControl.Source = bitmap;
 
-                // Determine display size preserving aspect ratio (Max 480x480, Min 180x180)
+                // Determine display size preserving aspect ratio based on configured percentage (25%, 50%, 75%, 100%)
                 double origW = bitmap.PixelWidth > 0 ? bitmap.PixelWidth : 400;
                 double origH = bitmap.PixelHeight > 0 ? bitmap.PixelHeight : 400;
-                double maxDim = 460.0;
-                double scale = Math.Min(maxDim / origW, maxDim / origH);
-                if (scale > 1.0) scale = 1.0; // Don't upscale tiny images excessively
-                
-                double targetW = Math.Max(180, origW * scale) + 16;
-                double targetH = Math.Max(180, origH * scale) + 16;
+
+                int scalePercent = (_hoverPreviewScale == 25 || _hoverPreviewScale == 50 || _hoverPreviewScale == 75 || _hoverPreviewScale == 100)
+                    ? _hoverPreviewScale
+                    : 100;
+
+                double scaleFactor = scalePercent / 100.0;
+                double scaledW = origW * scaleFactor;
+                double scaledH = origH * scaleFactor;
+
+                // Restrict maximum size so it never exceeds 85% of screen work area
+                double maxDimW = Math.Max(300, SystemParameters.WorkArea.Width * 0.85);
+                double maxDimH = Math.Max(300, SystemParameters.WorkArea.Height * 0.85);
+
+                if (scaledW > maxDimW || scaledH > maxDimH)
+                {
+                    double fitRatio = Math.Min(maxDimW / scaledW, maxDimH / scaledH);
+                    scaledW *= fitRatio;
+                    scaledH *= fitRatio;
+                }
+
+                // Minimum dimensions to ensure clean rendering
+                scaledW = Math.Max(60, scaledW);
+                scaledH = Math.Max(60, scaledH);
+
+                double targetW = Math.Round(scaledW) + 16;
+                double targetH = Math.Round(scaledH) + 16;
 
                 _hoverPreviewWindow.Width = targetW;
                 _hoverPreviewWindow.Height = targetH;
@@ -1561,6 +1671,10 @@ namespace imgsaver
                 if (targetLeft + targetW > SystemParameters.WorkArea.Right)
                 {
                     targetLeft = this.Left - targetW - 8;
+                }
+                if (targetLeft < SystemParameters.WorkArea.Left)
+                {
+                    targetLeft = SystemParameters.WorkArea.Left + 10;
                 }
 
                 // Adjust vertical position to stay within work area
@@ -1926,7 +2040,11 @@ namespace imgsaver
         private void BtnExtraMenuPageOne_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 0;
         private void BtnExtraMenuPageTwo_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 1;
         private void BtnExtraMenuPageThree_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 2;
-        private void BtnExtraMenuPageFour_Click(object sender, RoutedEventArgs e) => ExtraMenuPage = 3;
+        private void BtnExtraMenuPageFour_Click(object sender, RoutedEventArgs e)
+        {
+            ExtraMenuPage = 3;
+            Dispatcher.InvokeAsync(UpdateAutoQuickPasteToggleVisual, DispatcherPriority.Loaded);
+        }
         private bool TrySetMiniExtraTemplate(string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
@@ -2297,6 +2415,44 @@ namespace imgsaver
                 }
             }
             catch { }
+        }
+
+        private void BtnToggleAutoQuickPaste_Click(object sender, RoutedEventArgs e)
+        {
+            BrowserWindow.ToggleAutoQuickPasteGlobally();
+            UpdateAutoQuickPasteToggleVisual();
+        }
+
+        private void OnAutoQuickPastePausedChanged(bool isPaused)
+        {
+            Dispatcher.InvokeAsync(UpdateAutoQuickPasteToggleVisual);
+        }
+
+        private void UpdateAutoQuickPasteToggleVisual()
+        {
+            if (BtnToggleAutoQuickPaste == null) return;
+            bool isPaused = BrowserWindow.IsAutoQuickPastePaused;
+            bool isActive = !isPaused;
+
+            var txt = BtnToggleAutoQuickPaste.Template?.FindName("txt", BtnToggleAutoQuickPaste) as TextBlock;
+            var bd = BtnToggleAutoQuickPaste.Template?.FindName("bd", BtnToggleAutoQuickPaste) as Border;
+
+            if (txt != null)
+            {
+                txt.Foreground = isActive 
+                    ? new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#38BDF8")) 
+                    : new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#94A3B8"));
+            }
+            if (bd != null)
+            {
+                bd.BorderBrush = isActive 
+                    ? new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#0284C7")) 
+                    : new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1E293B"));
+            }
+
+            BtnToggleAutoQuickPaste.ToolTip = isActive 
+                ? "پیست و کلیک خودکار: فعال (برای توقف موقت کلیک کنید)" 
+                : "پیست و کلیک خودکار: متوقف است (برای فعال‌سازی کلیک کنید)";
         }
 
         private async void TriggerBrowserQuickPasteIfReady()

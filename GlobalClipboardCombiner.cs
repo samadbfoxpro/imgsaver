@@ -77,7 +77,14 @@ namespace imgsaver
             try
             {
                 var combinerData = PromptCombinerStore.Load();
-                if (combinerData == null || !combinerData.IsEnabled) return;
+                if (combinerData == null || !combinerData.IsEnabled)
+                {
+                    if (AppLogManager.IsRecording)
+                    {
+                        AppLogManager.Log("Combiner", "رویداد کلیپ‌بورد گلوبال", "کمباینر هوشمند در تنظیمات غیرفعال است.");
+                    }
+                    return;
+                }
 
                 // Check host availability: Combine works if IsStandaloneGlobalEnabled is true, OR MiniClipboardWindow is open, OR BrowserWindow is open!
                 if (!combinerData.IsStandaloneGlobalEnabled)
@@ -96,20 +103,37 @@ namespace imgsaver
                     }
                     catch { }
 
-                    if (!isHostActive) return;
+                    if (!isHostActive)
+                    {
+                        if (AppLogManager.IsRecording)
+                        {
+                            AppLogManager.Log("Combiner", "عدم حضور پنجره فعال", "هیچ‌کدام از پنجره‌های MiniClipboard یا BrowserWindow باز نیستند و حالت Standalone نیز غیرفعال است.");
+                        }
+                        return;
+                    }
                 }
 
                 string rawText = SafeClipboardGetText();
                 if (string.IsNullOrWhiteSpace(rawText)) return;
 
                 // Ignore if marked with zero-width space (already combined by any component)
-                if (rawText.EndsWith("\u200B") || rawText.Contains("\u200B")) return;
+                if (rawText.EndsWith("\u200B") || rawText.Contains("\u200B"))
+                {
+                    AppLogManager.Log("Combiner", "تشخیص نشانگر ZWSP", "متن قبلاً ترکیب شده است (\u200B). از ترکیب مجدد جلوگیری شد.", "INFO", rawText);
+                    return;
+                }
 
                 // Ignore Persian / Arabic text (it is meant as a title for MiniClipboard, NOT a prompt to combine!)
-                if (PromptCombinerEngine.IsPersianText(rawText)) return;
+                if (PromptCombinerEngine.IsPersianText(rawText))
+                {
+                    AppLogManager.Log("Combiner", "تشخیص متن فارسی/عربی", "متن فارسی به عنوان عنوان برای مینی‌کلیپ‌برد استفاده می‌شود نه پرامپت.", "INFO", rawText);
+                    return;
+                }
 
                 string text = rawText.Trim();
                 if (string.IsNullOrWhiteSpace(text)) return;
+
+                AppLogManager.Log("Combiner", "دریافت متن در کمباینر", $"طول متن: {text.Length} کاراکتر", "INFO", text);
 
                 // 1. Auto Base Prompt Capture (Runs whenever AutoCaptureBasePrompt is enabled!)
                 if (combinerData.AutoCaptureBasePrompt)
@@ -121,6 +145,8 @@ namespace imgsaver
                         if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
                             System.IO.Directory.CreateDirectory(dir);
                         System.IO.File.WriteAllText(configPath, text);
+
+                        AppLogManager.Log("Combiner", "ضبط خودکار Base Prompt", "پرامپت پایه به‌روزرسانی شد.", "SUCCESS", text);
 
                         // Notify open windows to refresh Base Prompt editor UI
                         System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
@@ -134,7 +160,10 @@ namespace imgsaver
                             }
                         });
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        AppLogManager.Log("Combiner", "خطا در ضبط Base Prompt", ex.Message, "ERROR");
+                    }
                 }
 
                 // 2. Snippet Combining
@@ -149,7 +178,11 @@ namespace imgsaver
                     .Select(f => f.CustomInputText.Trim())
                     .ToList();
 
-                if (activeItems.Count == 0 && customTexts.Count == 0) return;
+                if (activeItems.Count == 0 && customTexts.Count == 0)
+                {
+                    AppLogManager.Log("Combiner", "اسنیپت فعالی انتخاب نشده", "هیچ اسنیپت یا متن سفارشی فعالی برای ترکیب وجود ندارد.", "WARN");
+                    return;
+                }
 
                 string combined;
                 if (combinerData.PlacementMode == CombinerPlacementMode.PerFolder)
@@ -169,6 +202,10 @@ namespace imgsaver
                     SafeClipboardSetText(combined + "\u200B");
                     CursorBadgeNotification.ShowCombiner("⚡ Combined!");
 
+                    AppLogManager.Log("Combiner", "ترکیب پرامپت با موفقیت انجام شد", 
+                        $"متن پرامپت با {activeItems.Count} اسنیپت و {customTexts.Count} ورودی پوشه ترکیب شد.", "SUCCESS",
+                        $"متن ورودی:\n{text}\n\nمتن نهایی روی کلیپ‌بورد:\n{combined}");
+
                     try
                     {
                         foreach (Window win in System.Windows.Application.Current.Windows)
@@ -176,17 +213,25 @@ namespace imgsaver
                             if (win is BrowserWindow bw)
                             {
                                 bw.FlashCombinerSuccess();
+                                AppLogManager.Log("Bridge", "اطلاع‌رسانی به مرورگر", "فلش موفقیت‌آمیز در پنجره مرورگر اجرا شد.");
                             }
                             else if (win is MiniClipboardWindow mc)
                             {
                                 mc.ApplyCombinerTitles(combinerData);
+                                AppLogManager.Log("Bridge", "اعمال عناوین کمباینر به MiniClip", "عناوین اسنیپت‌ها در مینی‌کلیپ‌برد اعمال شدند.");
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        AppLogManager.Log("Bridge", "خطا در اطلاع‌رسانی بین پنجره‌ها", ex.Message, "ERROR");
+                    }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AppLogManager.Log("Combiner", "خطا در پردازش کمباینر", ex.Message, "ERROR");
+            }
             finally
             {
                 _isProcessing = false;

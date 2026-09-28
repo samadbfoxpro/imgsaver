@@ -63,8 +63,20 @@ namespace imgsaver
         private long _lastBytesSent = 0;
 
         // Auto Quick Paste Temporary Pause State
-        private bool _isAutoQuickPastePaused = false;
-        public bool IsAutoQuickPastePaused => _isAutoQuickPastePaused;
+        private static bool _isAutoQuickPastePaused = false;
+        public static bool IsAutoQuickPastePaused
+        {
+            get => _isAutoQuickPastePaused;
+            set
+            {
+                if (_isAutoQuickPastePaused != value)
+                {
+                    _isAutoQuickPastePaused = value;
+                    AutoQuickPastePausedChanged?.Invoke(_isAutoQuickPastePaused);
+                }
+            }
+        }
+        public static event Action<bool>? AutoQuickPastePausedChanged;
 
         // Environment for this profile window
         private CoreWebView2Environment? _environment;
@@ -377,7 +389,7 @@ namespace imgsaver
 
             if (isEnabledInSettings)
             {
-                if (_isAutoQuickPastePaused)
+                if (IsAutoQuickPastePaused)
                 {
                     if (IconAutoQuickPasteActive != null) IconAutoQuickPasteActive.Visibility = Visibility.Collapsed;
                     if (IconAutoQuickPastePaused != null) IconAutoQuickPastePaused.Visibility = Visibility.Visible;
@@ -392,26 +404,58 @@ namespace imgsaver
             }
         }
 
-        private void BtnToggleAutoQuickPaste_Click(object sender, RoutedEventArgs e)
+        public void ReapplySettingsToAllWebViews()
         {
-            _isAutoQuickPastePaused = !_isAutoQuickPastePaused;
-            UpdateAutoQuickPasteToggleUI();
-
-            // Re-apply settings to webviews so pins/scripts know whether to react
             try
             {
                 if (BrowserTabs != null)
                 {
                     foreach (TabItem tab in BrowserTabs.Items)
                     {
-                        if (TryGetTabState(tab, out var state) && state.PrimaryWebView != null)
+                        if (TryGetTabState(tab, out var state))
                         {
-                            ApplyBrowserSettingsTo(state.PrimaryWebView);
+                            if (state.PrimaryWebView != null) ApplyBrowserSettingsTo(state.PrimaryWebView);
+                            if (state.SecondaryWebView != null) ApplyBrowserSettingsTo(state.SecondaryWebView);
                         }
                     }
                 }
             }
             catch { }
+        }
+
+        public static void ToggleAutoQuickPasteGlobally()
+        {
+            var settings = BrowserSettings.Load();
+            if (!settings.EnableAutoQuickPaste)
+            {
+                settings.EnableAutoQuickPaste = true;
+                settings.Save();
+                IsAutoQuickPastePaused = false;
+            }
+            else
+            {
+                IsAutoQuickPastePaused = !IsAutoQuickPastePaused;
+            }
+
+            foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+            {
+                if (win is BrowserWindow bw && bw.IsLoaded)
+                {
+                    if (bw._currentSettings != null) bw._currentSettings.EnableAutoQuickPaste = true;
+                    bw.UpdateAutoQuickPasteToggleUI();
+                    bw.ReapplySettingsToAllWebViews();
+                }
+            }
+
+            AppLogManager.Log("Browser", 
+                IsAutoQuickPastePaused ? "توقف موقت پیست و کلیک خودکار" : "فعال‌سازی پیست و کلیک خودکار",
+                IsAutoQuickPastePaused ? "قابلیت AutoQuickPaste موقتاً متوقف شد." : "قابلیت AutoQuickPaste مجدداً فعال شد.",
+                IsAutoQuickPastePaused ? "WARN" : "SUCCESS");
+        }
+
+        private void BtnToggleAutoQuickPaste_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleAutoQuickPasteGlobally();
         }
 
         private bool ProxySettingsChanged()

@@ -62,6 +62,8 @@ namespace imgsaver
                         TxtMinImageHeight.Text = minH.ToString();
                     if (lines.Length > 18)
                         ChkLockExactDimensions.IsChecked = lines[18].Trim().ToLower() == "true";
+                    if (lines.Length > 19 && int.TryParse(lines[19].Trim(), out int hs) && hs > 0)
+                        SelectHoverPreviewScale(CmbHoverPreviewScale, hs);
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath(GalleryConfigFileName);
@@ -78,6 +80,8 @@ namespace imgsaver
                     TxtMinImageHeight.Text = settings.MinImageHeight.ToString();
                 if (ChkLockExactDimensions.IsChecked != true)
                     ChkLockExactDimensions.IsChecked = settings.LockExactDimensions;
+                if (CmbHoverPreviewScale.SelectedIndex < 0)
+                    SelectHoverPreviewScale(CmbHoverPreviewScale, settings.HoverPreviewScale > 0 ? settings.HoverPreviewScale : 100);
 
                 RecordingManager.LoadState();
                 ChkSequentialMode.IsChecked = RecordingManager.SequentialMode;
@@ -143,6 +147,10 @@ namespace imgsaver
                 if (int.TryParse(TxtMinImageHeight.Text, out int parsedH) && parsedH > 0) minHeight = parsedH;
                 string lockExact = (ChkLockExactDimensions.IsChecked == true).ToString().ToLower();
 
+                string hoverScale = "100";
+                if (CmbHoverPreviewScale?.SelectedItem is ComboBoxItem hItem && hItem.Tag != null)
+                    hoverScale = hItem.Tag.ToString();
+
                 File.WriteAllLines(configPath, new string[] {
                     path,
                     onlyFavs,
@@ -162,7 +170,8 @@ namespace imgsaver
                     autoSaveDelaySeconds,
                     minWidth.ToString(),
                     minHeight.ToString(),
-                    lockExact
+                    lockExact,
+                    hoverScale
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);
@@ -172,6 +181,7 @@ namespace imgsaver
                 settings.MinImageWidth = minWidth;
                 settings.MinImageHeight = minHeight;
                 settings.LockExactDimensions = ChkLockExactDimensions.IsChecked == true;
+                if (int.TryParse(hoverScale, out int hs)) settings.HoverPreviewScale = hs;
                 settings.Save();
 
                 RecordingManager.SequentialMode = ChkSequentialMode.IsChecked == true;
@@ -272,6 +282,20 @@ namespace imgsaver
             SaveSettings();
             this.DialogResult = true;
             this.Close();
+        }
+
+        private void SelectHoverPreviewScale(System.Windows.Controls.ComboBox cmb, int scale)
+        {
+            if (cmb == null) return;
+            switch (scale)
+            {
+                case 25: cmb.SelectedIndex = 0; break;
+                case 50: cmb.SelectedIndex = 1; break;
+                case 75: cmb.SelectedIndex = 2; break;
+                case 100:
+                default:
+                    cmb.SelectedIndex = 3; break;
+            }
         }
 
         private void ReloadSharedDataStores()

@@ -1408,17 +1408,31 @@ window.addEventListener('focus', function() {
         /// </summary>
         public async Task ExecuteAutoQuickPasteAndActionAsync(string textToPaste)
         {
-            if (_currentSettings == null || !_currentSettings.EnableAutoQuickPaste || _isAutoQuickPastePaused) return;
+            if (_currentSettings == null || !_currentSettings.EnableAutoQuickPaste || _isAutoQuickPastePaused)
+            {
+                if (AppLogManager.IsRecording)
+                {
+                    AppLogManager.Log("Browser", "پیست خودکار انجام نشد", "ویژگی AutoQuickPaste غیرفعال یا متوقف است.", "WARN");
+                }
+                return;
+            }
 
             try
             {
                 var browser = GetCurrentBrowser();
-                if (browser == null || browser.CoreWebView2 == null) return;
+                if (browser == null || browser.CoreWebView2 == null)
+                {
+                    AppLogManager.Log("Browser", "عدم دسترسی به مرورگر فعال", "کنترل CoreWebView2 یا تب جاری مرورگر آماده نیست.", "WARN");
+                    return;
+                }
 
                 double pin1X = _currentSettings.TargetInputPinX;
                 double pin1Y = _currentSettings.TargetInputPinY;
                 double pin2X = _currentSettings.TargetActionPinX;
                 double pin2Y = _currentSettings.TargetActionPinY;
+
+                AppLogManager.Log("Browser", "شروع پیست خودکار در صفحه وب", 
+                    $"تزریق متن در پین ۱ ({pin1X:F0}, {pin1Y:F0}) و سپس کلیک روی پین ۲ ({pin2X:F0}, {pin2Y:F0})", "INFO", textToPaste);
 
                 // Step 1: Pure in-browser text replacement at Pin 1 without touching OS foreground or mouse
                 string encodedText = System.Text.Json.JsonSerializer.Serialize(textToPaste);
@@ -1529,10 +1543,16 @@ window.addEventListener('focus', function() {
             try
             {
                 var browser = GetCurrentBrowser();
-                if (browser == null || browser.CoreWebView2 == null) return;
+                if (browser == null || browser.CoreWebView2 == null)
+                {
+                    AppLogManager.Log("Browser", "کلیک خودکار ناموفق", "CoreWebView2 مرورگر آماده نیست.", "WARN");
+                    return;
+                }
 
                 double pin2X = _currentSettings.TargetActionPinX;
                 double pin2Y = _currentSettings.TargetActionPinY;
+
+                AppLogManager.Log("Browser", "شبیه‌سازی کلیک در پین ۲ (دکمه اکشن)", $"مختصات: X={pin2X:F0}, Y={pin2Y:F0}", "INFO");
 
                 string clickScript = $@"
                 (async function() {{

@@ -47,6 +47,7 @@ namespace imgsaver
         private BrowserWindow? _browserWindow;
         private FloatingExtraWindow? _floatingExtraWindow;
         private PromptTaggerWindow? _promptTaggerWindow;
+        private LogViewerWindow? _logViewerWindow;
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -517,6 +518,13 @@ namespace imgsaver
             _promptSurgeonWindow.Activate();
         }
 
+        private void BtnLogViewer_Click(object sender, RoutedEventArgs e)
+        {
+            if (_logViewerWindow == null || !_logViewerWindow.IsLoaded) _logViewerWindow = new LogViewerWindow();
+            _logViewerWindow.Show();
+            _logViewerWindow.Activate();
+        }
+
         private void BtnTutorial_Click(object sender, RoutedEventArgs e)
         {
             if (_tutorialWindow == null || !_tutorialWindow.IsLoaded) _tutorialWindow = new TutorialWindow();
@@ -974,6 +982,8 @@ namespace imgsaver
                         TxtMinImageHeight.Text = minH.ToString();
                     if (lines.Length > 18)
                         ChkLockExactDimensions.IsChecked = lines[18].Trim().ToLower() == "true";
+                    if (lines.Length > 19 && int.TryParse(lines[19].Trim(), out int hs) && hs > 0)
+                        SelectHoverPreviewScale(CmbHoverPreviewScale, hs);
                 }
                 else
                 {
@@ -981,6 +991,7 @@ namespace imgsaver
                     TxtAutoSaveCount.Text = "1";
                     TxtAutoSaveDelaySeconds.Text = "10";
                     TxtTagReplacerPrefix.Text = "PH_";
+                    SelectHoverPreviewScale(CmbHoverPreviewScale, 100);
                 }
 
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath("gallery_config.txt");
@@ -996,8 +1007,24 @@ namespace imgsaver
                     TxtMinImageHeight.Text = (bSettings.MinImageHeight > 0 ? bSettings.MinImageHeight : 50).ToString();
                 if (ChkLockExactDimensions.IsChecked != true)
                     ChkLockExactDimensions.IsChecked = bSettings.LockExactDimensions;
+                if (CmbHoverPreviewScale.SelectedIndex < 0)
+                    SelectHoverPreviewScale(CmbHoverPreviewScale, bSettings.HoverPreviewScale > 0 ? bSettings.HoverPreviewScale : 100);
             }
             catch { }
+        }
+
+        private void SelectHoverPreviewScale(System.Windows.Controls.ComboBox cmb, int scale)
+        {
+            if (cmb == null) return;
+            switch (scale)
+            {
+                case 25: cmb.SelectedIndex = 0; break;
+                case 50: cmb.SelectedIndex = 1; break;
+                case 75: cmb.SelectedIndex = 2; break;
+                case 100:
+                default:
+                    cmb.SelectedIndex = 3; break;
+            }
         }
 
         private void SaveSettingsFromView()
@@ -1054,6 +1081,10 @@ namespace imgsaver
 
                 string lockExact = (ChkLockExactDimensions.IsChecked == true).ToString().ToLower();
 
+                string hoverScale = "100";
+                if (CmbHoverPreviewScale?.SelectedItem is System.Windows.Controls.ComboBoxItem hItem && hItem.Tag != null)
+                    hoverScale = hItem.Tag.ToString();
+
                 File.WriteAllLines(configPath, new string[] {
                     path,
                     "false",
@@ -1073,7 +1104,8 @@ namespace imgsaver
                     autoSaveDelaySec,
                     minWidth.ToString(),
                     minHeight.ToString(),
-                    lockExact
+                    lockExact,
+                    hoverScale
                 });
 
                 File.WriteAllText(galleryConfigPath, galleryPath);
@@ -1082,6 +1114,8 @@ namespace imgsaver
                 bSettings.MinImageWidth = minWidth;
                 bSettings.MinImageHeight = minHeight;
                 bSettings.LockExactDimensions = ChkLockExactDimensions.IsChecked == true;
+                if (int.TryParse(hoverScale, out int parsedScale))
+                    bSettings.HoverPreviewScale = parsedScale;
                 bSettings.Save();
 
                 if (Directory.Exists(path)) _savePath = path;
