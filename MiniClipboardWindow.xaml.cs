@@ -574,6 +574,12 @@ namespace imgsaver
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
 
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+
+        private const int VK_SHIFT = 0x10;
+        private const int VK_CONTROL = 0x11;
+
         private const int WM_CLIPBOARDUPDATE = 0x031D;
 
         public MiniClipboardWindow()
@@ -940,7 +946,13 @@ namespace imgsaver
 
         private void GlobalHook_OnKeyPressed(System.Windows.Forms.Keys key)
         {
-            if (key == System.Windows.Forms.Keys.ShiftKey || key == System.Windows.Forms.Keys.LShiftKey || key == System.Windows.Forms.Keys.RShiftKey)
+            bool isShiftKey = key == System.Windows.Forms.Keys.ShiftKey || key == System.Windows.Forms.Keys.LShiftKey || key == System.Windows.Forms.Keys.RShiftKey;
+            bool isCtrlKey = key == System.Windows.Forms.Keys.ControlKey || key == System.Windows.Forms.Keys.LControlKey || key == System.Windows.Forms.Keys.RControlKey;
+
+            bool isCtrlDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 || (System.Windows.Forms.Control.ModifierKeys & System.Windows.Forms.Keys.Control) == System.Windows.Forms.Keys.Control;
+            bool isShiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0 || (System.Windows.Forms.Control.ModifierKeys & System.Windows.Forms.Keys.Shift) == System.Windows.Forms.Keys.Shift;
+
+            if ((isShiftKey && isCtrlDown) || (isCtrlKey && isShiftDown))
             {
                 Dispatcher.InvokeAsync(() =>
                 {
@@ -953,7 +965,7 @@ namespace imgsaver
                 return;
             }
 
-            if (key == System.Windows.Forms.Keys.ControlKey || key == System.Windows.Forms.Keys.LControlKey || key == System.Windows.Forms.Keys.RControlKey)
+            if (isCtrlKey)
             {
                 if (_isBrowserQuickPasteEnabled && !_isBrowserQuickPasteRunning)
                 {
@@ -1748,12 +1760,17 @@ namespace imgsaver
 
         private void TxtTitle_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+            bool isShift = e.Key == Key.LeftShift || e.Key == Key.RightShift;
+            bool isCtrl = e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl;
+            bool isCtrlShift = (isShift && (Keyboard.Modifiers & ModifierKeys.Control) != 0) ||
+                               (isCtrl && (Keyboard.Modifiers & ModifierKeys.Shift) != 0);
+
             if (e.Key == Key.Enter)
             {
                 if (IsAdditionalTitleEnabled && string.IsNullOrWhiteSpace(TxtAdditionalTitle.Text)) { TxtAdditionalTitle.Focus(); return; }
                 if (BtnSEO.IsEnabled && !string.IsNullOrWhiteSpace(TxtTitle.Text)) SaveDirectly();
             }
-            else if (e.Key == Key.Up || ((e.Key == Key.LeftShift || e.Key == Key.RightShift) && string.IsNullOrEmpty(TxtTitle.Text)))
+            else if (e.Key == Key.Up || isCtrlShift)
             {
                 if (!string.IsNullOrEmpty(MiniClipHistory.LastSavedTitle))
                 {

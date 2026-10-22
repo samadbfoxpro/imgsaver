@@ -815,12 +815,12 @@ namespace imgsaver
 
     public class DownloadManagerService
     {
-        private readonly string _dataFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+        private string _dataFolder => DataPathManager.SharedPromptDataDirectory;
         private readonly string _defaultDownloadFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "downloads");
         private readonly string _tempRootFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "download_temp");
-        private readonly string _historyFile;
-        private readonly string _queueFile;
-        private readonly string _settingsFile;
+        private string _historyFile => DataPathManager.GetSettingsFilePath("download_history.json");
+        private string _queueFile => DataPathManager.GetSettingsFilePath("download_queue.json");
+        private string _settingsFile => DataPathManager.GetSettingsFilePath("download_settings.json");
         private readonly List<DownloadTask> _activeDownloads = new();
         private readonly List<DownloadTask> _history = new();
         private readonly SemaphoreSlim _downloadSemaphore = new(3, 3);
@@ -837,14 +837,17 @@ namespace imgsaver
 
         public DownloadManagerService()
         {
-            _historyFile = Path.Combine(_dataFolder, "download_history.json");
-            _queueFile = Path.Combine(_dataFolder, "download_queue.json");
-            _settingsFile = Path.Combine(_dataFolder, "download_settings.json");
-
             Directory.CreateDirectory(_dataFolder);
             Directory.CreateDirectory(_defaultDownloadFolder);
             Directory.CreateDirectory(_tempRootFolder);
 
+            LoadSettings();
+            LoadHistory();
+            LoadQueue();
+        }
+
+        public void Reload()
+        {
             LoadSettings();
             LoadHistory();
             LoadQueue();

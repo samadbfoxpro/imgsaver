@@ -311,6 +311,22 @@
                         <Button x:Name="BtnOpenMainMiniClip" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnOpenMainMiniClip_Click" ToolTip="کلیپ‌بورد اصلی">
                             <Path Data="{StaticResource IconCopy}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
+                        <!-- Live Diagnostic Recording Indicator -->
+                        <Button x:Name="BtnDiagLogIndicator"
+                                Style="{StaticResource NavIconButton}"
+                                Margin="3,0,0,0"
+                                Click="BtnDiagLogIndicator_Click"
+                                ToolTip="ضبط لاگ عیب‌یابی عمیق فعال است (کلیک برای باز کردن لاگ)"
+                                Visibility="Collapsed">
+                            <Grid>
+                                <Ellipse Width="10" Height="10" Fill="#EF4444" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="#EF4444" BlurRadius="8" ShadowDepth="0" Opacity="0.9"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+                            </Grid>
+                        </Button>
+
                         <Button x:Name="BtnBrowserSettings" Style="{StaticResource NavIconButton}" Margin="3,0,0,0" Click="BtnBrowserSettings_Click" ToolTip="تنظیمات">
                             <Path Data="{StaticResource IconSettings}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="15" Height="15" Stretch="Uniform"/>
                         </Button>
@@ -673,10 +689,12 @@
                             <ColumnDefinition Width="2*"/>
                             <ColumnDefinition Width="1.2*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="TxtCombinerCustomInput" Grid.Column="0" Height="28" Background="#1E1E20" Foreground="#2ECC71" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8,2" FontSize="12" FontWeight="SemiBold" CaretBrush="#2ECC71" VerticalContentAlignment="Center" TextChanged="TxtCombinerCustomInput_TextChanged" ToolTip="Type custom text to inject/combine automatically"/>
                         <TextBox x:Name="TxtCombinerCustomTitle" Grid.Column="1" Height="28" Background="#1E1E20" Foreground="#3794FF" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="8,2" Margin="4,0,0,0" FontSize="11" FontWeight="SemiBold" CaretBrush="#3794FF" VerticalContentAlignment="Center" TextChanged="TxtCombinerCustomTitle_TextChanged" ToolTip="Custom Title for Mini Clip (leave empty for default 'متن سفارشی')"/>
-                        <Button x:Name="BtnClearCustomInput" Grid.Column="2" Content="✕" Width="24" Height="28" Style="{StaticResource SecondaryButtonStyle}" Margin="4,0,0,0" Padding="0" Click="BtnClearCustomInput_Click" ToolTip="Clear Custom Text &amp; Title"/>
+                        <Button x:Name="BtnOpenCombinerDiff" Grid.Column="2" Content="⚡ تفاوت" Height="28" Padding="6,0" Background="#162E25" Foreground="#34D399" BorderBrush="#059669" BorderThickness="1" FontSize="11" FontWeight="Bold" Margin="4,0,0,0" Click="BtnOpenCombinerDiff_Click" ToolTip="استخراج هوشمند تفاوت بین دو پرامپت و درج در این فیلد (Prompt Diff Extractor)"/>
+                        <Button x:Name="BtnClearCustomInput" Grid.Column="3" Content="✕" Width="24" Height="28" Style="{StaticResource SecondaryButtonStyle}" Margin="4,0,0,0" Padding="0" Click="BtnClearCustomInput_Click" ToolTip="Clear Custom Text &amp; Title"/>
                     </Grid>
 
                     <!-- Fast Combine Action Buttons: MIX | Base | Settings -->

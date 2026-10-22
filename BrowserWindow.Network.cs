@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -139,6 +140,10 @@ namespace imgsaver
                     if (sender is CoreWebView2 wv)
                     {
                         e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                        if (BrowserDiagnosticLogger.IsEnabled)
+                        {
+                            BrowserDiagnosticLogger.Log("NET", "BLOCKED_BY_APP", "403 Forbidden by SkippedHosts rule", $"URL={uri}");
+                        }
                     }
                     return;
                 }
@@ -154,8 +159,30 @@ namespace imgsaver
 
             if (_currentSettings == null) return;
             var ctx = e.ResourceContext;
-            if (!_currentSettings.LoadImages && IsImageContext(ctx, lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
-            if (!_currentSettings.LoadMedia && IsMediaContext(ctx, lowerUri)) { if (sender is CoreWebView2 wv) e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", ""); return; }
+            if (!_currentSettings.LoadImages && IsImageContext(ctx, lowerUri))
+            {
+                if (sender is CoreWebView2 wv)
+                {
+                    e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                    if (BrowserDiagnosticLogger.IsEnabled)
+                    {
+                        BrowserDiagnosticLogger.Log("NET", "BLOCKED_BY_APP", "403 Forbidden: Image blocked by settings (LoadImages=false)", $"Context={ctx} | URL={uri}");
+                    }
+                }
+                return;
+            }
+            if (!_currentSettings.LoadMedia && IsMediaContext(ctx, lowerUri))
+            {
+                if (sender is CoreWebView2 wv)
+                {
+                    e.Response = wv.Environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                    if (BrowserDiagnosticLogger.IsEnabled)
+                    {
+                        BrowserDiagnosticLogger.Log("NET", "BLOCKED_BY_APP", "403 Forbidden: Media blocked by settings (LoadMedia=false)", $"Context={ctx} | URL={uri}");
+                    }
+                }
+                return;
+            }
             
             if (_currentSettings.DisableBrowserCache)
             {
@@ -165,6 +192,10 @@ namespace imgsaver
                     e.Request.Headers.SetHeader("Pragma", "no-cache");
                     if (e.Request.Headers.Contains("If-Modified-Since")) e.Request.Headers.RemoveHeader("If-Modified-Since");
                     if (e.Request.Headers.Contains("If-None-Match")) e.Request.Headers.RemoveHeader("If-None-Match");
+                    if (BrowserDiagnosticLogger.IsEnabled)
+                    {
+                        BrowserDiagnosticLogger.Log("NET", "MODIFIED_BY_APP", "Injected Cache-Control: no-cache (DisableBrowserCache=true)", $"URL={uri}");
+                    }
                 }
                 catch { }
                 UpdateStatus(uri, "Direct Network (Cache Disabled)");
@@ -179,6 +210,10 @@ namespace imgsaver
                     e.Request.Headers.SetHeader("Pragma", "no-cache");
                     if (e.Request.Headers.Contains("If-Modified-Since")) e.Request.Headers.RemoveHeader("If-Modified-Since");
                     if (e.Request.Headers.Contains("If-None-Match")) e.Request.Headers.RemoveHeader("If-None-Match");
+                    if (BrowserDiagnosticLogger.IsEnabled)
+                    {
+                        BrowserDiagnosticLogger.Log("NET", "MODIFIED_BY_APP", "Injected Cache-Control: no-cache (CacheMediaOnly=true)", $"URL={uri}");
+                    }
                 }
                 catch { }
                 UpdateStatus(uri, "Direct Server (Scripts/Code Live)");
@@ -197,6 +232,10 @@ namespace imgsaver
                         {
                             e.Response = response;
                             AddTabCachedBytes(tabItem, $"cache:{uri}:{GetRequestRange(e.Request)}", servedBytes);
+                            if (BrowserDiagnosticLogger.IsEnabled)
+                            {
+                                BrowserDiagnosticLogger.Log("NET", "CACHE_HIT", $"Local disk cache ({servedBytes} B)", $"URL={uri}");
+                            }
                         }
                         UpdateStatus(uri, "Disk cache");
                         return;
@@ -225,6 +264,21 @@ namespace imgsaver
                     }
                 }
                 catch { }
+            }
+
+            if (BrowserDiagnosticLogger.IsEnabled && e.Response != null)
+            {
+                int statusCode = e.Response.StatusCode;
+                string reason = e.Response.ReasonPhrase;
+                string method = e.Request.Method;
+                if (statusCode >= 400)
+                {
+                    BrowserDiagnosticLogger.Log("NET", "HTTP_ERR", $"Status={statusCode} {reason} [{method}] -> {uri}", $"Size={size}B");
+                }
+                else
+                {
+                    BrowserDiagnosticLogger.Log("NET", "RESPONSE", $"Status={statusCode} {reason} [{method}] -> {uri}", $"Size={size}B");
+                }
             }
             bool servedFromDiskCache = HasImgSaverCacheHit(e.Response);
             if (size > 0)
@@ -931,22 +985,41 @@ namespace imgsaver
         {
             if (ctx == CoreWebView2WebResourceContext.Image ||
                 ctx == CoreWebView2WebResourceContext.Media ||
-                ctx == CoreWebView2WebResourceContext.Font)
+                ctx == CoreWebView2WebResourceContext.Font ||
+                ctx == CoreWebView2WebResourceContext.Stylesheet)
                 return true;
 
             string lower = uri.ToLowerInvariant();
-            return lower.Contains(".woff2") || lower.Contains(".woff") || lower.Contains(".ttf") || lower.Contains(".otf") || lower.Contains(".eot") ||
-                   lower.Contains(".png") || lower.Contains(".jpg") || lower.Contains(".jpeg") || lower.Contains(".webp") || lower.Contains(".gif") ||
-                   lower.Contains(".svg") || lower.Contains(".ico") || lower.Contains(".avif") ||
-                   lower.Contains(".mp4") || lower.Contains(".webm") || lower.Contains(".mp3") || lower.Contains(".m4a");
+            if (lower.Contains(".woff2") || lower.Contains(".woff") || lower.Contains(".ttf") || lower.Contains(".otf") || lower.Contains(".eot") ||
+                lower.Contains(".png") || lower.Contains(".jpg") || lower.Contains(".jpeg") || lower.Contains(".webp") || lower.Contains(".gif") ||
+                lower.Contains(".svg") || lower.Contains(".ico") || lower.Contains(".avif") ||
+                lower.Contains(".mp4") || lower.Contains(".webm") || lower.Contains(".mp3") || lower.Contains(".m4a") ||
+                lower.Contains(".css") || lower.Contains(".wasm"))
+                return true;
+
+            // Cache immutable vendor/chunk scripts (e.g. chunk-vendors, vendor.*.js, react/vue chunks with hash)
+            // while keeping root app scripts, dynamic entry points, and API endpoints live from server
+            if (lower.Contains(".js") || lower.Contains(".mjs"))
+            {
+                if (lower.Contains("chunk") || lower.Contains("vendor") || lower.Contains("bundle") ||
+                    lower.Contains(".min.js") || System.Text.RegularExpressions.Regex.IsMatch(lower, @"[.-][a-f0-9]{8,}\.(m?js)"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool IsMediaOrFontResponse(string uri, CoreWebView2WebResourceResponseView response)
         {
             if (IsImageResponse(response)) return true;
             string contentType = GetContentType(response).ToLowerInvariant();
-            if (contentType.StartsWith("image/") || contentType.StartsWith("font/") || contentType.StartsWith("video/") || contentType.StartsWith("audio/"))
+            if (contentType.StartsWith("image/") || contentType.StartsWith("font/") ||
+                contentType.StartsWith("video/") || contentType.StartsWith("audio/") ||
+                contentType.StartsWith("text/css") || contentType.Contains("application/wasm"))
                 return true;
+
             return IsMediaOrFontResource(CoreWebView2WebResourceContext.Other, uri);
         }
 
@@ -1073,6 +1146,22 @@ namespace imgsaver
             catch { return ""; }
         }
 
+        private static readonly ConcurrentQueue<Stream> _activeResponseStreams = new();
+        private const int MaxActiveResponseStreams = 256;
+        private const long MaxMemoryStreamCacheBytes = 10L * 1024L * 1024L; // 10 MB
+
+        private static void RetainStreamReference(Stream stream)
+        {
+            _activeResponseStreams.Enqueue(stream);
+            while (_activeResponseStreams.Count > MaxActiveResponseStreams)
+            {
+                if (_activeResponseStreams.TryDequeue(out var oldStream))
+                {
+                    try { oldStream.Dispose(); } catch { }
+                }
+            }
+        }
+
         private bool TryCreateCachedResponse(CoreWebView2 coreWebView2, CoreWebView2WebResourceRequest request, CoreWebView2WebResourceContext ctx, string lowerUri, string cachePath, out CoreWebView2WebResourceResponse response, out long servedBytes)
         {
             response = null!;
@@ -1080,38 +1169,77 @@ namespace imgsaver
 
             try
             {
-                var fileStream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.SequentialScan);
-                long fileLength = fileStream.Length;
+                var fileInfo = new FileInfo(cachePath);
+                if (!fileInfo.Exists) return false;
+                long fileLength = fileInfo.Length;
                 string mime = GetMimeType(ctx, lowerUri);
                 string range = GetRequestRange(request);
 
+                Stream responseStream;
+
                 if (TryParseRange(range, fileLength, out long start, out long end))
                 {
-                    fileStream.Position = start;
                     servedBytes = end - start + 1;
+                    if (fileLength <= MaxMemoryStreamCacheBytes)
+                    {
+                        byte[] allBytes = File.ReadAllBytes(cachePath);
+                        if (start < allBytes.Length)
+                        {
+                            int count = (int)Math.Min(servedBytes, allBytes.Length - start);
+                            responseStream = new MemoryStream(allBytes, (int)start, count, writable: false, publiclyVisible: true);
+                            servedBytes = count;
+                        }
+                        else
+                        {
+                            responseStream = new MemoryStream(Array.Empty<byte>(), writable: false);
+                            servedBytes = 0;
+                        }
+                    }
+                    else
+                    {
+                        var fs = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.SequentialScan);
+                        fs.Position = start;
+                        responseStream = fs;
+                    }
+
+                    RetainStreamReference(responseStream);
+
                     string headers =
-                        $"Content-Type: {mime}\n" +
-                        $"Content-Length: {servedBytes}\n" +
-                        $"Content-Range: bytes {start}-{end}/{fileLength}\n" +
-                        "Accept-Ranges: bytes\n" +
-                        "Cache-Control: public, max-age=31536000, immutable\n" +
-                        "Access-Control-Allow-Origin: *\n" +
-                        "Timing-Allow-Origin: *\n" +
+                        $"Content-Type: {mime}\r\n" +
+                        $"Content-Length: {servedBytes}\r\n" +
+                        $"Content-Range: bytes {start}-{end}/{fileLength}\r\n" +
+                        "Accept-Ranges: bytes\r\n" +
+                        "Cache-Control: public, max-age=31536000, immutable\r\n" +
+                        "Access-Control-Allow-Origin: *\r\n" +
+                        "Timing-Allow-Origin: *\r\n" +
                         "X-ImgSaver-Cache: HIT";
-                    response = coreWebView2.Environment.CreateWebResourceResponse(fileStream, 206, "Partial Content", headers);
+                    response = coreWebView2.Environment.CreateWebResourceResponse(responseStream, 206, "Partial Content", headers);
                     return true;
                 }
 
                 servedBytes = fileLength;
+                if (fileLength <= MaxMemoryStreamCacheBytes)
+                {
+                    byte[] allBytes = File.ReadAllBytes(cachePath);
+                    responseStream = new MemoryStream(allBytes, 0, allBytes.Length, writable: false, publiclyVisible: true);
+                    servedBytes = allBytes.Length;
+                }
+                else
+                {
+                    responseStream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536, FileOptions.SequentialScan);
+                }
+
+                RetainStreamReference(responseStream);
+
                 string fullHeaders =
-                    $"Content-Type: {mime}\n" +
-                    $"Content-Length: {fileLength}\n" +
-                    "Accept-Ranges: bytes\n" +
-                    "Cache-Control: public, max-age=31536000, immutable\n" +
-                    "Access-Control-Allow-Origin: *\n" +
-                    "Timing-Allow-Origin: *\n" +
+                    $"Content-Type: {mime}\r\n" +
+                    $"Content-Length: {servedBytes}\r\n" +
+                    "Accept-Ranges: bytes\r\n" +
+                    "Cache-Control: public, max-age=31536000, immutable\r\n" +
+                    "Access-Control-Allow-Origin: *\r\n" +
+                    "Timing-Allow-Origin: *\r\n" +
                     "X-ImgSaver-Cache: HIT";
-                response = coreWebView2.Environment.CreateWebResourceResponse(fileStream, 200, "OK", fullHeaders);
+                response = coreWebView2.Environment.CreateWebResourceResponse(responseStream, 200, "OK", fullHeaders);
                 return true;
             }
             catch
@@ -1412,6 +1540,9 @@ namespace imgsaver
 
                 foreach (var subDir in subDirs)
                 {
+                    if (Path.GetFileName(subDir).Equals("chromium_internal", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
                     SafeDeleteDirectoryRecursive(subDir);
                     try
                     {

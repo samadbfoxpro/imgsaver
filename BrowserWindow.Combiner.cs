@@ -495,6 +495,11 @@ namespace imgsaver
             }
         }
 
+        private void BtnOpenCombinerDiff_Click(object sender, RoutedEventArgs e)
+        {
+            OpenCombinerDiffTab();
+        }
+
         private void BtnClearCustomInput_Click(object sender, RoutedEventArgs e)
         {
             if (TxtCombinerCustomInput != null)

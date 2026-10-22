@@ -10,7 +10,7 @@ namespace imgsaver
     {
         private static List<InputEvent> _slot1 = new List<InputEvent>();
         private static List<InputEvent> _slot2 = new List<InputEvent>();
-        private static string DataDir => DataPathManager.LocalDataDirectory;
+        private static string DataDir => DataPathManager.SharedPromptDataDirectory;
         private static string Slot1Path => DataPathManager.GetSettingsFilePath("rec_slot1.json");
         private static string Slot2Path => DataPathManager.GetSettingsFilePath("rec_slot2.json");
         private static string SettingsPath => DataPathManager.GetSettingsFilePath("rec_settings.json");

@@ -25,6 +25,11 @@ namespace imgsaver
                 System.Windows.Controls.Control.PreviewMouseLeftButtonDownEvent,
                 new System.Windows.Input.MouseButtonEventHandler(TextBox_PreviewMouseLeftButtonDown));
 
+            // Register a centralized in-memory handler for Snippet expansion on Space in all WPF TextBoxes
+            EventManager.RegisterClassHandler(typeof(System.Windows.Controls.TextBox),
+                UIElement.PreviewKeyDownEvent,
+                new System.Windows.Input.KeyEventHandler(TextBox_PreviewKeyDown));
+
             // Prevent WPF from automatically terminating when the AuthLockWindow closes
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -82,6 +87,66 @@ namespace imgsaver
                 }
             }
         }
+
+        private void TextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key != System.Windows.Input.Key.Space)
+                return;
+
+            if ((System.Windows.Input.Keyboard.Modifiers & (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Alt | System.Windows.Input.ModifierKeys.Windows)) != 0)
+                return;
+
+            if (sender is not System.Windows.Controls.TextBox textBox || textBox.IsReadOnly || !textBox.IsEnabled)
+                return;
+
+            // Prevent auto-expansion while editing or defining shortcut key in SnippetWindow
+            if (string.Equals(textBox.Name, "TxtKey", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (textBox.SelectionLength > 0)
+                return;
+
+            int caret = textBox.CaretIndex;
+            if (caret <= 0)
+                return;
+
+            string text = textBox.Text;
+            if (string.IsNullOrEmpty(text) || caret > text.Length)
+                return;
+
+            // Extract the word immediately preceding the caret
+            int wordStart = caret - 1;
+            while (wordStart >= 0)
+            {
+                char c = text[wordStart];
+                if (char.IsWhiteSpace(c) || c == '\r' || c == '\n')
+                {
+                    wordStart++;
+                    break;
+                }
+                wordStart--;
+            }
+            if (wordStart < 0) wordStart = 0;
+
+            int wordLen = caret - wordStart;
+            if (wordLen <= 0)
+                return;
+
+            string lastWord = text.Substring(wordStart, wordLen);
+            var match = SnippetManager.FindMatch(lastWord);
+            if (match != null && !string.IsNullOrEmpty(match.Key) && match.Value != null)
+            {
+                int replaceStart = caret - match.Key.Length;
+                if (replaceStart >= 0)
+                {
+                    e.Handled = true;
+                    textBox.Select(replaceStart, match.Key.Length);
+                    textBox.SelectedText = match.Value;
+                    textBox.CaretIndex = replaceStart + match.Value.Length;
+                }
+            }
+        }
+
         protected override void OnExit(ExitEventArgs e)
         {
             try

@@ -92,6 +92,7 @@ namespace imgsaver
         private static extern IntPtr GetForegroundWindow();
 
         public static LocalProxyBridge ProxyBridge { get; } = new LocalProxyBridge();
+        public BrowserSettings CurrentSettings => _currentSettings;
 
         public BrowserWindow(BrowserProfile? profile = null)
         {
@@ -154,7 +155,26 @@ namespace imgsaver
                 var handle = new WindowInteropHelper(this).Handle;
                 var hwndSource = HwndSource.FromHwnd(handle);
                 hwndSource?.AddHook(WndProc);
+                UpdateDiagLogIndicator();
             };
+
+            BrowserDiagnosticLogger.StateChanged += _ => UpdateDiagLogIndicator();
+        }
+
+        private void BtnDiagLogIndicator_Click(object? sender, RoutedEventArgs e)
+        {
+            BrowserDiagnosticLogger.OpenLogFile();
+        }
+
+        public void UpdateDiagLogIndicator()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                if (BtnDiagLogIndicator != null)
+                {
+                    BtnDiagLogIndicator.Visibility = BrowserDiagnosticLogger.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+                }
+            });
         }
 
         private void UpdateProfileUIBadge()
@@ -362,6 +382,8 @@ namespace imgsaver
             }
 
             UpdateAutoQuickPasteToggleUI();
+            BrowserDiagnosticLogger.SetLogging(_currentSettings.RecordDiagnosticLog, this);
+            UpdateDiagLogIndicator();
 
             // Re-apply settings and reinject helper scripts to all active webviews
             try

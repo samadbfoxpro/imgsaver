@@ -9,6 +9,7 @@ using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using WpfPanel = System.Windows.Controls.Panel;
@@ -305,14 +306,18 @@ namespace imgsaver
                 {
                     if (_environment == null)
                     {
+                        string chromiumCacheFolder = Path.Combine(_permanentCacheFolder, "chromium_internal");
+                        if (!Directory.Exists(chromiumCacheFolder)) Directory.CreateDirectory(chromiumCacheFolder);
+
                         var options = new CoreWebView2EnvironmentOptions();
                         var browserArguments = new List<string>
                         {
-                            $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
+                            $"--disk-cache-dir=\"{chromiumCacheFolder}\"",
                             $"--disk-cache-size={ChromiumDiskCacheBytes}",
                             "--disable-background-timer-throttling",
                             "--disable-renderer-backgrounding",
-                            "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading",
+                            "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading,RendererCodeIntegrity",
+                            "--js-flags=\"--max-old-space-size=4096\"",
                             "--enable-smooth-scrolling"
                         };
 
@@ -347,6 +352,8 @@ namespace imgsaver
                 webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                 webView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
                 webView.CoreWebView2.ContextMenuRequested += CoreWebView2_ContextMenuRequested;
+                webView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
+                BrowserDiagnosticLogger.RegisterCoreWebView2(webView.CoreWebView2, () => tabItem.Header?.ToString() ?? "Tab");
                 InjectSnippetHelperScript(webView);
 
                 webView.NavigationStarting += (s, e) =>
@@ -444,9 +451,22 @@ namespace imgsaver
                 {
                     _tabStates[tabItem].IsCombinerTab = true;
                     _tabStates[tabItem].IsSettingsTab = false;
+                    _tabStates[tabItem].IsDiffTab = false;
                     UpdateTabHeader(tabItem, "🧩", "مدیریت کمباینر");
                     if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerPageHelper.CombinerUrl;
                     webView.CoreWebView2.NavigateToString(BrowserCombinerPageHelper.GetCombinerHtml());
+                }
+                else if (BrowserCombinerDiffPageHelper.IsDiffUrl(url))
+                {
+                    _tabStates[tabItem].IsDiffTab = true;
+                    _tabStates[tabItem].IsCombinerTab = false;
+                    _tabStates[tabItem].IsSettingsTab = false;
+                    UpdateTabHeader(tabItem, "⚡", "استخراج تفاوت پرامپت");
+                    if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerDiffPageHelper.DiffUrl;
+
+                    string curTitle = TxtCombinerCustomTitle?.Text ?? "";
+                    string curText = TxtCombinerCustomInput?.Text ?? "";
+                    webView.CoreWebView2.NavigateToString(BrowserCombinerDiffPageHelper.GetDiffHtml(curTitle, curText));
                 }
                 else
                 {
@@ -468,6 +488,12 @@ namespace imgsaver
                         {
                             if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerPageHelper.CombinerUrl;
                             UpdateTabHeader(tabItem, "🧩", "مدیریت کمباینر");
+                            return;
+                        }
+                        if (tabState.IsDiffTab)
+                        {
+                            if (BrowserTabs.SelectedItem == tabItem && TxtUrl != null) TxtUrl.Text = BrowserCombinerDiffPageHelper.DiffUrl;
+                            UpdateTabHeader(tabItem, "⚡", "استخراج تفاوت پرامپت");
                             return;
                         }
                     }
@@ -595,6 +621,7 @@ namespace imgsaver
             public bool IsPinned { get; set; }
             public bool IsSettingsTab { get; set; }
             public bool IsCombinerTab { get; set; }
+            public bool IsDiffTab { get; set; }
 
             // Split View Properties
             public bool IsSplitView { get; set; }
@@ -636,7 +663,7 @@ namespace imgsaver
             _currentSettings.Save(CurrentProfile);
         }
 
-        private WebView2? GetCurrentBrowser()
+        public WebView2? GetCurrentBrowser()
         {
             if (BrowserTabs.SelectedItem is TabItem tab && TryGetTabState(tab, out var state))
             {
@@ -814,16 +841,22 @@ namespace imgsaver
                 {
                     if (state.SecondaryWebView.CoreWebView2 != null)
                     {
+                        BrowserDiagnosticLogger.UnregisterCoreWebView2(state.SecondaryWebView.CoreWebView2);
                         _coreWebViewTabMap.Remove(state.SecondaryWebView.CoreWebView2);
                         state.SecondaryWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
+                        state.SecondaryWebView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
+                        _crashRetryTracker.TryRemove(state.SecondaryWebView.CoreWebView2, out _);
                     }
                     state.SecondaryWebView.Dispose();
                 }
 
                 if (state.PrimaryWebView?.CoreWebView2 != null)
                 {
+                    BrowserDiagnosticLogger.UnregisterCoreWebView2(state.PrimaryWebView.CoreWebView2);
                     _coreWebViewTabMap.Remove(state.PrimaryWebView.CoreWebView2);
                     state.PrimaryWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
+                    state.PrimaryWebView.CoreWebView2.ProcessFailed -= CoreWebView2_ProcessFailed;
+                    _crashRetryTracker.TryRemove(state.PrimaryWebView.CoreWebView2, out _);
                 }
                 state.PrimaryWebView?.Dispose();
                 _tabStates.Remove(tab);
@@ -1060,14 +1093,18 @@ namespace imgsaver
                 {
                     if (_environment == null)
                     {
+                        string chromiumCacheFolder = Path.Combine(_permanentCacheFolder, "chromium_internal");
+                        if (!Directory.Exists(chromiumCacheFolder)) Directory.CreateDirectory(chromiumCacheFolder);
+
                         var options = new CoreWebView2EnvironmentOptions();
                         var browserArguments = new List<string>
                         {
-                            $"--disk-cache-dir=\"{_permanentCacheFolder}\"",
+                            $"--disk-cache-dir=\"{chromiumCacheFolder}\"",
                             $"--disk-cache-size={ChromiumDiskCacheBytes}",
                             "--disable-background-timer-throttling",
                             "--disable-renderer-backgrounding",
-                            "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading",
+                            "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading,RendererCodeIntegrity",
+                            "--js-flags=\"--max-old-space-size=4096\"",
                             "--enable-smooth-scrolling",
                             $"--proxy-server=\"http://127.0.0.1:{ProxyBridge.Port}\""
                         };
@@ -1099,6 +1136,8 @@ namespace imgsaver
                         secondaryWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                         secondaryWebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
                         secondaryWebView.CoreWebView2.ContextMenuRequested += CoreWebView2_ContextMenuRequested;
+                        secondaryWebView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
+                        BrowserDiagnosticLogger.RegisterCoreWebView2(secondaryWebView.CoreWebView2, () => (tabItem.Header?.ToString() ?? "Tab") + " (Split)");
                         InjectSnippetHelperScript(secondaryWebView);
 
                         secondaryWebView.NavigationStarting += (s, e) =>
@@ -1526,6 +1565,24 @@ namespace imgsaver
             }
         }
 
+        public async void OpenCombinerDiffTab()
+        {
+            foreach (TabItem item in BrowserTabs.Items)
+            {
+                if (_tabStates.TryGetValue(item, out var state) && state.IsDiffTab)
+                {
+                    BrowserTabs.SelectedItem = item;
+                    return;
+                }
+            }
+
+            var newTab = await AddNewTab(BrowserCombinerDiffPageHelper.DiffUrl, selectTab: true);
+            if (newTab != null && _tabStates.TryGetValue(newTab, out var s))
+            {
+                s.IsDiffTab = true;
+            }
+        }
+
         private void Navigate()
         {
             string url = TxtUrl.Text.Trim();
@@ -1543,6 +1600,12 @@ namespace imgsaver
                 return;
             }
 
+            if (BrowserCombinerDiffPageHelper.IsDiffUrl(url))
+            {
+                OpenCombinerDiffTab();
+                return;
+            }
+
             if (!url.Contains(".") && !url.StartsWith("http")) url = "https://www.google.com/search?q=" + Uri.EscapeDataString(url);
             else if (!url.StartsWith("http")) url = "https://" + url;
             try
@@ -1554,11 +1617,82 @@ namespace imgsaver
                     {
                         state.IsSettingsTab = false;
                         state.IsCombinerTab = false;
+                        state.IsDiffTab = false;
                     }
                 }
                 GetCurrentBrowser()?.CoreWebView2.Navigate(url);
             }
             catch { }
+        }
+
+        private readonly ConcurrentDictionary<CoreWebView2, (int Count, DateTime WindowStart)> _crashRetryTracker = new();
+
+        private async void CoreWebView2_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+        {
+            if (sender is not CoreWebView2 core) return;
+
+            string url = core.Source ?? "about:blank";
+
+            if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited ||
+                e.ProcessFailedKind == CoreWebView2ProcessFailedKind.FrameRenderProcessExited)
+            {
+                var now = DateTime.UtcNow;
+                var tracker = _crashRetryTracker.GetOrAdd(core, (0, now));
+                if ((now - tracker.WindowStart).TotalSeconds > 60)
+                {
+                    tracker = (0, now);
+                }
+
+                if (tracker.Count < 2)
+                {
+                    _crashRetryTracker[core] = (tracker.Count + 1, tracker.WindowStart);
+                    await Dispatcher.InvokeAsync(async () =>
+                    {
+                        try
+                        {
+                            if (_coreWebViewTabMap.TryGetValue(core, out var tabItem))
+                            {
+                                UpdateTabStatusOverlay(tabItem, "بازیابی خودکار پس از کرش رندرر...");
+                            }
+                            await Task.Delay(300);
+                            core.Reload();
+                        }
+                        catch { }
+                    });
+                }
+                else
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        if (_coreWebViewTabMap.TryGetValue(core, out var tabItem))
+                        {
+                            UpdateTabStatusOverlay(tabItem, "توقف پس از ۲ بار کرش متوالی صفحه");
+                        }
+                    });
+                }
+            }
+            else if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+            {
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        if (_coreWebViewTabMap.TryGetValue(core, out var tabItem) &&
+                            _tabStates.TryGetValue(tabItem, out var state) &&
+                            state.PrimaryWebView != null)
+                        {
+                            string targetUrl = !string.IsNullOrEmpty(url) && url != "about:blank" ? url : "about:blank";
+                            _environment = null;
+                            await state.PrimaryWebView.EnsureCoreWebView2Async();
+                            if (state.PrimaryWebView.CoreWebView2 != null)
+                            {
+                                state.PrimaryWebView.CoreWebView2.Navigate(targetUrl);
+                            }
+                        }
+                    }
+                    catch { }
+                });
+            }
         }
     }
 }

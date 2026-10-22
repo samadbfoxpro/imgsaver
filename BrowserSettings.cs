@@ -48,6 +48,7 @@ namespace imgsaver
         public int MinImageHeight { get; set; } = 50;
         public bool LockExactDimensions { get; set; } = false;
         public int HoverPreviewScale { get; set; } = 100;
+        public bool RecordDiagnosticLog { get; set; } = false;
 
         // List of hosts that should not use page cache (only cookies/login cache)
         public List<string> NoCacheHosts { get; set; } = new List<string>();

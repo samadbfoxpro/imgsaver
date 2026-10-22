@@ -338,6 +338,168 @@ namespace imgsaver
             transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
+
+        /* Cache Manager Sub-page styles */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .kpi-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .kpi-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .category-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .category-card:hover {
+            border-color: #474a50;
+            background: #2e3034;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .category-title-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .category-icon {
+            font-size: 24px;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
+        }
+
+        .category-names h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .category-names p {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .category-stats-badge {
+            text-align: left;
+        }
+
+        .category-size {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .category-count {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .progress-bar-bg {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0 10px 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.4s ease;
+        }
+
+        .category-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .percent-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Site Table */
+        .site-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .site-table th {
+            text-align: right;
+            padding: 10px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .site-table td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+        }
+
+        .site-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -369,6 +531,16 @@ namespace imgsaver
             <span>حافظه کش و حریم خصوصی</span>
         </div>
 
+        <div class=""nav-item"" onclick=""openCacheManager(this)"" style=""color: #60A5FA;"">
+            <svg class=""nav-icon"" viewBox=""0 0 24 24""><path d=""M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M7,10H9V17H7V10M11,7H13V17H11V7M15,13H17V17H15V13Z""/></svg>
+            <span style=""font-weight: 600;"">مدیریت پیشرفته کش</span>
+        </div>
+
+        <div class=""nav-item"" onclick=""scrollToSection('diagnostic-section', this)"" style=""color: #F59E0B;"">
+            <svg class=""nav-icon"" viewBox=""0 0 24 24""><path d=""M20,8H17.19C16.74,7.22 16.12,6.55 15.37,6.04L17,4.41L15.59,3L13.42,5.17C12.96,5.06 12.49,5 12,5C11.51,5 11.04,5.06 10.59,5.17L8.41,3L7,4.41L8.62,6.04C7.88,6.55 7.26,7.22 6.81,8H4V10H6.09C6.04,10.33 6,10.66 6,11V12H4V14H6V15C6,15.34 6.04,15.67 6.09,16H4V18H6.81C7.85,19.79 9.78,21 12,21C14.22,21 16.15,19.79 17.19,18H20V16H17.91C17.96,15.67 18,15.34 18,15V14H20V12H18V11C18,10.66 17.96,10.33 17.91,10H20V8M16,15A4,4 0 0,1 12,19A4,4 0 0,1 8,15V11A4,4 0 0,1 12,7A4,4 0 0,1 16,11V15M14,10V12H10V10H14M10,14H14V16H10V14Z""/></svg>
+            <span style=""font-weight: 600;"">عیب‌یابی و لاگ عمیق</span>
+        </div>
+
         <div class=""nav-item"" onclick=""scrollToSection('about-section', this)"">
             <svg class=""nav-icon"" viewBox=""0 0 24 24""><path d=""M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z""/></svg>
             <span>درباره مرورگر</span>
@@ -377,6 +549,7 @@ namespace imgsaver
 
     <!-- Content -->
     <div class=""content"" id=""contentArea"">
+        <div id=""mainSettingsView"">
         <div class=""page-header"">
             <h1>تنظیمات مرورگر</h1>
             <p>مدیریت و پیکربندی رفتار محتوا، ابزارهای کمکی، پراکسی و حافظه کش</p>
@@ -595,12 +768,24 @@ namespace imgsaver
         <!-- Privacy & Cache Section -->
         <div class=""section-title"" id=""privacy-section"">🔒 حافظه کش و پاک‌سازی داده‌ها</div>
         <div class=""card"">
+            <div class=""row"" style=""background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.08)); border-bottom: 1px solid var(--border);"">
+                <div class=""row-info"">
+                    <h3 style=""color:#60A5FA; display:flex; align-items:center; gap:8px;"">
+                        <span>📊</span> آنالیز هوشمند و تفکیکی فایل‌های کش
+                    </h3>
+                    <p>مشاهده حجم دقیق عکس‌ها، ویدیوها، کدهای وب، فونت‌ها و پاک‌سازی انتخابی هر دسته به صورت مجزا</p>
+                </div>
+                <button class=""btn btn-primary"" onclick=""openCacheManager()"" style=""display:flex; align-items:center; gap:6px; font-weight:700;"">
+                    <span>ورود به آنالیز کش</span>
+                    <span>←</span>
+                </button>
+            </div>
             <div class=""row"">
                 <div class=""row-info"">
-                    <h3>پاک‌سازی حافظه موقت و کش مرورگر</h3>
-                    <p>حذف فایل‌های موقت، تصاویر کش‌شده و حافظه موقت Chromium</p>
+                    <h3>پاک‌سازی سریع حافظه موقت</h3>
+                    <p>حذف فایل‌های موقت و کش مرورگر بدون خروج از حساب‌های کاربری</p>
                 </div>
-                <button class=""btn btn-danger"" onclick=""clearCache(false)"">پاک‌سازی کش</button>
+                <button class=""btn btn-danger"" onclick=""clearCache(false)"">پاک‌سازی سریع</button>
             </div>
             <div class=""row"">
                 <div class=""row-info"">
@@ -608,6 +793,34 @@ namespace imgsaver
                     <p>خروج از تمام حساب‌های کاربری و پاک کردن اطلاعات ورود و کوکی‌ها</p>
                 </div>
                 <button class=""btn btn-danger"" onclick=""clearCache(true)"">پاک‌سازی کامل داده‌ها</button>
+            </div>
+        </div>
+
+        <!-- Diagnostic Logging Section -->
+        <div class=""section-title"" id=""diagnostic-section"">🛠️ ضبط لاگ عیب‌یابی عمیق (Deep Diagnostic Logging)</div>
+        <div class=""card"">
+            <div class=""row"">
+                <div class=""row-info"">
+                    <h3>شروع / توقف ضبط لاگ (Record Diagnostic Log)</h3>
+                    <p>ثبت حداکثر اطلاعات فنی (خطاهای شبکه، فریم‌ها، استثناهای DevTools، خطاهای CORS/CSP و اسکریپت‌ها) در فایل متنی</p>
+                </div>
+                <label class=""switch"">
+                    <input type=""checkbox"" id=""chkRecordDiagnosticLog"" onchange=""toggleDiagnosticLogging(this.checked)"">
+                    <span class=""slider""></span>
+                </label>
+            </div>
+            <div class=""row"" style=""background: rgba(0, 0, 0, 0.2); border-radius: 6px; padding: 12px 14px; margin-top: 10px; border: 1px solid var(--border);"">
+                <div class=""row-info"">
+                    <div style=""display: flex; align-items: center; gap: 8px;"">
+                        <span id=""diagStatusDot"" style=""width: 10px; height: 10px; border-radius: 50%; background: #6D737B; display: inline-block; transition: all 0.3s;""></span>
+                        <span id=""diagStatusText"" style=""font-weight: 600; font-size: 13px; color: var(--text-secondary);"">وضعیت: غیرفعال (بدون بار اضافی)</span>
+                    </div>
+                    <p style=""font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: monospace;"">مسیر فایل: Browser_Debug_Log.txt (در پوشه اصلی برنامه)</p>
+                </div>
+                <div style=""display: flex; gap: 8px;"">
+                    <button class=""btn btn-primary"" onclick=""openDiagnosticLogFile()"" style=""font-size: 12px; padding: 6px 14px;"">📄 باز کردن فایل لاگ</button>
+                    <button class=""btn btn-danger"" onclick=""clearDiagnosticLogFile()"" style=""font-size: 12px; padding: 6px 14px;"">🗑️ پاک کردن لاگ</button>
+                </div>
             </div>
         </div>
 
@@ -621,6 +834,99 @@ namespace imgsaver
                 </div>
                 <button class=""btn btn-primary"" onclick=""showToast('تنظیمات و مرورگر شما آماده است.')"">وضعیت سیستم</button>
             </div>
+        </div>
+        </div> <!-- End of mainSettingsView -->
+
+        <!-- Dedicated Cache Manager Subpage -->
+        <div id=""cacheManagerView"" style=""display: none;"">
+            <div style=""display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);"">
+                <div>
+                    <button class=""btn"" onclick=""closeCacheManager()"" style=""background: var(--bg-hover); color: var(--text-primary); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 6px 14px;"">
+                        <span>← بازگشت به تنظیمات اصلی</span>
+                    </button>
+                    <h1 style=""font-size: 22px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 10px;"">
+                        <span>📊</span> آنالیز و مدیریت فایل‌های کش مرورگر
+                    </h1>
+                    <p style=""color: var(--text-secondary); font-size: 13px; margin-top: 4px;"">
+                        آنالیز حجم بر اساس نوع فایل، تفکیک بر اساس وب‌سایت‌ها و پاک‌سازی انتخابی جهت سبکسازی دیسک
+                    </p>
+                </div>
+                <div style=""display: flex; gap: 8px; flex-wrap: wrap;"">
+                    <button class=""btn"" onclick=""refreshCacheAnalysis()"" style=""background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); display: flex; align-items: center; gap: 6px;"">
+                        <span>🔄</span> اسکن مجدد
+                    </button>
+                    <button class=""btn"" onclick=""openCacheFolder()"" style=""background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); display: flex; align-items: center; gap: 6px;"">
+                        <span>📂</span> پوشه کش
+                    </button>
+                    <button class=""btn btn-danger"" onclick=""deleteCacheCategory('all')"" style=""display: flex; align-items: center; gap: 6px;"">
+                        <span>🧹</span> حذف کل کش
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Summary Cards -->
+            <div class=""kpi-grid"">
+                <div class=""kpi-card"" style=""border-top: 3px solid #38BDF8;"">
+                    <span class=""kpi-label"">کل حجم اشغال‌شده کش</span>
+                    <span class=""kpi-value"" id=""kpiTotalSize"">0 B</span>
+                    <span class=""kpi-sub"" id=""lblCacheFolderPath"" title=""مسیر ذخیره‌سازی کش"">مسیر پوشه کش</span>
+                </div>
+                <div class=""kpi-card"" style=""border-top: 3px solid #A855F7;"">
+                    <span class=""kpi-label"">تعداد کل فایل‌های کش‌شده</span>
+                    <span class=""kpi-value"" id=""kpiTotalFiles"">0 فایل</span>
+                    <span class=""kpi-sub"">شامل تصاویر، ویدیو، کدها و فونت‌ها</span>
+                </div>
+                <div class=""kpi-card"" style=""border-top: 3px solid #10B981;"">
+                    <span class=""kpi-label"">تعداد وب‌سایت‌های دارای کش</span>
+                    <span class=""kpi-value"" id=""kpiTotalSites"">0 سایت</span>
+                    <span class=""kpi-sub"">تفکیک‌شده بر اساس نام دامنه اینترنتی</span>
+                </div>
+            </div>
+
+            <!-- Category Breakdown Section -->
+            <div class=""section-title"" style=""margin-top: 10px;"">
+                <span>📁</span> تفکیک حجم بر اساس نوع فایل و پاک‌سازی انتخابی
+            </div>
+            <div id=""categoryContainer"">
+                <!-- Dynamically rendered category cards -->
+            </div>
+
+            <!-- Sites Breakdown Section -->
+            <div class=""section-title"" style=""margin-top: 28px; display: flex; justify-content: space-between; align-items: center;"">
+                <div style=""display: flex; align-items: center; gap: 8px;"">
+                    <span>🌐</span> تفکیک کش به تفکیک وب‌سایت‌ها
+                </div>
+                <div style=""display: flex; gap: 10px; align-items: center;"">
+                    <input type=""text"" id=""txtSiteSearch"" placeholder=""🔍 جستجوی وب‌سایت..."" oninput=""filterSites()"" style=""min-width: 160px; height: 32px; padding: 4px 10px; font-size: 12px;"">
+                    <select id=""selSiteSort"" onchange=""filterSites()"" style=""min-width: 140px; height: 32px; padding: 4px 8px; font-size: 12px;"">
+                        <option value=""size_desc"">حجم (بیشترین)</option>
+                        <option value=""size_asc"">حجم (کمترین)</option>
+                        <option value=""name_asc"">نام دامنه (الفبا)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class=""card"" style=""max-height: 380px; overflow-y: auto;"">
+                <table class=""site-table"">
+                    <thead>
+                        <tr>
+                            <th style=""width: 45%;"">وب‌سایت / دامنه</th>
+                            <th style=""width: 20%;"">تعداد فایل</th>
+                            <th style=""width: 20%;"">حجم مصرفی</th>
+                            <th style=""width: 15%; text-align: left;"">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id=""tblSitesBody"">
+                        <!-- Dynamically rendered site rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id=""cacheLoadingOverlay"" style=""display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.65); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 14px;"">
+            <div style=""width: 44px; height: 44px; border: 4px solid rgba(59, 130, 246, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite;""></div>
+            <div style=""font-weight: 600; font-size: 14px; color: var(--text-primary);"" id=""loadingOverlayText"">در حال اسکن و پردازش فایل‌های کش...</div>
         </div>
     </div>
 
@@ -663,7 +969,8 @@ namespace imgsaver
                 ProxyMode: document.getElementById('selProxyMode').value,
                 ProxyType: document.getElementById('selProxyType').value,
                 ProxyAddress: document.getElementById('txtProxyAddress').value || '',
-                ProxyPort: document.getElementById('txtProxyPort').value || ''
+                ProxyPort: document.getElementById('txtProxyPort').value || '',
+                RecordDiagnosticLog: document.getElementById('chkRecordDiagnosticLog') ? document.getElementById('chkRecordDiagnosticLog').checked : false
             };
 
             if (window.chrome && window.chrome.webview) {
@@ -673,6 +980,50 @@ namespace imgsaver
                 });
             }
             showToast('تنظیمات ذخیره و اعمال شد');
+        }
+
+        function toggleDiagnosticLogging(enabled) {
+            updateDiagStatusUI(enabled);
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({
+                    type: 'setDiagnosticLogging',
+                    enabled: enabled
+                });
+            }
+            showToast(enabled ? 'ضبط لاگ عیب‌یابی فعال شد (Browser_Debug_Log.txt)' : 'ضبط لاگ عیب‌یابی متوقف شد');
+        }
+
+        function updateDiagStatusUI(enabled) {
+            const dot = document.getElementById('diagStatusDot');
+            const text = document.getElementById('diagStatusText');
+            if (dot && text) {
+                if (enabled) {
+                    dot.style.background = '#EF4444';
+                    dot.style.boxShadow = '0 0 10px #EF4444';
+                    text.textContent = 'وضعیت: در حال ضبط لاگ عیب‌یابی... (Recording Active)';
+                    text.style.color = '#EF4444';
+                } else {
+                    dot.style.background = '#6D737B';
+                    dot.style.boxShadow = 'none';
+                    text.textContent = 'وضعیت: غیرفعال (بدون بار اضافی)';
+                    text.style.color = 'var(--text-secondary)';
+                }
+            }
+        }
+
+        function openDiagnosticLogFile() {
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({ type: 'openDiagnosticLogFile' });
+            }
+        }
+
+        function clearDiagnosticLogFile() {
+            if (confirm('آیا مایلید تمام محتویات قبلی فایل Browser_Debug_Log.txt پاک شوند؟')) {
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage({ type: 'clearDiagnosticLogFile' });
+                }
+                showToast('فایل لاگ با موفقیت پاک شد');
+            }
         }
 
         function clearCache(deleteAll) {
@@ -714,14 +1065,205 @@ namespace imgsaver
             if (s.ProxyType) document.getElementById('selProxyType').value = s.ProxyType;
             if (s.ProxyAddress) document.getElementById('txtProxyAddress').value = s.ProxyAddress;
             if (s.ProxyPort) document.getElementById('txtProxyPort').value = s.ProxyPort;
+
+            if (s.RecordDiagnosticLog !== undefined) {
+                const diagChk = document.getElementById('chkRecordDiagnosticLog');
+                if (diagChk) diagChk.checked = !!s.RecordDiagnosticLog;
+                updateDiagStatusUI(!!s.RecordDiagnosticLog);
+            }
+        }
+
+        // Cache Management Functions
+        let cachedData = null;
+
+        function openCacheManager(navEl) {
+            document.getElementById('mainSettingsView').style.display = 'none';
+            document.getElementById('cacheManagerView').style.display = 'block';
+            if (navEl) {
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                navEl.classList.add('active');
+            }
+            refreshCacheAnalysis();
+        }
+
+        function closeCacheManager() {
+            document.getElementById('cacheManagerView').style.display = 'none';
+            document.getElementById('mainSettingsView').style.display = 'block';
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const firstNav = document.querySelector('.nav-item');
+            if (firstNav) firstNav.classList.add('active');
+        }
+
+        function refreshCacheAnalysis() {
+            const overlay = document.getElementById('cacheLoadingOverlay');
+            document.getElementById('loadingOverlayText').textContent = 'در حال اسکن و آنالیز فایل‌های کش...';
+            overlay.style.display = 'flex';
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({ type: 'analyzeCache' });
+            }
+        }
+
+        function deleteCacheCategory(categoryKey) {
+            const titles = {
+                'images': 'تصاویر و عکس‌ها',
+                'media': 'ویدیوها و صوت',
+                'webCode': 'کدها و اسکریپت‌های وب',
+                'fonts': 'فونت‌های وب',
+                'other': 'سایر داده‌ها و کش سیستمی',
+                'all': 'تمامی فایل‌های کش مرورگر'
+            };
+            const catName = titles[categoryKey] || categoryKey;
+            const confirmMsg = categoryKey === 'all'
+                ? 'آیا از پاک‌سازی تمامی فایل‌های کش مرورگر اطمینان دارید؟'
+                : `آیا از پاک‌سازی فایل‌های مربوط به دسته «${catName}» اطمینان دارید؟`;
+
+            if (confirm(confirmMsg)) {
+                const overlay = document.getElementById('cacheLoadingOverlay');
+                document.getElementById('loadingOverlayText').textContent = `در حال پاک‌سازی ${catName}...`;
+                overlay.style.display = 'flex';
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage({
+                        type: 'deleteCacheCategory',
+                        category: categoryKey
+                    });
+                }
+            }
+        }
+
+        function deleteSiteCache(domain) {
+            if (confirm('آیا از حذف کامل فایل‌های کش وب‌سایت «' + domain + '» اطمینان دارید؟')) {
+                const overlay = document.getElementById('cacheLoadingOverlay');
+                document.getElementById('loadingOverlayText').textContent = 'در حال حذف کش ' + domain + '...';
+                overlay.style.display = 'flex';
+                if (window.chrome && window.chrome.webview) {
+                    window.chrome.webview.postMessage({
+                        type: 'deleteSiteCache',
+                        domain: domain
+                    });
+                }
+            }
+        }
+
+        function openCacheFolder() {
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({ type: 'openCacheFolder' });
+            }
+        }
+
+        function renderCacheAnalysis(data) {
+            cachedData = data;
+            if (!data) return;
+
+            // KPIs
+            document.getElementById('kpiTotalSize').textContent = data.FormattedTotalSize || '0 B';
+            document.getElementById('kpiTotalFiles').textContent = (data.TotalFileCount || 0).toLocaleString() + ' فایل';
+            document.getElementById('kpiTotalSites').textContent = (data.TotalSiteCount || 0).toLocaleString() + ' وب‌سایت';
+            document.getElementById('lblCacheFolderPath').textContent = data.CacheFolderPath || '';
+
+            // Categories
+            const catContainer = document.getElementById('categoryContainer');
+            catContainer.innerHTML = '';
+
+            const catOrder = ['images', 'media', 'webCode', 'fonts', 'other'];
+            catOrder.forEach(key => {
+                const cat = data.Categories ? data.Categories[key] : null;
+                if (!cat) return;
+
+                const card = document.createElement('div');
+                card.className = 'category-card';
+                card.innerHTML = 
+                    '<div class=""category-header"">' +
+                        '<div class=""category-title-group"">' +
+                            '<div class=""category-icon"">' + (cat.Icon || '📁') + '</div>' +
+                            '<div class=""category-names"">' +
+                                '<h4>' + (cat.Title || key) + '</h4>' +
+                                '<p>' + (cat.Description || '') + '</p>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class=""category-stats-badge"">' +
+                            '<div class=""category-size"" style=""color: ' + cat.ColorHex + ';"">' + (cat.FormattedSize || '0 B') + '</div>' +
+                            '<div class=""category-count"">' + (cat.FileCount || 0).toLocaleString() + ' فایل</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class=""progress-bar-bg"">' +
+                        '<div class=""progress-bar-fill"" style=""width: ' + (cat.Percentage || 0) + '%; background-color: ' + cat.ColorHex + ';""></div>' +
+                    '</div>' +
+                    '<div class=""category-actions"">' +
+                        '<span class=""percent-text"" style=""color: ' + cat.ColorHex + ';"">' + (cat.Percentage || 0) + '% از کل کش</span>' +
+                        '<button class=""btn btn-danger"" onclick=""deleteCacheCategory(\'' + cat.Key + '\')"" ' + (cat.FileCount === 0 ? 'disabled style=""opacity:0.4; cursor:not-allowed; padding: 5px 12px; font-size: 12px; display: flex; align-items: center; gap: 4px;""' : 'style=""padding: 5px 12px; font-size: 12px; display: flex; align-items: center; gap: 4px;""') + '>' +
+                            '<span>🗑️</span>' +
+                            '<span>پاک‌سازی این دسته</span>' +
+                        '</button>' +
+                    '</div>';
+                catContainer.appendChild(card);
+            });
+
+            // Render Sites
+            filterSites();
+        }
+
+        function filterSites() {
+            if (!cachedData || !cachedData.Sites) return;
+
+            const search = (document.getElementById('txtSiteSearch').value || '').trim().toLowerCase();
+            const sortMode = document.getElementById('selSiteSort').value;
+
+            let filtered = cachedData.Sites.filter(s => !search || s.Domain.toLowerCase().includes(search));
+
+            if (sortMode === 'size_desc') {
+                filtered.sort((a, b) => b.SizeBytes - a.SizeBytes);
+            } else if (sortMode === 'size_asc') {
+                filtered.sort((a, b) => a.SizeBytes - b.SizeBytes);
+            } else if (sortMode === 'name_asc') {
+                filtered.sort((a, b) => a.Domain.localeCompare(b.Domain));
+            }
+
+            const tbody = document.getElementById('tblSitesBody');
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan=""4"" style=""text-align: center; color: var(--text-muted); padding: 24px;"">هیچ وب‌سایتی با این مشخصات یافت نشد</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+
+            filtered.forEach(site => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = 
+                    '<td style=""font-weight: 600; display: flex; align-items: center; gap: 8px;"">' +
+                        '<span style=""font-size: 14px;"">🌐</span>' +
+                        '<span>' + site.Domain + '</span>' +
+                    '</td>' +
+                    '<td style=""color: var(--text-secondary);"">' + (site.FileCount || 0).toLocaleString() + ' فایل</td>' +
+                    '<td style=""font-weight: 700; color: #38BDF8;"">' + site.FormattedSize + '</td>' +
+                    '<td style=""text-align: left;"">' +
+                        '<button class=""btn btn-danger"" onclick=""deleteSiteCache(\'' + site.Domain + '\')"" style=""padding: 4px 10px; font-size: 11px;"">' +
+                            'حذف کش' +
+                        '</button>' +
+                    '</td>';
+                tbody.appendChild(tr);
+            });
         }
 
         // Listen to messages from C#
         if (window.chrome && window.chrome.webview) {
             window.chrome.webview.addEventListener('message', event => {
                 const msg = event.data;
-                if (msg && (msg.type === 'initSettings' || msg.action === 'initSettings')) {
+                if (!msg) return;
+                if (msg.type === 'initSettings' || msg.action === 'initSettings') {
                     loadInitialSettings(msg.data);
+                } else if (msg.type === 'cacheAnalysisResult') {
+                    const overlay = document.getElementById('cacheLoadingOverlay');
+                    if (overlay) overlay.style.display = 'none';
+                    renderCacheAnalysis(msg.data);
+                    if (msg.message) {
+                        showToast(msg.message);
+                    }
+                } else if (msg.type === 'diagnosticStatusChanged') {
+                    const chk = document.getElementById('chkRecordDiagnosticLog');
+                    if (chk) chk.checked = !!msg.enabled;
+                    updateDiagStatusUI(!!msg.enabled);
                 }
             });
 

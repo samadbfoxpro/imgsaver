@@ -98,6 +98,13 @@ namespace imgsaver
                 ChkEnableCombinerBar.Content = "فعال‌سازی نوار ترکیب هوشمند پرامپت (Combiner) در پایین مرورگر";
                 ChkAutoFocusMiniClip.Content = "فوکوس اتوماتیک به پنجره اصلی مینی کلیپ هنگام دریافت داده‌ها";
                 ChkAutoHideStatus.Content = "مخفی کردن نوار وضعیت پایین مرورگر";
+
+                TxtNavDiagnostic.Text = "عیب‌یابی و لاگ";
+                TxtSectionDiagTitle.Text = "عیب‌یابی و لاگ عمیق";
+                TxtSectionDiagDesc.Text = "ثبت اطلاعات عیب‌یابی ناوبری، فریم‌ها، خطاهای شبکه و کنسول DevTools در فایل متنی.";
+                ChkRecordDiagnosticLog.Content = "شروع / توقف ضبط لاگ (Record Diagnostic Log)";
+                BtnOpenLogFile.Content = "باز کردن فایل لاگ";
+                BtnClearLogFile.Content = "پاک کردن لاگ";
             }
             else
             {
@@ -114,6 +121,7 @@ namespace imgsaver
                 TxtNavProxy.Text = "Proxy";
                 TxtNavSiteRules.Text = "Site Rules";
                 TxtNavCache.Text = "Cache Management";
+                TxtNavDiagnostic.Text = "Diagnostic Logging";
 
                 TxtSectionGeneralTitle.Text = "General";
                 TxtSectionGeneralDesc.Text = "Content loading and browser behavior.";
@@ -136,6 +144,12 @@ namespace imgsaver
                 ChkEnableCombinerBar.Content = "Enable Smart Prompt Combiner toolbar at bottom of browser";
                 ChkAutoFocusMiniClip.Content = "Automatically focus main Mini Clip window when capturing data";
                 ChkAutoHideStatus.Content = "Hide Status Bar";
+
+                TxtSectionDiagTitle.Text = "Diagnostic Logging";
+                TxtSectionDiagDesc.Text = "Record deep diagnostic trace of navigation, frames, network errors, CORS/CSP, and DevTools console to a log file.";
+                ChkRecordDiagnosticLog.Content = "Record Diagnostic Log (On-Demand)";
+                BtnOpenLogFile.Content = "Open Log File";
+                BtnClearLogFile.Content = "Clear Log";
             }
         }
 
@@ -161,6 +175,8 @@ namespace imgsaver
             ChkEnableCombinerBar.IsChecked = settings.EnableCombinerBar;
             ChkAutoFocusMiniClip.IsChecked = settings.AutoFocusMiniClip;
             ChkAutoHideStatus.IsChecked = settings.AutoHideStatus;
+            ChkRecordDiagnosticLog.IsChecked = settings.RecordDiagnosticLog;
+            UpdateDiagStatusUI(settings.RecordDiagnosticLog);
 
             TxtProxyAddress.Text = settings.ProxyAddress;
             TxtProxyPort.Text = settings.ProxyPort;
@@ -187,6 +203,9 @@ namespace imgsaver
                     foreach (string dir in Directory.GetDirectories(_permanentCacheFolder))
                     {
                         var dirInfo = new DirectoryInfo(dir);
+                        if (dirInfo.Name.Equals("chromium_internal", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
                         var files = dirInfo.GetFiles("*", SearchOption.AllDirectories);
                         _cachedSites.Add(new CachedSiteItem
                         {
@@ -410,10 +429,52 @@ namespace imgsaver
                 settings.ProxyPort = TxtProxyPort.Text.Trim();
                 settings.ProxyType = (CmbProxyType.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "http";
                 settings.NoCacheHosts = new List<string>(LstNoCacheSites.Items.Cast<string>());
+                settings.RecordDiagnosticLog = ChkRecordDiagnosticLog.IsChecked == true;
+                BrowserDiagnosticLogger.SetLogging(settings.RecordDiagnosticLog);
 
                 settings.Save(_currentProfile);
             }
             catch { }
+        }
+
+        private void ChkRecordDiagnosticLog_Changed(object sender, RoutedEventArgs e)
+        {
+            bool enabled = ChkRecordDiagnosticLog.IsChecked == true;
+            UpdateDiagStatusUI(enabled);
+            BrowserDiagnosticLogger.SetLogging(enabled);
+        }
+
+        private void UpdateDiagStatusUI(bool enabled)
+        {
+            if (ElpDiagStatus != null && TxtDiagStatus != null)
+            {
+                if (enabled)
+                {
+                    ElpDiagStatus.Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68));
+                    TxtDiagStatus.Text = _isPersianLanguage ? "وضعیت: در حال ضبط لاگ عیب‌یابی... (Recording Active)" : "Status: Recording Active";
+                    TxtDiagStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68));
+                }
+                else
+                {
+                    ElpDiagStatus.Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(109, 115, 123));
+                    TxtDiagStatus.Text = _isPersianLanguage ? "وضعیت: غیرفعال (بدون بار اضافی)" : "Status: Idle (Zero overhead)";
+                    TxtDiagStatus.Foreground = (System.Windows.Media.Brush)FindResource("ForegroundMutedBrush");
+                }
+            }
+        }
+
+        private void BtnOpenLogFile_Click(object sender, RoutedEventArgs e)
+        {
+            BrowserDiagnosticLogger.OpenLogFile();
+        }
+
+        private void BtnClearLogFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (CustomMessageBox.Show(_isPersianLanguage ? "آیا مایلید فایل لاگ عیب‌یابی پاک شود؟" : "Are you sure you want to clear the diagnostic log file?", "Clear Log", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                BrowserDiagnosticLogger.ClearLog();
+                CustomMessageBox.Show(_isPersianLanguage ? "فایل لاگ با موفقیت پاک شد." : "Diagnostic log file cleared.", "Success");
+            }
         }
 
         private void SldPinsOpacity_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -521,6 +582,9 @@ namespace imgsaver
 
                 foreach (var subDir in subDirs)
                 {
+                    if (Path.GetFileName(subDir).Equals("chromium_internal", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
                     SafeDeleteDirectoryRecursive(subDir);
                     try
                     {

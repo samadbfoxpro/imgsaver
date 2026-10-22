@@ -42,6 +42,15 @@ namespace imgsaver
             }
         }
 
+        public static void Reload()
+        {
+            lock (_lock)
+            {
+                _cache = null;
+                Load();
+            }
+        }
+
         public static void Save(PromptCombinerData data)
         {
             if (data == null) return;

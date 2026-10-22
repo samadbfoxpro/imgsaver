@@ -1243,6 +1243,33 @@ namespace imgsaver
             ExtraList.ItemsSource = _extraView;
         }
 
+        public void RefreshAllData()
+        {
+            try
+            {
+                CharacterManager.Load();
+                BasePromptManager.Load();
+                ExtraManager.Load();
+                ExtraPromptManager.Load();
+
+                _characterView = CollectionViewSource.GetDefaultView(CharacterManager.GetAll());
+                _characterView.SortDescriptions.Add(new SortDescription("IsFavorite", ListSortDirection.Descending));
+                _characterView.SortDescriptions.Add(new SortDescription("ShortName", ListSortDirection.Ascending));
+                _characterView.Filter = CharacterFilter;
+                CharacterList.ItemsSource = _characterView;
+
+                _promptView = CollectionViewSource.GetDefaultView(BasePromptManager.GetAll());
+                _promptView.SortDescriptions.Add(new SortDescription("IsFavorite", ListSortDirection.Descending));
+                _promptView.SortDescriptions.Add(new SortDescription("LastModified", ListSortDirection.Descending));
+                _promptView.Filter = PromptFilter;
+                ComboBasePrompts.ItemsSource = _promptView;
+
+                RefreshExtras();
+                RefreshExtraPrompts();
+            }
+            catch { }
+        }
+
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;

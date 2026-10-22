@@ -108,6 +108,11 @@ namespace imgsaver
                                     window.chrome.webview.postMessage({ type: 'keyup', key: e.data.key });
                                 }
                             }
+                            if (e.data.type === 'imgsaver_diag_event') {
+                                if (window.chrome && window.chrome.webview) {
+                                    window.chrome.webview.postMessage(e.data);
+                                }
+                            }
                             if (e.data.type === 'imgsaver_quick_paste_click') {
                                 dbg('[Frame Log] Forwarding quick_paste_click from frame');
                                 if (window.chrome && window.chrome.webview) {
@@ -119,13 +124,43 @@ namespace imgsaver
                                 }
                             }
                         } else {
-                            if (['imgsaver_dbg', 'imgsaver_keyup', 'imgsaver_quick_paste_click'].includes(e.data.type)) {
+                            if (['imgsaver_dbg', 'imgsaver_keyup', 'imgsaver_quick_paste_click', 'imgsaver_diag_event'].includes(e.data.type)) {
                                 try {
                                     window.parent.postMessage(e.data, '*');
                                 } catch (err) {}
                             }
                         }
                     });
+
+                    // Diagnostic client-side error and CSP monitoring
+                    if (!window.__imgsaver_diag_hooked) {
+                        window.__imgsaver_diag_hooked = true;
+                        function sendDiag(cat, lvl, msg, det) {
+                            try {
+                                var payload = { type: 'imgsaver_diag_event', category: cat, level: lvl, message: msg, details: det || '' };
+                                if (window === window.top && window.chrome && window.chrome.webview) {
+                                    window.chrome.webview.postMessage(payload);
+                                } else {
+                                    window.parent.postMessage(payload, '*');
+                                }
+                            } catch(err) {}
+                        }
+
+                        window.addEventListener('error', function(ev) {
+                            var loc = ev.filename ? (ev.filename + ':' + ev.lineno + ':' + ev.colno) : 'inline';
+                            var stk = ev.error && ev.error.stack ? '\n' + ev.error.stack : '';
+                            sendDiag('JS_ERR', 'ERROR', ev.message || 'Script error', 'Location=' + loc + stk);
+                        }, true);
+
+                        window.addEventListener('unhandledrejection', function(ev) {
+                            var r = ev.reason ? (ev.reason.stack || ev.reason.message || String(ev.reason)) : 'Unhandled rejection';
+                            sendDiag('JS_ERR', 'PROMISE_REJECT', r, 'URL=' + window.location.href);
+                        });
+
+                        window.addEventListener('securitypolicyviolation', function(ev) {
+                            sendDiag('SECURITY', 'CSP_VIOLATION', 'Directive=' + ev.violatedDirective + ' Blocked=' + ev.blockedURI, 'Policy=' + ev.originalPolicy);
+                        });
+                    }
 
                     // 100% Page & Script Load Completion Monitor
                     try {
@@ -994,10 +1029,48 @@ window.addEventListener('focus', function() {
                         if (sData["ProxyType"] != null) _currentSettings.ProxyType = sData["ProxyType"]!.ToString();
                         if (sData["ProxyAddress"] != null) _currentSettings.ProxyAddress = sData["ProxyAddress"]!.ToString();
                         if (sData["ProxyPort"] != null) _currentSettings.ProxyPort = sData["ProxyPort"]!.ToString();
+                        if (sData["RecordDiagnosticLog"] != null)
+                        {
+                            bool diag = sData["RecordDiagnosticLog"]!.Value<bool>();
+                            _currentSettings.RecordDiagnosticLog = diag;
+                            BrowserDiagnosticLogger.SetLogging(diag, this);
+                        }
 
                         _currentSettings.Save(CurrentProfile);
                         RefreshSettings();
                     }
+                    return;
+                }
+
+                if (type == "setDiagnosticLogging")
+                {
+                    bool enable = data["enabled"]?.Value<bool>() ?? false;
+                    _currentSettings.RecordDiagnosticLog = enable;
+                    _currentSettings.Save(CurrentProfile);
+                    BrowserDiagnosticLogger.SetLogging(enable, this);
+                    UpdateDiagLogIndicator();
+                    return;
+                }
+
+                if (type == "openDiagnosticLogFile")
+                {
+                    BrowserDiagnosticLogger.OpenLogFile();
+                    return;
+                }
+
+                if (type == "clearDiagnosticLogFile")
+                {
+                    BrowserDiagnosticLogger.ClearLog();
+                    return;
+                }
+
+                if (type == "imgsaver_diag_event")
+                {
+                    string cat = data["category"]?.ToString() ?? "CLIENT";
+                    string level = data["level"]?.ToString() ?? "INFO";
+                    string msg = data["message"]?.ToString() ?? "";
+                    string details = data["details"]?.ToString() ?? "";
+                    BrowserDiagnosticLogger.Log(cat, level, msg, details);
                     return;
                 }
 
@@ -1033,6 +1106,102 @@ window.addEventListener('focus', function() {
                     return;
                 }
 
+                if (type == "analyzeCache")
+                {
+                    CoreWebView2? coreWeb = (sender as CoreWebView2) ?? GetCurrentBrowser()?.CoreWebView2;
+                    var analysis = await BrowserCacheAnalyzer.AnalyzeAsync(_permanentCacheFolder);
+                    var resp = new JObject
+                    {
+                        ["type"] = "cacheAnalysisResult",
+                        ["data"] = JObject.FromObject(analysis)
+                    };
+                    coreWeb?.PostWebMessageAsJson(resp.ToString());
+                    return;
+                }
+
+                if (type == "deleteCacheCategory")
+                {
+                    string category = data["category"]?.ToString() ?? "";
+                    CoreWebView2? coreWeb = (sender as CoreWebView2) ?? GetCurrentBrowser()?.CoreWebView2;
+                    
+                    if (category.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            if (coreWeb != null)
+                            {
+                                var dataKinds = CoreWebView2BrowsingDataKinds.DiskCache |
+                                                CoreWebView2BrowsingDataKinds.CacheStorage |
+                                                CoreWebView2BrowsingDataKinds.ServiceWorkers;
+                                await coreWeb.Profile.ClearBrowsingDataAsync(dataKinds);
+                            }
+                        }
+                        catch { }
+                    }
+
+                    var updated = await BrowserCacheAnalyzer.DeleteCategoryAsync(_permanentCacheFolder, category);
+                    
+                    foreach (var tab in _tabNetworkStats.Keys.ToList())
+                    {
+                        ResetTabNetworkStats(tab);
+                    }
+
+                    string categoryLabel = category switch
+                    {
+                        "images" => "تصاویر",
+                        "media" => "ویدیو و صوت",
+                        "webCode" => "کدها و اسکریپت‌ها",
+                        "fonts" => "فونت‌ها",
+                        "other" => "سایر فایل‌های موقت",
+                        "all" => "تمام داده‌ها",
+                        _ => category
+                    };
+
+                    var resp = new JObject
+                    {
+                        ["type"] = "cacheAnalysisResult",
+                        ["data"] = JObject.FromObject(updated),
+                        ["message"] = category.Equals("all", StringComparison.OrdinalIgnoreCase) 
+                            ? "تمام فایل‌های کش پاک‌سازی شدند" 
+                            : $"فایل‌های {categoryLabel} با موفقیت پاک‌سازی شدند"
+                    };
+                    coreWeb?.PostWebMessageAsJson(resp.ToString());
+                    UpdateStatus($"حافظه کش {categoryLabel} با موفقیت پاک‌سازی شد", "Cache");
+                    return;
+                }
+
+                if (type == "deleteSiteCache")
+                {
+                    string domain = data["domain"]?.ToString() ?? "";
+                    CoreWebView2? coreWeb = (sender as CoreWebView2) ?? GetCurrentBrowser()?.CoreWebView2;
+                    var updated = await BrowserCacheAnalyzer.DeleteSiteAsync(_permanentCacheFolder, domain);
+
+                    var resp = new JObject
+                    {
+                        ["type"] = "cacheAnalysisResult",
+                        ["data"] = JObject.FromObject(updated),
+                        ["message"] = $"کش وب‌سایت {domain} با موفقیت حذف شد"
+                    };
+                    coreWeb?.PostWebMessageAsJson(resp.ToString());
+                    UpdateStatus($"کش وب‌سایت {domain} پاک‌سازی شد", "Cache");
+                    return;
+                }
+
+                if (type == "openCacheFolder")
+                {
+                    try
+                    {
+                        if (!System.IO.Directory.Exists(_permanentCacheFolder)) System.IO.Directory.CreateDirectory(_permanentCacheFolder);
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = _permanentCacheFolder,
+                            UseShellExecute = true
+                        });
+                    }
+                    catch { }
+                    return;
+                }
+
                 if (type == "getCombinerData")
                 {
                     var cData = _combinerData ?? PromptCombinerStore.Load();
@@ -1058,6 +1227,57 @@ window.addEventListener('focus', function() {
                             PopulateCombinerFolders();
                             UpdateCombinerRuleBadge();
                             UpdateStatus("تنظیمات کمباینر ذخیره شد", "Combiner");
+                        }
+                    }
+                    return;
+                }
+
+                if (type == "applyDiffToCombiner")
+                {
+                    string customText = data["customText"]?.ToString() ?? "";
+                    string customTitle = data["customTitle"]?.ToString() ?? "";
+
+                    _combinerData = _combinerData ?? PromptCombinerStore.Load();
+                    if (_combinerData != null)
+                    {
+                        var activeFolder = _combinerData.Folders?.FirstOrDefault(f => f.Id == _combinerData.ActiveFolderId);
+                        if (activeFolder == null || !activeFolder.IsCustomInput)
+                        {
+                            // If active folder is not custom input, find the first custom input folder
+                            activeFolder = _combinerData.Folders?.FirstOrDefault(f => f.IsCustomInput);
+                            if (activeFolder != null)
+                            {
+                                _combinerData.ActiveFolderId = activeFolder.Id;
+                            }
+                        }
+
+                        if (activeFolder != null && activeFolder.IsCustomInput)
+                        {
+                            activeFolder.CustomInputText = customText;
+                            if (!string.IsNullOrWhiteSpace(customTitle))
+                            {
+                                activeFolder.CustomTitle = customTitle;
+                            }
+                            activeFolder.IsCustomInputActive = !string.IsNullOrWhiteSpace(customText);
+
+                            PromptCombinerStore.Save(_combinerData);
+
+                            // Update bottom bar UI controls
+                            _isUpdatingCustomInputText = true;
+                            if (TxtCombinerCustomInput != null)
+                            {
+                                TxtCombinerCustomInput.Text = customText;
+                            }
+                            if (TxtCombinerCustomTitle != null && !string.IsNullOrWhiteSpace(customTitle))
+                            {
+                                TxtCombinerCustomTitle.Text = customTitle;
+                            }
+                            _isUpdatingCustomInputText = false;
+
+                            PopulateCombinerFolders();
+                            RenderCombinerButtons();
+                            UpdateCombinerActiveCountBadge();
+                            UpdateStatus("✨ تفاوت پرامپت با موفقیت به متن سفارشی اعمال شد", "Combiner");
                         }
                     }
                     return;
@@ -1323,32 +1543,32 @@ window.addEventListener('focus', function() {
             if (string.IsNullOrEmpty(key)) return;
             var browser = GetCurrentBrowser();
             if (browser == null) return;
-            if (key == " " || key == "Enter" || key == "Tab")
+            if (key == " ")
             {
                 var match = SnippetManager.FindMatch(_typeBuffer);
                 if (match != null)
                 {
-                    string safeVal = match.Value.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
-                    string script = $"if(window.imgsaver_insertSnippet) window.imgsaver_insertSnippet('{safeVal}', {match.Key.Length + 1});";
-                    browser.CoreWebView2.ExecuteScriptAsync(script);
+                    string jsonVal = System.Text.Json.JsonSerializer.Serialize(match.Value);
+                    string script = $"if(window.imgsaver_insertSnippet) window.imgsaver_insertSnippet({jsonVal}, {match.Key.Length + 1});";
+                    _ = browser.CoreWebView2.ExecuteScriptLoggedAsync("SnippetExpansion", script);
                     _typeBuffer = "";
                     SpawnParticles();
                 }
                 else { _typeBuffer = ""; }
                 return;
             }
-            if (key == "Escape") { _typeBuffer = ""; return; }
+            if (key == "Enter" || key == "Tab" || key == "Escape") { _typeBuffer = ""; return; }
             if (key == "Backspace") { if (_typeBuffer.Length > 0) _typeBuffer = _typeBuffer.Substring(0, _typeBuffer.Length - 1); return; }
             if (key.Length == 1)
             {
                 _typeBuffer += char.ToLower(key[0]);
                 if (_typeBuffer.Length > 30) _typeBuffer = _typeBuffer.Substring(_typeBuffer.Length - 30);
                 var match = SnippetManager.FindMatch(_typeBuffer);
-                if (match != null)
+                if (match != null && !SnippetManager.IsPotentialMatch(_typeBuffer) && !SnippetManager.IsPotentialMatch(match.Key))
                 {
-                    string safeVal = match.Value.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
-                    string script = $"if(window.imgsaver_insertSnippet) window.imgsaver_insertSnippet('{safeVal}', {match.Key.Length});";
-                    browser.CoreWebView2.ExecuteScriptAsync(script);
+                    string jsonVal = System.Text.Json.JsonSerializer.Serialize(match.Value);
+                    string script = $"if(window.imgsaver_insertSnippet) window.imgsaver_insertSnippet({jsonVal}, {match.Key.Length});";
+                    _ = browser.CoreWebView2.ExecuteScriptLoggedAsync("SnippetExpansion", script);
                     _typeBuffer = "";
                     SpawnParticles();
                 }

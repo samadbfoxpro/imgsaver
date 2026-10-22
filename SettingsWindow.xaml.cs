@@ -300,14 +300,7 @@ namespace imgsaver
 
         private void ReloadSharedDataStores()
         {
-            BasePromptManager.Unload();
-            CharacterManager.Unload();
-            ExtraManager.Unload();
-            ExtraPromptManager.Unload();
-            BasePromptManager.Load();
-            CharacterManager.Load();
-            ExtraManager.Load();
-            ExtraPromptManager.Load();
+            DataPathManager.ReloadAllDataStores();
         }
     }
 }

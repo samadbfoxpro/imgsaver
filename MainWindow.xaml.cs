@@ -25,8 +25,6 @@ namespace imgsaver
         private string _detectedExtension = ".png";
         private const string ConfigFileName = "config.txt";
 
-        private GlobalHook? _globalHook;
-        private StringBuilder _typedBuffer = new StringBuilder();
         private RemoteServer? _remoteServer;
         private FileShareServer? _fileShareServer;
         private bool _isShuttingDown = false;
@@ -48,54 +46,6 @@ namespace imgsaver
         private FloatingExtraWindow? _floatingExtraWindow;
         private PromptTaggerWindow? _promptTaggerWindow;
         private LogViewerWindow? _logViewerWindow;
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-        [DllImport("user32.dll")]
-        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
-        [DllImport("user32.dll")]
-        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
-        [StructLayout(LayoutKind.Sequential)]
-        private struct GUITHREADINFO
-        {
-            public int cbSize;
-            public int flags;
-            public IntPtr hwndActive;
-            public IntPtr hwndFocus;
-            public IntPtr hwndCapture;
-            public IntPtr hwndMenuOwner;
-            public IntPtr hwndMoveSize;
-            public IntPtr hwndCaret;
-            public RECT rcCaret;
-        }
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT { public int x; public int y; }
-
-        private void SafeSetClipboardText(string text, int maxAttempts = 8, int delayMs = 50)
-        {
-            if (string.IsNullOrEmpty(text)) return;
-            for (int attempt = 0; attempt < maxAttempts; attempt++)
-            {
-                try
-                {
-                    System.Windows.Clipboard.SetText(text);
-                    return;
-                }
-                catch (COMException)
-                {
-                    Thread.Sleep(delayMs);
-                }
-                catch
-                {
-                    return;
-                }
-            }
-        }
 
         public MainWindow()
         {
@@ -121,7 +71,6 @@ namespace imgsaver
             Closed += (_, _) => {
                 _isShuttingDown = true;
                 GlobalClipboardCombiner.Stop();
-                _globalHook?.Dispose();
                 _remoteServer?.Stop();
                 _fileShareServer?.Stop();
                 CleanupSystemTrayIcon();
@@ -142,18 +91,6 @@ namespace imgsaver
 
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                StartupProfiler.Log("MainWindow Background Init -> GlobalHook START");
-                try
-                {
-                    _globalHook = new GlobalHook();
-                    _globalHook.OnKeyPressed += GlobalHook_OnKeyPressed;
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show("Error (Please run as Administrator):\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-                StartupProfiler.Log("MainWindow Background Init -> GlobalHook END");
-
                 StartupProfiler.Log("MainWindow Background Init -> LoadAndApplyServerStates START");
                 LoadAndApplyServerStates();
                 StartupProfiler.Log("MainWindow Background Init -> LoadAndApplyServerStates END");
@@ -342,116 +279,6 @@ namespace imgsaver
         private void BtnMinimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void BtnMaximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
-        private void GlobalHook_OnKeyPressed(WinForms.Keys key)
-        {
-            if (key == WinForms.Keys.Space || key == WinForms.Keys.Enter || key == WinForms.Keys.Tab)
-            {
-                string currentText = _typedBuffer.ToString();
-                string lastWord = GetLastWord(currentText);
-                if (!string.IsNullOrEmpty(lastWord))
-                {
-                    var matchedSnippet = SnippetManager.FindMatch(lastWord);
-                    if (matchedSnippet != null)
-                    {
-                        string expansion = matchedSnippet.Value;
-                        string snippetKey = matchedSnippet.Key;
-                        int backspaceCount = snippetKey.Length + 1;
-
-                        _typedBuffer.Clear();
-
-                        Task.Run(async () =>
-                        {
-                            await Task.Delay(20);
-                            InputSimulator.SimulateBackspace(backspaceCount);
-                            await Task.Delay(20);
-                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                SafeSetClipboardText(expansion);
-                                try
-                                {
-                                    System.Windows.Point spawnPos = GetCaretOrMousePosition();
-                                    var overlay = new OverlayWindow();
-                                    overlay.Left = spawnPos.X - 200;
-                                    overlay.Top = spawnPos.Y - 200;
-                                    overlay.Show();
-                                }
-                                catch { }
-                            });
-                            await Task.Delay(60);
-                            InputSimulator.SimulatePaste();
-                        });
-                        return;
-                    }
-                }
-                _typedBuffer.Append(" ");
-                if (_typedBuffer.Length > 100) _typedBuffer.Remove(0, 50);
-            }
-            else if (key == WinForms.Keys.Back)
-            {
-                if (_typedBuffer.Length > 0) _typedBuffer.Length--;
-            }
-            else
-            {
-                string charTyped = GetCharsFromKeys(key);
-                if (!string.IsNullOrEmpty(charTyped))
-                {
-                    _typedBuffer.Append(charTyped);
-                }
-                else if (key == WinForms.Keys.Escape || key == WinForms.Keys.LWin || key == WinForms.Keys.RWin || key == WinForms.Keys.ControlKey)
-                {
-                    _typedBuffer.Clear();
-                }
-            }
-        }
-
-        private System.Windows.Point GetCaretOrMousePosition()
-        {
-            try
-            {
-                GUITHREADINFO guiInfo = new GUITHREADINFO();
-                guiInfo.cbSize = Marshal.SizeOf(guiInfo);
-                IntPtr foregroundWindow = GetForegroundWindow();
-                uint threadId = GetWindowThreadProcessId(foregroundWindow, out _);
-                if (GetGUIThreadInfo(threadId, ref guiInfo) && guiInfo.hwndCaret != IntPtr.Zero)
-                {
-                    POINT p = new POINT { x = guiInfo.rcCaret.Left, y = guiInfo.rcCaret.Top };
-                    ClientToScreen(guiInfo.hwndCaret, ref p);
-                    if (p.x != 0 || p.y != 0) return new System.Windows.Point(p.x, p.y);
-                }
-            }
-            catch { }
-            var mouse = WinForms.Cursor.Position;
-            return new System.Windows.Point(mouse.X, mouse.Y);
-        }
-
-        private string GetLastWord(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return "";
-            int lastSpaceIndex = text.LastIndexOfAny(new char[] { ' ', '\n', '\t' });
-            if (lastSpaceIndex == -1) return text;
-            return text.Substring(lastSpaceIndex + 1);
-        }
-
-        private string GetCharsFromKeys(WinForms.Keys key)
-        {
-            if (key >= WinForms.Keys.A && key <= WinForms.Keys.Z) return key.ToString().ToLower();
-            if (key >= WinForms.Keys.D0 && key <= WinForms.Keys.D9) return key.ToString().Replace("D", "");
-            if (key >= WinForms.Keys.NumPad0 && key <= WinForms.Keys.NumPad9) return key.ToString().Replace("NumPad", "");
-
-            switch (key)
-            {
-                case WinForms.Keys.OemPeriod: return ".";
-                case WinForms.Keys.OemMinus: return "-";
-                case WinForms.Keys.OemQuestion: return "/";
-                case WinForms.Keys.Divide: return "/";
-                case WinForms.Keys.Oemcomma: return ",";
-                case WinForms.Keys.Oem1: return ";";
-                case WinForms.Keys.Oem7: return "'";
-            }
-            return "";
-        }
-
-        private void PromptBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e) { }
 
         private void LoadSettings()
         {
@@ -1035,6 +862,7 @@ namespace imgsaver
                 string customFolder = TxtCustomDataFolder.Text.Trim();
 
                 DataPathManager.SaveLocation(useCustom, customFolder);
+                DataPathManager.ReloadAllDataStores();
 
                 string configPath = DataPathManager.GetSettingsFilePath(ConfigFileName);
                 string galleryConfigPath = DataPathManager.GetSettingsFilePath("gallery_config.txt");

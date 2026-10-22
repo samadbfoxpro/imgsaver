@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,6 +14,7 @@ namespace imgsaver
 
     public static class SnippetManager
     {
+        private static readonly object _lock = new object();
         public static List<Snippet> Snippets { get; private set; } = new List<Snippet>();
 
         static SnippetManager()
@@ -25,7 +26,7 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = DataPathManager.LocalDataDirectory;
+                string dataDir = DataPathManager.SharedPromptDataDirectory;
                 string path = DataPathManager.GetSettingsFilePath("snippets.json");
                 string oldPath = DataPathManager.GetLegacyRootFilePath("snippets.json");
 
@@ -40,12 +41,19 @@ namespace imgsaver
                 if (File.Exists(path))
                 {
                     string json = File.ReadAllText(path);
-                    Snippets = JsonSerializer.Deserialize<List<Snippet>>(json) ?? new List<Snippet>();
+                    var loaded = JsonSerializer.Deserialize<List<Snippet>>(json) ?? new List<Snippet>();
+                    lock (_lock)
+                    {
+                        Snippets = loaded;
+                    }
                 }
             }
             catch
             {
-                Snippets = new List<Snippet>();
+                lock (_lock)
+                {
+                    Snippets = new List<Snippet>();
+                }
             }
         }
 
@@ -53,11 +61,15 @@ namespace imgsaver
         {
             try
             {
-                string dataDir = DataPathManager.LocalDataDirectory;
+                string dataDir = DataPathManager.SharedPromptDataDirectory;
                 if (!Directory.Exists(dataDir)) Directory.CreateDirectory(dataDir);
 
                 string path = DataPathManager.GetSettingsFilePath("snippets.json");
-                string json = JsonSerializer.Serialize(Snippets, new JsonSerializerOptions { WriteIndented = true });
+                string json;
+                lock (_lock)
+                {
+                    json = JsonSerializer.Serialize(Snippets, new JsonSerializerOptions { WriteIndented = true });
+                }
                 File.WriteAllText(path, json);
             }
             catch { }
@@ -66,7 +78,10 @@ namespace imgsaver
         public static string? GetExpansion(string key)
         {
             if (string.IsNullOrWhiteSpace(key)) return null;
-            return Snippets.FirstOrDefault(s => s.Key.Trim().Equals(key.Trim(), StringComparison.OrdinalIgnoreCase))?.Value;
+            lock (_lock)
+            {
+                return Snippets.FirstOrDefault(s => s.Key.Trim().Equals(key.Trim(), StringComparison.OrdinalIgnoreCase))?.Value;
+            }
         }
 
         /// <summary>
@@ -78,16 +93,19 @@ namespace imgsaver
         {
             if (string.IsNullOrEmpty(word)) return null;
 
-            // Find all snippets that are a suffix of the current buffer
-            var matches = Snippets
-                .Where(s => !string.IsNullOrEmpty(s.Key) && word.EndsWith(s.Key, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            lock (_lock)
+            {
+                // Find all snippets that are a suffix of the current buffer
+                var matches = Snippets
+                    .Where(s => !string.IsNullOrEmpty(s.Key) && word.EndsWith(s.Key, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-            if (matches.Count == 0) return null;
+                if (matches.Count == 0) return null;
 
-            // Return the LONGEST match. This is the key to high accuracy.
-            // It prevents partial matches from triggering prematurely.
-            return matches.OrderByDescending(m => m.Key.Length).FirstOrDefault();
+                // Return the LONGEST match. This is the key to high accuracy.
+                // It prevents partial matches from triggering prematurely.
+                return matches.OrderByDescending(m => m.Key.Length).FirstOrDefault();
+            }
         }
 
         /// <summary>
@@ -97,7 +115,10 @@ namespace imgsaver
         public static bool IsPotentialMatch(string word)
         {
             if (string.IsNullOrEmpty(word)) return false;
-            return Snippets.Any(s => s.Key.StartsWith(word, StringComparison.OrdinalIgnoreCase) && s.Key.Length > word.Length);
+            lock (_lock)
+            {
+                return Snippets.Any(s => s.Key.StartsWith(word, StringComparison.OrdinalIgnoreCase) && s.Key.Length > word.Length);
+            }
         }
     }
 }
