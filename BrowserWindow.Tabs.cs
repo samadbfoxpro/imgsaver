@@ -24,17 +24,51 @@ namespace imgsaver
             {
                 if (_currentSettings.TabSessions != null && _currentSettings.TabSessions.Count > 0)
                 {
-                    foreach (var tabSession in _currentSettings.TabSessions)
+                    var sessions = _currentSettings.TabSessions;
+                    int selectedIdx = Math.Clamp(_currentSettings.SelectedTabIndex, 0, sessions.Count - 1);
+
+                    // Load selected tab first for fast startup
+                    await AddNewTab(IsLegacyNewTabUrl(sessions[selectedIdx].Url) ? null : sessions[selectedIdx].Url, selectTab: true);
+
+                    // Load remaining tabs lazily with delay
+                    if (sessions.Count > 1)
                     {
-                        await AddNewTab(IsLegacyNewTabUrl(tabSession.Url) ? null : tabSession.Url, selectTab: false);
+                        _ = Task.Run(async () =>
+                        {
+                            for (int i = 0; i < sessions.Count; i++)
+                            {
+                                if (i == selectedIdx) continue;
+                                await Task.Delay(600);
+                                int idx = i;
+                                await Dispatcher.InvokeAsync(async () =>
+                                {
+                                    await AddNewTab(IsLegacyNewTabUrl(sessions[idx].Url) ? null : sessions[idx].Url, selectTab: false);
+                                });
+                            }
+                        });
                     }
-                    BrowserTabs.SelectedIndex = Math.Clamp(_currentSettings.SelectedTabIndex, 0, Math.Max(0, BrowserTabs.Items.Count - 1));
+
+                    BrowserTabs.SelectedIndex = 0;
                 }
                 else if (_currentSettings.OpenTabs != null && _currentSettings.OpenTabs.Count > 0)
                 {
-                    foreach (var url in _currentSettings.OpenTabs)
+                    var openTabs = _currentSettings.OpenTabs;
+                    await AddNewTab(IsLegacyNewTabUrl(openTabs[0]) ? null : openTabs[0]);
+
+                    if (openTabs.Count > 1)
                     {
-                        await AddNewTab(IsLegacyNewTabUrl(url) ? null : url);
+                        _ = Task.Run(async () =>
+                        {
+                            for (int i = 1; i < openTabs.Count; i++)
+                            {
+                                await Task.Delay(600);
+                                int idx = i;
+                                await Dispatcher.InvokeAsync(async () =>
+                                {
+                                    await AddNewTab(IsLegacyNewTabUrl(openTabs[idx]) ? null : openTabs[idx], selectTab: false);
+                                });
+                            }
+                        });
                     }
                 }
                 else
@@ -48,6 +82,7 @@ namespace imgsaver
                 await AddNewTab(null);
             }
         }
+
 
         private bool IsLegacyNewTabUrl(string? url)
         {
@@ -317,7 +352,7 @@ namespace imgsaver
                             "--disable-background-timer-throttling",
                             "--disable-renderer-backgrounding",
                             "--disable-features=CalculateNativeWinOcclusion,IntensiveWakeUpThrottling,QuickIntensiveWakeUpThrottlingAfterLoading,RendererCodeIntegrity",
-                            "--js-flags=\"--max-old-space-size=4096\"",
+                            "--js-flags=\"--max-old-space-size=1024\"",
                             "--enable-smooth-scrolling"
                         };
 

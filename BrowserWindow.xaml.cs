@@ -177,7 +177,7 @@ namespace imgsaver
             });
         }
 
-        private void UpdateProfileUIBadge()
+        private async void UpdateProfileUIBadge()
         {
             try
             {
@@ -188,12 +188,17 @@ namespace imgsaver
                     {
                         try
                         {
-                            var bi = new System.Windows.Media.Imaging.BitmapImage();
-                            bi.BeginInit();
-                            bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                            bi.UriSource = new Uri(CurrentProfile.CustomImagePath!);
-                            bi.EndInit();
-                            bi.Freeze();
+                            string imgPath = CurrentProfile.CustomImagePath!;
+                            var bi = await Task.Run(() =>
+                            {
+                                var img = new System.Windows.Media.Imaging.BitmapImage();
+                                img.BeginInit();
+                                img.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                                img.UriSource = new Uri(imgPath);
+                                img.EndInit();
+                                img.Freeze();
+                                return img;
+                            });
                             UserProfileAvatarImage.Source = bi;
                             UserProfileAvatarImage.Visibility = Visibility.Visible;
                             if (UserProfileAvatarPath != null) UserProfileAvatarPath.Visibility = Visibility.Collapsed;
@@ -306,7 +311,15 @@ namespace imgsaver
             _netTimer = new DispatcherTimer();
             _netTimer.Interval = TimeSpan.FromSeconds(2);
             _netTimer.Tick += NetTimer_Tick;
-            _netTimer.Start();
+
+            var startupDelay = new DispatcherTimer();
+            startupDelay.Interval = TimeSpan.FromSeconds(3);
+            startupDelay.Tick += (s, e) =>
+            {
+                startupDelay.Stop();
+                _netTimer.Start();
+            };
+            startupDelay.Start();
         }
 
         private string FormatSpeed(long bytes)

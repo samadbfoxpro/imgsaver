@@ -15,6 +15,32 @@ namespace imgsaver
         private bool _isRunning;
         public int Port { get; private set; }
 
+        private BrowserSettings? _cachedSettings;
+        private DateTime _settingsCacheTime = DateTime.MinValue;
+        private static readonly TimeSpan SettingsCacheDuration = TimeSpan.FromSeconds(10);
+        private readonly object _settingsCacheLock = new object();
+
+        private BrowserSettings GetCachedSettings()
+        {
+            lock (_settingsCacheLock)
+            {
+                if (_cachedSettings == null || DateTime.Now - _settingsCacheTime > SettingsCacheDuration)
+                {
+                    _cachedSettings = BrowserSettings.Load();
+                    _settingsCacheTime = DateTime.Now;
+                }
+                return _cachedSettings;
+            }
+        }
+
+        public void InvalidateSettingsCache()
+        {
+            lock (_settingsCacheLock)
+            {
+                _cachedSettings = null;
+            }
+        }
+
         public void Start()
         {
             if (_isRunning) return;
@@ -101,8 +127,9 @@ namespace imgsaver
                         }
                     }
 
-                    var settings = BrowserSettings.Load();
+                    var settings = GetCachedSettings();
                     TcpClient targetClient = new TcpClient();
+
 
                     bool useUpstream = false;
                     string upstreamHost = "";
